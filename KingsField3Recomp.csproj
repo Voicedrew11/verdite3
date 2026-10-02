@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyName>KingsField3</AssemblyName>
+        <RootNamespace>KingsField3</RootNamespace>
+        <!--
+          QuickJit off, as in Verdite2: tier-up recompiles a method and MonoMod's
+          detour does not reliably follow it, so a committed hook can stop firing.
+          See "Build and run" in docs/DEVELOPMENT.md.
+        -->
+        <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="tools/RecompOne/RecompOne.Runtime/RecompOne.Runtime.csproj" />
+    </ItemGroup>
+
+    <!--
+      generated/ and patches/ are picked up by the default globs (an explicit
+      Compile Include is NETSDK1022). Everything below is nested here but is not
+      this assembly's source: compiling it gives CS0579 from its obj/ files.
+    -->
+    <ItemGroup>
+        <Compile Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
+        <EmbeddedResource Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
+        <None Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,188 @@
+{
+  // King's Field II (NTSC-U, SLUS-00255) -- the North American release of
+  // King's Field III (JP, SLPS-00377). From Software, 1996.
+  // Config schema: tools/RecompOne/RecompOne.Recompiler/Config/ConfigLoader.cs
+  // JSON comments and trailing commas are accepted by the loader.
+  //
+  // NUMBER BASES DIFFER between this file and the CLI:
+  //   here : "base" is a hex STRING; "size"/"skip"/"offset"/"lba" are decimal numbers.
+  //   CLI  : -size/-skip/-offset are HEX; -lba is decimal.
+  "game": {
+    "id": "SLUS-00255",
+    "name": "KingsField3",
+    "output": "../generated"
+  },
+
+  "cue": "../disc/KingsField3.cue",
+
+  // The boot executable SYSTEM.CNF names (SLUS_002.55) is found automatically:
+  // a 2 KiB loader stub at 0x80010000.
+  "funcMap": "funcmaps/main.json",
+
+  // OPEN.EXE, GAME.EXE and END.EXE all load at 0x80011000, so they are overlays.
+  // Read as raw bytes: each needs "skip": 2048 past the PS-X EXE header, and
+  // "base" is the header's text address. Each entry point comes from its header
+  // and is declared, since the recompiler adds one only for the main executable.
+  // See "What is on the disc" in docs/RECOMPILATION.md.
+  "overlays": [
+    {
+      "name": "open",
+      "file": "OPEN.EXE",
+      "base": "0x80011000",
+      "skip": 2048,
+      "funcMap": "funcmaps/open.json",
+      "functions": [
+        { "address": "0x800136C8", "name": "open_entry" }
+      ]
+    },
+    {
+      "name": "game",
+      "file": "GAME.EXE",
+      "base": "0x80011000",
+      "skip": 2048,
+      "funcMap": "funcmaps/game.json",
+      "functions": [
+        { "address": "0x800144F8", "name": "game_entry" }
+      ]
+    },
+    {
+      "name": "end",
+      "file": "END.EXE",
+      "base": "0x80011000",
+      "skip": 2048,
+      "funcMap": "funcmaps/end.json",
+      "functions": [
+        { "address": "0x80011D04", "name": "end_entry" }
+      ]
+    },
+
+    // ---- area code modules from CD/COM/FDAT.T ----
+    // Entries 3n+2, n = 0..27, each linked for 0x801E8308: a count word, 32
+    // dispatch slots, then code. GAME.EXE dispatches through the module pointer
+    // at 0x8018FAE0. skip 0 so the overlay covers the header and any jump tables
+    // in it. See "GAME.EXE loads code" in docs/RECOMPILATION.md.
+    { "name": "fdat02", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 100352, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat02.json" },
+    { "name": "fdat05", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 202752, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat05.json" },
+    { "name": "fdat08", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 303104, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat08.json" },
+    { "name": "fdat11", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 403456, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat11.json" },
+    { "name": "fdat14", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 503808, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat14.json" },
+    { "name": "fdat17", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 604160, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat17.json" },
+    { "name": "fdat20", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 702464, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat20.json" },
+    { "name": "fdat23", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 802816, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat23.json" },
+    { "name": "fdat26", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 901120, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat26.json" },
+    { "name": "fdat29", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1001472, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat29.json" },
+    { "name": "fdat32", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1103872, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat32.json" },
+    { "name": "fdat35", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1202176, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat35.json" },
+    { "name": "fdat38", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1300480, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat38.json" },
+    { "name": "fdat41", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1402880, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat41.json" },
+    { "name": "fdat44", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1501184, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat44.json" },
+    { "name": "fdat47", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1599488, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat47.json" },
+    { "name": "fdat50", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1697792, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat50.json" },
+    { "name": "fdat53", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1796096, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat53.json" },
+    { "name": "fdat56", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1896448, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat56.json" },
+    { "name": "fdat59", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 1994752, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat59.json" },
+    { "name": "fdat62", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2093056, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat62.json" },
+    { "name": "fdat65", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2189312, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat65.json" },
+    { "name": "fdat68", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2287616, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat68.json" },
+    { "name": "fdat71", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2385920, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat71.json" },
+    { "name": "fdat74", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2484224, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat74.json" },
+    { "name": "fdat77", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2580480, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat77.json" },
+    { "name": "fdat80", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2680832, "skip": 0, "size": 4096, "funcMap": "funcmaps/fdat80.json" },
+    { "name": "fdat83", "file": "CD/COM/FDAT.T", "base": "0x801E8308", "offset": 2779136, "skip": 0, "size": 2048, "funcMap": "funcmaps/fdat83.json" }
+  ],
+
+  "stubs": [],
+  "ignored": [],
+
+  // PSY-Q entry points bound to the runtime's HLE by address: SdkPatches binds
+  // by name, and a linear sweep produces none. See "The SDK entry points" in
+  // docs/RECOMPILATION.md.
+  "patches": [
+    // ---- libetc
+    { "overlay": "open", "address": "0x8001FE6C", "target": "RecompOne.Runtime.Sdk.LibEtc.VSync", "mode": "replace" },
+
+    { "overlay": "game", "address": "0x8007910C", "target": "RecompOne.Runtime.Sdk.LibEtc.VSync", "mode": "replace" },
+
+    { "overlay": "end", "address": "0x8001C208", "target": "RecompOne.Runtime.Sdk.LibEtc.VSync", "mode": "replace" },
+
+    // ---- libcd
+    { "overlay": "open", "address": "0x8001AD4C", "target": "RecompOne.Runtime.Sdk.LibCd.CdInit", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001AF98", "target": "RecompOne.Runtime.Sdk.LibCd.CdSync", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001AFB8", "target": "RecompOne.Runtime.Sdk.LibCd.CdReady", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B020", "target": "RecompOne.Runtime.Sdk.LibCd.CdControl", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B168", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlF", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B2A4", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlB", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B41C", "target": "RecompOne.Runtime.Sdk.LibCd.CdGetSector", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B484", "target": "RecompOne.Runtime.Sdk.LibCd.CdReadSync", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001B4A4", "target": "RecompOne.Runtime.Sdk.LibCd.CdRead", "mode": "replace" },
+
+    { "overlay": "game", "address": "0x80064650", "target": "RecompOne.Runtime.Sdk.LibCd.CdInit", "mode": "replace" },
+    { "overlay": "game", "address": "0x80061D78", "target": "RecompOne.Runtime.Sdk.LibCd.CdSync", "mode": "replace" },
+    { "overlay": "game", "address": "0x80061D98", "target": "RecompOne.Runtime.Sdk.LibCd.CdReady", "mode": "replace" },
+    { "overlay": "game", "address": "0x80061E00", "target": "RecompOne.Runtime.Sdk.LibCd.CdControl", "mode": "replace" },
+    { "overlay": "game", "address": "0x80061F48", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlF", "mode": "replace" },
+    { "overlay": "game", "address": "0x80062084", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlB", "mode": "replace" },
+    { "overlay": "game", "address": "0x800621FC", "target": "RecompOne.Runtime.Sdk.LibCd.CdGetSector", "mode": "replace" },
+    { "overlay": "game", "address": "0x80062264", "target": "RecompOne.Runtime.Sdk.LibCd.CdReadSync", "mode": "replace" },
+    { "overlay": "game", "address": "0x80062284", "target": "RecompOne.Runtime.Sdk.LibCd.CdRead", "mode": "replace" },
+
+    { "overlay": "end", "address": "0x80017318", "target": "RecompOne.Runtime.Sdk.LibCd.CdInit", "mode": "replace" },
+    { "overlay": "end", "address": "0x80018110", "target": "RecompOne.Runtime.Sdk.LibCd.CdSync", "mode": "replace" },
+    { "overlay": "end", "address": "0x80018130", "target": "RecompOne.Runtime.Sdk.LibCd.CdReady", "mode": "replace" },
+    { "overlay": "end", "address": "0x80018198", "target": "RecompOne.Runtime.Sdk.LibCd.CdControl", "mode": "replace" },
+    { "overlay": "end", "address": "0x800182E0", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlF", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001841C", "target": "RecompOne.Runtime.Sdk.LibCd.CdControlB", "mode": "replace" },
+    { "overlay": "end", "address": "0x80018594", "target": "RecompOne.Runtime.Sdk.LibCd.CdGetSector", "mode": "replace" },
+    { "overlay": "end", "address": "0x800185FC", "target": "RecompOne.Runtime.Sdk.LibCd.CdReadSync", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001861C", "target": "RecompOne.Runtime.Sdk.LibCd.CdRead", "mode": "replace" },
+
+    // ---- libgpu
+    { "overlay": "open", "address": "0x80016168", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawSync", "mode": "replace" },
+    { "overlay": "open", "address": "0x800166CC", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawOTag", "mode": "replace" },
+    { "overlay": "open", "address": "0x80016740", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDrawEnv", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001683C", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDispEnv", "mode": "replace" },
+
+    { "overlay": "game", "address": "0x80079BA0", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawSync", "mode": "replace" },
+    { "overlay": "game", "address": "0x8007A104", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawOTag", "mode": "replace" },
+    { "overlay": "game", "address": "0x8007A178", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDrawEnv", "mode": "replace" },
+    { "overlay": "game", "address": "0x8007A274", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDispEnv", "mode": "replace" },
+
+    { "overlay": "end", "address": "0x80013EC4", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawSync", "mode": "replace" },
+    { "overlay": "end", "address": "0x80014428", "target": "RecompOne.Runtime.Sdk.LibGpu.DrawOTag", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001449C", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDrawEnv", "mode": "replace" },
+    { "overlay": "end", "address": "0x80014598", "target": "RecompOne.Runtime.Sdk.LibGpu.PutDispEnv", "mode": "replace" },
+
+    // ---- libcdstream
+    { "overlay": "open", "address": "0x8001D880", "target": "RecompOne.Runtime.Sdk.LibCdStream.StUnSetRing", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001D96C", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetStream", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001EFA4", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetRing", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001EFD4", "target": "RecompOne.Runtime.Sdk.LibCdStream.StClearRing", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001F034", "target": "RecompOne.Runtime.Sdk.LibCdStream.StGetNext", "mode": "replace" },
+    { "overlay": "open", "address": "0x8001F160", "target": "RecompOne.Runtime.Sdk.LibCdStream.StFreeRing", "mode": "replace" },
+
+    { "overlay": "game", "address": "0x80064758", "target": "RecompOne.Runtime.Sdk.LibCdStream.StUnSetRing", "mode": "replace" },
+    { "overlay": "game", "address": "0x80064844", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetStream", "mode": "replace" },
+    { "overlay": "game", "address": "0x80065E6C", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetRing", "mode": "replace" },
+    { "overlay": "game", "address": "0x80065E9C", "target": "RecompOne.Runtime.Sdk.LibCdStream.StClearRing", "mode": "replace" },
+    { "overlay": "game", "address": "0x80065EFC", "target": "RecompOne.Runtime.Sdk.LibCdStream.StGetNext", "mode": "replace" },
+    { "overlay": "game", "address": "0x80066028", "target": "RecompOne.Runtime.Sdk.LibCdStream.StFreeRing", "mode": "replace" },
+
+    { "overlay": "end", "address": "0x80017430", "target": "RecompOne.Runtime.Sdk.LibCdStream.StUnSetRing", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001752C", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetStream", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001B330", "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetRing", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001B360", "target": "RecompOne.Runtime.Sdk.LibCdStream.StClearRing", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001B3C0", "target": "RecompOne.Runtime.Sdk.LibCdStream.StGetNext", "mode": "replace" },
+    { "overlay": "end", "address": "0x8001B4EC", "target": "RecompOne.Runtime.Sdk.LibCdStream.StFreeRing", "mode": "replace" },
+
+    // ---- libapi
+    { "overlay": "open", "address": "0x8001F27C", "target": "RecompOne.Runtime.Sdk.LibApi.DMACallback", "mode": "replace" },
+
+    { "overlay": "game", "address": "0x80078684", "target": "RecompOne.Runtime.Sdk.LibApi.DMACallback", "mode": "replace" },
+
+    { "overlay": "end", "address": "0x8001B608", "target": "RecompOne.Runtime.Sdk.LibApi.DMACallback", "mode": "replace" }
+  ],
+
+  "debug": false,
+  "addressComments": false,
+  "disasmComments": false
+}

@@ -2,5 +2,5 @@
   "disc": "disc/KingsField3.cue",
   "recompilerConfig": "config/kf3.json",
   "funcmaps": "config/funcmaps",
-  "sdkOverlays": []
+  "sdkOverlays": ["open", "game", "end"]
 }

@@ -1,0 +1,115 @@
+{
+  "functions": [
+    {
+      "address": "0x801E8390",
+      "name": "func_801E8390",
+      "size": 8
+    },
+    {
+      "address": "0x801E8398",
+      "name": "func_801E8398",
+      "size": 520
+    },
+    {
+      "address": "0x801E85A0",
+      "name": "func_801E85A0",
+      "size": 8
+    },
+    {
+      "address": "0x801E85A8",
+      "name": "func_801E85A8",
+      "size": 316
+    },
+    {
+      "address": "0x801E86E4",
+      "name": "func_801E86E4",
+      "size": 8
+    },
+    {
+      "address": "0x801E86EC",
+      "name": "func_801E86EC",
+      "size": 8
+    },
+    {
+      "address": "0x801E86F4",
+      "name": "func_801E86F4",
+      "size": 192
+    },
+    {
+      "address": "0x801E87B4",
+      "name": "func_801E87B4",
+      "size": 28
+    },
+    {
+      "address": "0x801E87D0",
+      "name": "func_801E87D0",
+      "size": 180
+    },
+    {
+      "address": "0x801E8884",
+      "name": "func_801E8884",
+      "size": 8
+    },
+    {
+      "address": "0x801E888C",
+      "name": "func_801E888C",
+      "size": 8
+    },
+    {
+      "address": "0x801E8894",
+      "name": "func_801E8894",
+      "size": 8
+    },
+    {
+      "address": "0x801E889C",
+      "name": "func_801E889C",
+      "size": 8
+    },
+    {
+      "address": "0x801E88A4",
+      "name": "func_801E88A4",
+      "size": 8
+    },
+    {
+      "address": "0x801E88AC",
+      "name": "func_801E88AC",
+      "size": 8
+    },
+    {
+      "address": "0x801E88B4",
+      "name": "func_801E88B4",
+      "size": 8
+    },
+    {
+      "address": "0x801E88BC",
+      "name": "func_801E88BC",
+      "size": 8
+    },
+    {
+      "address": "0x801E88C4",
+      "name": "func_801E88C4",
+      "size": 8
+    },
+    {
+      "address": "0x801E88CC",
+      "name": "func_801E88CC",
+      "size": 8
+    },
+    {
+      "address": "0x801E88D4",
+      "name": "func_801E88D4",
+      "size": 8
+    },
+    {
+      "address": "0x801E88DC",
+      "name": "func_801E88DC",
+      "size": 24
+    },
+    {
+      "address": "0x801E88F4",
+      "name": "func_801E88F4",
+      "size": 20
+    }
+  ],
+  "labels": []
+}
