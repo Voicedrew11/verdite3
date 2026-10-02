@@ -387,13 +387,14 @@ the record whose submit is in progress (`Enter`/`Leave` round each submit).
 
 ## Handoff: what is left
 
-**Where it stands.** Verdite3 `main`, local commits only (none pushed). Units 1-3
-are built; the camera carry is judged; the model carry is measured and off.
+**The next work is `docs/PICTURE.md`** (24-bit colour, perspective, sub-pixel,
+the Z-buffer), planned 2026-10-02.
 
-1. **The user judges `KF3_SMOOTH_MODELS=1`** (or Settings ▸ Testing) at 144 fps: creatures walking and
-   looping, doors turning, effects. If it looks right, make it on whenever pacing
-   is (as `KF3_SMOOTH` went) and say so here. The needle, the gauges and the
-   texture hold are on now and also want a look.
+**Where it stands.** Verdite3 `main`. Units 1-3 are built and judged. **The user
+said the rest is not important yet (2026-10-02)**; it is kept here for when it is:
+
+1. The needle, the gauges and the texture hold are on and were not looked at
+   separately.
 2. If a model pops at the cull's edge, hand the queries the carried position.
 3. The arm, when a save with one is available.
 4. Check the loops' reading in 3e against the code before trusting it.

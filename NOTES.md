@@ -48,8 +48,10 @@ event delivered once), and
 - [docs/GAME_INTERNALS.md](docs/GAME_INTERNALS.md) — the game's own addresses and routines,
   including the geometry path (stage 15's calls, the map, the models).
 - [docs/GEOMETRY.md](docs/GEOMETRY.md) — the polygon assemblers in C#: the plan and its work.
-- [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, then the
-  smoothers. **The next work and its handoff are at its end.**
+- [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, the
+  smoothers, all built and judged.
+- [docs/PICTURE.md](docs/PICTURE.md) — 24-bit colour, perspective, sub-pixel and the
+  Z-buffer: the plan and its work. **The next work.**
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 

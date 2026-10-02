@@ -35,7 +35,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   handoff). `func_80039D50` and `func_80035CA4` are C# and verified
   (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). The near
   path (`func_8003AB04`, `func_800366A8` and libgte's division) and the Z-buffer
-  are next on this path, now that smoothing is done.
+  are next on this path, now that smoothing is done, as units 3 and 4 of
+  **`docs/PICTURE.md`, the next work** (24-bit colour, perspective, sub-pixel and
+  the Z-buffer, planned 2026-10-02).
 - ~~**Carrying the view between ticks**~~ (chosen 2026-10-02, ahead of the near
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
   their clip times, verified and judged, on under pacing; every switch is live in
