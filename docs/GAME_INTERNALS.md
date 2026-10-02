@@ -243,11 +243,16 @@ The same format as Verdite2's, at another address:
 - **The meshes**: the model table `*(0x1F800010)`, 28-byte entries from `+0xC`:
   `+0` the vertices' offset, `+4` the vertex count, `+8` the normals' offset,
   `+0x10` the faces' offset, `+0x14` the face count. A vertex is 8 bytes
-  (`SVECTOR`). A face starts with a header word: byte 1 its length in words,
-  byte 3 its type (`0x24`/`0x2C`/`0x34`/`0x3C`, bit 1 blended); then the packet's
-  UV/CLUT/page halfwords at `+0..+0xC`, the normal at `+0xC` (`+0x10` for a quad),
-  and the corners' vertex-cache offsets at `+0x10..+0x18` (`+0x12..+0x18` for a
-  triangle).
+  (`SVECTOR`). A face is a header word (byte 1 its length in words, byte 3 its
+  kind, bit 1 blended) and a body. A triangle's body: the packet's UV, CLUT and
+  page halfwords at `+0..+0xA`, the normal at `+0xC`, the corners' vertex-cache
+  offsets at `+0xE`, `+0x10`, `+0x12`. A quad's: UVs to `+0xE`, the normal at
+  `+0x10`, corners at `+0x12..+0x18`. Verdite2's `FillTriangle`/`FillQuad` take
+  the UVs and the normal from the same offsets. The map assembler takes three kinds: `0x24` (triangle,
+  one normal), `0x2C` (quad, one normal) and `0x34` (triangle, an `NCDS` per
+  corner on three normals: Verdite2's map assembler has no such kind); a `0x3C`
+  face is skipped. The lit model assembler takes all four, `NCDS` for the flat
+  kinds and `NCDT` for the others.
 
 **`func_8003BFD0`, the walk** (Verdite2's `func_80031C94`): a 25x25 window of
 cells round the camera (Verdite2's is 24x24), its origin at `0x801AEC74`/`78`
@@ -279,7 +284,8 @@ and about 285 packets a frame here):
    `0x1F0F`; a packet of `0x28` (`POLY_GT3`) or `0x34` (`POLY_GT4`) bytes from the
    cursor, the routine returning if it would pass the end; then **the same packet
    Verdite2's `FillTriangle`/`FillQuad` write**: the same offsets from the same
-   face fields, one `NCCS` on the face normal (Verdite2's `NormalColorCol`) and a
+   face fields, `NCCS` on the face normal (Verdite2's `NormalColorCol`; a `0x24`
+   triangle runs it twice on the same normal) and a
    `DPCS` per corner with the corner's fog weight (`DpqColor`), the length byte 9
    or 12, the code `0x34`/`0x3C` with the face's blend bit; linked at slot
    `otz + 0xF0` by an inline `addPrim`.

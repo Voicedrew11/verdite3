@@ -9,7 +9,8 @@ namespace Kf3;
 /// KF3_GEOPROBE=1: what each of stage 15's calls adds to the ordering table. The table
 /// is walked before and after each call and the packets new to it counted, by GPU
 /// command and by slot; KF3_GEOPROBE_FUNCS=hex,... adds functions reached from
-/// anywhere. One block every five seconds. See "The geometry path" in
+/// anywhere. One block every five seconds. KF3_GEOPROBE=time reports each call's
+/// inclusive time instead, without walking the tables. See "The geometry path" in
 /// docs/GAME_INTERNALS.md.
 /// </summary>
 public static class GeometryProbe
@@ -36,7 +37,7 @@ public static class GeometryProbe
     sealed class Row
     {
         public string Label = "";
-        public long Calls, Added, Removed, Words;
+        public long Calls, Added, Removed, Words, Ticks;
         public int MinSlot = int.MaxValue, MaxSlot = -1;
         public uint MinAddr = uint.MaxValue, MaxAddr;
         public readonly Dictionary<byte, long> Codes = new();
@@ -49,11 +50,17 @@ public static class GeometryProbe
     static readonly List<Row> _rows = new();
     static readonly List<uint> _extra = new();
     static readonly Dictionary<int, Stack<HashSet<uint>?>> _stacks = new();
+    static readonly Dictionary<int, Stack<long>> _clocks = new();
+
+    // KF3_GEOPROBE=time: each call's inclusive wall time only, no table walks.
+    static bool _timing;
     static long _frames, _windowStart = -1;
 
     public static void Install()
     {
-        if (Environment.GetEnvironmentVariable("KF3_GEOPROBE") != "1") return;
+        string? mode = Environment.GetEnvironmentVariable("KF3_GEOPROBE");
+        if (mode != "1" && mode != "time") return;
+        _timing = mode == "time";
         for (int i = 0; i < Calls.Length; i++)
         {
             _bySite[Calls[i].Site] = i;
@@ -108,12 +115,26 @@ public static class GeometryProbe
     static void Enter(int row, IMemory m)
     {
         if (row < 0) return;
+        if (_timing)
+        {
+            if (!_clocks.TryGetValue(row, out var ck)) _clocks[row] = ck = new();
+            ck.Push(System.Diagnostics.Stopwatch.GetTimestamp());
+            return;
+        }
         if (!_stacks.TryGetValue(row, out var st)) _stacks[row] = st = new();
         st.Push(Walk(m, null));
     }
 
     static void Leave(int row, IMemory m)
     {
+        if (_timing)
+        {
+            if (row < 0 || !_clocks.TryGetValue(row, out var ck) || ck.Count == 0) return;
+            _rows[row].Calls++;
+            _rows[row].Ticks += System.Diagnostics.Stopwatch.GetTimestamp() - ck.Pop();
+            if (row < Calls.Length && Calls[row].Callee == 0x80043940) { _frames++; Report(); }
+            return;
+        }
         if (row < 0 || !_stacks.TryGetValue(row, out var st) || st.Count == 0) return;
         var before = st.Pop();
         if (before == null) return;
@@ -217,6 +238,13 @@ public static class GeometryProbe
                 .Select(kv => $"{kv.Key:X2}:{kv.Value / (double)r.Calls:0.#}"));
             string sizes = string.Join(" ", r.Sizes.OrderByDescending(kv => kv.Value).Take(4)
                 .Select(kv => $"{kv.Key}w:{kv.Value / (double)r.Calls:0.#}"));
+            if (_timing)
+            {
+                Console.WriteLine($"[KF3] geoprobe: {r.Label} {r.Calls / f:0.##}/frame " +
+                                  $"{r.Ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency / f:0.000} ms/frame inclusive");
+                r.Calls = r.Ticks = 0;
+                continue;
+            }
             Console.WriteLine($"[KF3] geoprobe: {r.Label} {r.Calls / f:0.##}/frame +{r.Added / (double)r.Calls:0.#} (-{r.Removed / (double)r.Calls:0.#})" +
                               $" {r.Words / (double)r.Calls:0.#}w" +
                               (r.MaxSlot >= 0 ? $" slots {r.MinSlot}..{r.MaxSlot} at {r.MinAddr:X8}..{r.MaxAddr:X8}" : "") +

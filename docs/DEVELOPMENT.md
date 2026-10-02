@@ -154,6 +154,10 @@ KF3_GEOPROBE_FUNCS=8003F304,800400AC,800366A8,80037BEC,80074D88,80075188,800756A
     timeout 50 dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue | grep geoprobe
 ```
 
+`KF3_GEOPROBE=time` times each hooked call instead of walking the tables. Its
+hooks are not free: 793 fps uncapped without it read 600 with it, so subtract
+about 0.4 ms a frame spread over the hooked calls.
+
 Two readings are the probe's, not the game's: call #5 shows one 4-word packet at
 `0x8009C1B0` "added" at slot 0 (a fixed node the cleared table ends in), and call
 #20 (the swap) shows about 600 "removed", because once the front table is linked
