@@ -60,7 +60,7 @@ The runtime's own diagnostics are still read under Verdite2's names (`KF2_CDTRAC
 ## The acceptance test
 
 What a change to the fork, the config or the maps must keep passing. Measured
-2026-10-02 against fork `a617cf8` and Verdite Core `acf4873`; the steps marked
+2026-10-02 against fork `a617cf8` and Verdite Core `a6c2434`; the steps marked
 **by eye** were the user's.
 
 1. The recompile reports `applied 63 patches, 0 reimplementations`.
