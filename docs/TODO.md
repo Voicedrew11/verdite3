@@ -32,11 +32,13 @@ recompiled and running, following Verdite2's method but applied to this disc.
   surveyed, see "The geometry path" in `docs/GAME_INTERNALS.md`; the build order
   is in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey, and its
   handoff). `func_80039D50` and `func_80035CA4` are C# and verified
-  (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). Next: the
-  near path (`func_8003AB04`, `func_800366A8` and libgte's division), then the
-  Z-buffer; the user picks the unit.
-- **Carrying the view between ticks** (Verdite2's `FrameSmoothing` and the rest),
-  without which a higher rate draws the same picture several times.
+  (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). The near
+  path (`func_8003AB04`, `func_800366A8` and libgte's division) and the Z-buffer
+  are next on this path, deferred behind smoothing.
+- **Carrying the view between ticks: the next work** (chosen 2026-10-02, ahead of
+  the near path). Stage 15 and the camera block in C# with a view override, then
+  the camera carried and the billboard clock held. Planned, with its handoff, in
+  `docs/SMOOTHING.md`.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's

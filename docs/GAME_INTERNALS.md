@@ -370,6 +370,15 @@ the rotation to `0x801AEC5C`, `RotMatrix` into the view matrix `0x801AEB4C`,
 matrices at `0x801AEB8C + 0x20 k`** (`func_80016290`), which the map's halves load
 by their rotation. Verdite2 negates the yaw and has no precomposed four.
 
+**A null pointer keeps the previous camera**: the block tests `pos` and `rot`
+separately and skips the copy for a 0. **Stage 15 passes its own two arguments
+straight through**, and it has three callers: the main loop `func_80014BD4` at
+`0x80014FA8`, with two blocks in its own frame (`sp + 0x18`, the position;
+`sp + 0x28`, the rotation; which of stages 1-14 fills them is not read yet), and
+`func_80030568` and `func_800305D8`, both with `0, 0`: redraws from the last
+camera, not yet identified. Read 2026-10-02 for `docs/SMOOTHING.md`, which
+builds on it.
+
 ### How the assemblers are entered
 
 - `func_80039D50(mesh)` and `func_8003AB04(mesh)`: `a0` the mesh id (`& 0xFFFF`),

@@ -37,6 +37,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/RECOMPILATION.md` | config, overlays, function maps, SDK addresses |
 | `docs/GAME_INTERNALS.md` | the game's own addresses and routines |
 | `docs/GEOMETRY.md` | the polygon assemblers in C#: the plan and its work |
+| `docs/SMOOTHING.md` | drawing between ticks: stage 15 in C#, the smoothers, the next work's handoff |
 | `docs/ENV_VARS.md` | every `KF3_*` switch, in one list |
 | `docs/TODO.md` | next steps and open questions |
 | `tools/RecompOne/docs/RECOMPONE_PATCHES.md` | every change the fork makes to RecompOne |

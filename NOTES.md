@@ -42,8 +42,19 @@ event delivered once), and
 - [docs/GAME_INTERNALS.md](docs/GAME_INTERNALS.md) — the game's own addresses and routines,
   including the geometry path (stage 15's calls, the map, the models).
 - [docs/GEOMETRY.md](docs/GEOMETRY.md) — the polygon assemblers in C#: the plan and its work.
+- [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, then the
+  smoothers. **The next work and its handoff are at its end.**
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
+
+## Sharing with Verdite2
+
+The plan for sharing code between the Verdite games, its per-file inventory and
+the progress log stay in Verdite2 (`~/Desktop/KFII-PC`): `docs/SHARING.md`,
+`SHARING_PLAN.md`, `SHARING_INVENTORY.md`. The inventory is Verdite2's file list,
+and the extraction steps change Verdite2 and are proved by its acceptance test.
+They move to Verdite Core when it gets its first C#. A unit done here is written
+up in this repo's own documents and logged in Verdite2's `docs/SHARING.md`.
 
 ## Where to write a new finding
 

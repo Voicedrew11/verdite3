@@ -11,7 +11,9 @@ order are in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey).
 `func_80035CA4` run in C# (`KF3_POLYASM`, on by default; `0` puts both back),
 verified with 0 mismatches over three sessions in `fdat02`. See "The first unit:
 the bulk assemblers" below for the numbers. The three variants stay recompiled
-(see "The variants are not the same loop"). Next is the near path.
+(see "The variants are not the same loop"). The near path is next on this
+path, **deferred behind smoothing** (`docs/SMOOTHING.md`), which the user put
+first on 2026-10-02.
 
 ## Why the assemblers, and why these two first
 
