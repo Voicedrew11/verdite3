@@ -54,7 +54,7 @@ Read 2026-10-02, from a managed stack of the live game and the disassembly.
 | 7 | `func_8005EB20` | |
 | 8 | `func_80018358` | also called by the card loader's wait loop |
 | 9 | `func_80061940` | |
-| 10 | `func_8002B330(sp+0x18, sp+0x28)` | |
+| 10 | `func_8002B330(sp+0x18, sp+0x28)` | **fills the camera stage 15 draws with**: the player's x, y + `s16[0x801B2650]` + `s16[0x801B2654]` - `0x640`, z, and the angles at `0x801B2608` |
 | 11 | `func_800156BC(sp+0x18, sp+0x28)` | |
 | 12 | `func_80034300` | |
 | 13 | `func_80018CD0` | also called by `func_80019538` |
@@ -374,7 +374,7 @@ by their rotation. Verdite2 negates the yaw and has no precomposed four.
 separately and skips the copy for a 0. **Stage 15 passes its own two arguments
 straight through**, and it has three callers: the main loop `func_80014BD4` at
 `0x80014FA8`, with two blocks in its own frame (`sp + 0x18`, the position;
-`sp + 0x28`, the rotation; which of stages 1-14 fills them is not read yet), and
+`sp + 0x28`, the rotation; stage 10 fills them, see the main loop's table), and
 `func_80030568` and `func_800305D8`, both with `0, 0`: redraws from the last
 camera, not yet identified. Read 2026-10-02 for `docs/SMOOTHING.md`, which
 builds on it.
@@ -409,7 +409,8 @@ With frame pacing on, `KF3_RATECENSUS=20` (in `fdat02`, standing, 144 fps) lists
 the words that change between two frames on which no stage ran. Besides the
 buffers a frame swaps and the vblank handler's counters:
 
-- **`0x80182964`**, a counter `func_80040AE4` (stage 15's call at `0x800428A8`,
+- **`0x80182964`** (held to the tick by `patches/SpriteAnim.cs` since 2026-10-02,
+  `docs/SMOOTHING.md`), a counter `func_80040AE4` (stage 15's call at `0x800428A8`,
   the model walk: see "The geometry path") bumps once a drawn frame, and the nine `0x18`-byte records after it, each with
   a cel index cycling 0-3: billboard or sprite animation, the shape of
   Verdite2's `SpriteAnim` defect. Not fixed.
@@ -417,3 +418,7 @@ buffers a frame swaps and the vblank handler's counters:
   `0x80194274`, `0x801AEB20`, `0x800C87F0` and near `gp` (`0x8009C07C`,
   `0x8009C1A4..`, `0x8009C20C`, `0x8009EEBC`, written by `func_8006C744`).
   None is reached by a `lui` literal; not identified.
+- **The compass needle** (only while turning, so a standing census misses it):
+  stage 15's HUD block steps its spring, the speed at `gp + 0xD8` (`0x8009C2EC`)
+  and the yaw at `0x80081C3A`/`0x80081C5E`. Held to the tick by `Stage15` since
+  2026-10-02.

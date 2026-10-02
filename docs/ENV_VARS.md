@@ -25,6 +25,12 @@ default. This fills in as diagnostics are added, the way Verdite2's
 | `KF3_POLYASM` | the bulk polygon assemblers `func_80039D50` and `func_80035CA4` in C#: `1` (or unset), `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE), a report every 2 s | on |
 | `KF3_POLYASM_MAP` | `0`: `func_80039D50` recompiled, the rest as `KF3_POLYASM` says | on |
 | `KF3_POLYASM_LIT` | `0`: `func_80035CA4` recompiled | on |
+| `KF3_STAGE15` | stage 15 `func_800422B8` in C#: `1` (or unset), `0` recompiled, `verify` records the recompiled routine at every call and replays this one against it, a report every 2 s | on |
+| `KF3_STAGE15_NEEDLE` | `0`: step the compass needle's spring every drawn frame, as the routine does (held to the world tick by default) | held |
+| `KF3_CAMERABLOCK` | the camera block `func_800357E8` in C#: `1` (or unset), `0` recompiled, `verify` both on every call, compared | on |
+| `KF3_SMOOTH` | `1`: draw each frame from the camera interpolated between the last two ticks (needs `KF3_FPS` and stage 15 in C#); not judged by eye | off |
+| `KF3_SMOOTH_PROBE` | `1`: a line a second: frames drawn, how many with a new camera, tick samples, snaps | off |
+| `KF3_SPRITEANIM` | `0`: let the billboard cels step on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints walks stepped and held) | held |
 
 The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,

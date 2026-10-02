@@ -24,7 +24,10 @@ public static class AgentServer
     const int DefaultHoldMs = 150;
     const int QueueCap = 16;
 
-    sealed record Cmd(string Name, string Arg1, string Arg2, TaskCompletionSource<string> Reply);
+    sealed record Cmd(string Name, string Arg1, string Arg2, TaskCompletionSource<string> Reply)
+    {
+        public string[] Args { get; init; } = [];
+    }
 
     static readonly ConcurrentQueue<Cmd> _fast = new();
 
@@ -49,6 +52,7 @@ public static class AgentServer
         "press <button> [holdMs=150] - press a pad button; one press at a time, replaced by the next",
         "peek <addr> [bytes=16] - read guest memory, hex",
         "dump <file> - write the 2 MB of guest RAM to a file",
+        "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
     ];
 
     public static void Configure(string? spec)
@@ -163,11 +167,12 @@ public static class AgentServer
         var cmd = new Cmd(parts[0].ToLowerInvariant(),
                           parts.Length > 1 ? parts[1] : "",
                           parts.Length > 2 ? parts[2] : "",
-                          new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously));
+                          new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously))
+        { Args = parts[1..] };
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump":
+            case "state" or "press" or "help" or "peek" or "dump" or "view":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -207,6 +212,7 @@ public static class AgentServer
         "help" => "{\"ok\":true,\"cmd\":\"help\",\"commands\":[" + string.Join(',', HelpCommands.Select(Q)) + "]}",
         "peek" => DoPeek(cmd.Arg1, cmd.Arg2),
         "dump" => DoDump(cmd.Arg1),
+        "view" => DoView(cmd.Args),
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 
@@ -242,6 +248,30 @@ public static class AgentServer
         if (path.Length == 0) return Err("dump <file>");
         File.WriteAllBytes(path, m.Ram[..0x200000].ToArray());
         return "{\"ok\":true,\"cmd\":\"dump\",\"file\":" + Q(Path.GetFullPath(path)) + "}";
+    }
+
+    static string DoView(string[] args)
+    {
+        var m = RecompOne.Runtime.Runtime.Mem;
+        if (m == null) return Err("not running");
+        if (args.Length == 1 && args[0].Equals("off", StringComparison.OrdinalIgnoreCase))
+            Stage15.ViewOverride = null;
+        else if (args.Length == 6)
+        {
+            var v = new int[6];
+            for (int i = 0; i < 6; i++)
+                if (!int.TryParse(args[i], out v[i])) return Err("view <x> <y> <z> <pitch> <yaw> <roll> | off");
+            if (!Stage15.InCSharp) return Err("the override needs stage 15 in C# (KF3_STAGE15 unset or 1)");
+            ViewSmoothing.Suspended = true;
+            Stage15.ViewOverride = new Camera(v[0], v[1], v[2], (short)v[3], (short)v[4], (short)v[5]);
+        }
+        else if (args.Length != 0) return Err("view <x> <y> <z> <pitch> <yaw> <roll> | off");
+        if (args.Length == 1) ViewSmoothing.Suspended = false;
+
+        var cam = Camera.Read(m);
+        string handed = Stage15.Handed is { } h ? $"[{h.X},{h.Y},{h.Z},{h.Pitch},{h.Yaw},{h.Roll}]" : "null";
+        return "{\"ok\":true,\"cmd\":\"view\",\"camera\":[" + $"{cam.X},{cam.Y},{cam.Z},{cam.Pitch},{cam.Yaw},{cam.Roll}" +
+               "],\"handed\":" + handed + ",\"override\":" + (Stage15.ViewOverride != null ? "true" : "false") + "}";
     }
 
     public static string Err(string message) => "{\"ok\":false,\"error\":" + Q(message) + "}";

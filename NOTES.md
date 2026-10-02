@@ -29,7 +29,9 @@ their own dump of `SLUS-00255`.
 recompiled, with 63 PSY-Q entry points bound by address. The port's own patches
 are the agent harness (`KF3_AGENT`, `KF3_SHELL`, `KF3_AUTOSTART`, `KF3_AUTOPAD`)
 frame pacing (`KF3_FPS`, a 15 Hz world, off until judged) and the two bulk
-polygon assemblers in C# (`KF3_POLYASM`, verified, on). `tools/RecompOne` is a `git subtree`
+polygon assemblers in C# (`KF3_POLYASM`, verified, on), stage 15 and its camera block
+in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
+(`KF3_SMOOTH`, measured, off until judged). `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `2013e51` (the vblank
 event delivered once), and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in

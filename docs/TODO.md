@@ -26,8 +26,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - ~~The vblank event is delivered twice a vblank.~~ Fixed in the fork,
   `2013e51` (amends `0021`; `0825391` here), 2026-10-02: 60.0 a second.
 - **What stage 15 advances runs at the render rate under pacing**: the billboard
-  cels at `0x80182964` first (Verdite2's `SpriteAnim`), then the unidentified
-  words in "What still runs at the render rate" in `docs/GAME_INTERNALS.md`.
+  cels and the compass needle are held to the tick (2026-10-02, `docs/SMOOTHING.md`);
+  the unidentified words in "What still runs at the render rate" in
+  `docs/GAME_INTERNALS.md` remain.
 - **The geometry path in C#** (the sharing plan's picture features rest on it):
   surveyed, see "The geometry path" in `docs/GAME_INTERNALS.md`; the build order
   is in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey, and its
@@ -35,10 +36,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
   (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). The near
   path (`func_8003AB04`, `func_800366A8` and libgte's division) and the Z-buffer
   are next on this path, deferred behind smoothing.
-- **Carrying the view between ticks: the next work** (chosen 2026-10-02, ahead of
-  the near path). Stage 15 and the camera block in C# with a view override, then
-  the camera carried and the billboard clock held. Planned, with its handoff, in
-  `docs/SMOOTHING.md`.
+- **Carrying the view between ticks** (chosen 2026-10-02, ahead of the near path).
+  Units 1 and 2 are built (2026-10-02): stage 15 and the camera block in C#,
+  verified and on; the camera carried (`KF3_SMOOTH`, off until the user judges it)
+  and the billboard clock held. **Waiting on the user's eyes**; then unit 3
+  (creatures, poses, the HUD with the view). `docs/SMOOTHING.md`.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's

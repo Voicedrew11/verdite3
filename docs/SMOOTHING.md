@@ -9,9 +9,13 @@ and their write-ups in its `docs/PATCHES_AND_MODS.md` are the background.
 
 ## Status
 
-**Plan only; nothing built** (2026-10-02). Chosen by the user as the next work,
-ahead of the near path in `docs/GEOMETRY.md`, because it is what a player sees
-first. The first unit is stage 15 and the camera block in C#, below.
+**Units 1 and 2 built** (2026-10-02). Stage 15 and its camera block are C#,
+verified (0 mismatches standing, turning, walking, and with the menu opened and
+closed) and **on**; the camera is carried between ticks (`KF3_SMOOTH=1`),
+**measured, never judged by eye, and off**; the billboard cels and the compass
+needle are held to the tick under pacing. Unit 3 waits on the user's look at
+unit 2. Chosen by the user as the next work, ahead of the near path in
+`docs/GEOMETRY.md`, because it is what a player sees first.
 
 ## Why
 
@@ -161,45 +165,125 @@ and walking at 144 fps.
 - **Hook order is declared, not implied** by where an `Install()` sits; on
   stage 15 the smoother restores run before anything that redraws.
 
-## Open checks (answer them in unit 1)
+## Unit 1, done: stage 15 and the camera block in C#
 
-- Which of stages 1-14 fills the main loop's `sp + 0x18`/`sp + 0x28`, from which
-  player fields, and whether head bob or a landing offset is added there (as
-  Verdite2's stage 8 adds both).
-- Whether anything inside stage 15 reads the player's own position or rotation
-  rather than the camera block's copies: Verdite2's arm and object walk did. The
-  arm `func_8003DF50` is lit from the player's own tile; the walks' queries
-  (`func_80040694`, `func_80040708`) are to be read.
-- What `func_80030568` and `func_800305D8` are, and whether they run inside
-  pacing's frames.
-- Whether the sound listener reads the camera (Verdite2's stage 9 does), which
-  would then hear the carried position or the ticked one.
+`patches/Stage15.cs` (drafted by an opencode agent from Verdite2's `Stage13.cs`
+and reviewed), `patches/CameraBlock.cs`, and `patches/Differential.cs`, Verdite2's
+verify harness with the scratchpad added (`PolyAssembler`'s verify now uses it
+too). `KF3_STAGE15` and `KF3_CAMERABLOCK` are on; `=0` is the recompiled routine,
+`=verify` the comparison.
+
+- **Verify**: 0 mismatches over a session in `fdat02` with slot 1, standing,
+  turning, walking (`KF3_AUTOPAD=12:Left:3000,17:Up:5000,23:Right:2000`), and with
+  the menu opened (Cross) and closed (Circle); `KF3_POLYASM=verify` on at the same
+  time, also 0. Stage 15's verify records the **sequence** of calls, since the
+  compass call is made only while `u8[0x801B25DE]` is non-zero (21 or 22 calls).
+  This save runs the HUD block's mode 2 (`u8[0x801B25DD] == 2`) and the compass
+  branch; **mode 1 has not run under verify**.
+- **The prologue** copies `u8[0x801B25E1]` to `gp + 0xCC`, `0xCD` and `0xCE`.
+- `KF3_GEOPROBE=1`: the per-call table (packets, slots, codes, sizes) is identical
+  with both on and both off.
+- `KF3_FPS=144`: 144.0 fps drawn at 15.0 ticks/s. Uncapped (`KF3_FPS=off`,
+  standing): 1331.6 and 1297.9 fps recompiled, 1308.8 with both in C#, 1300.4
+  with smoothing on: the same, within run-to-run noise.
+- **The menu does not call stage 15**: while it is open no stage 15 call is
+  made (its loop presents frames of its own), so the menu's frames neither need
+  nor see the override.
+- **`Stage15.ViewOverride`** draws the frame from a camera of the port's: stored
+  into the block and `a0 = a1 = 0` handed to it, so the cull grid, the map walk
+  and the submitter follow (they read the block). After the frame the block is
+  rebuilt from the camera the frame would have used, so the world's stages never
+  read the drawn one. Shell verb `view [x y z pitch yaw roll | off]`, checked:
+  the block reads the given camera while it is set and the handed one after `off`.
+- **The compass needle** (`Stage15`, `KF3_STAGE15_NEEDLE=0` to compare): the HUD
+  block steps the needle's spring (speed at `gp + 0xD8`, `0x8009C2EC`; yaw in the
+  records at `0x80081C3A` and `0x80081C5E`) every call, so under pacing it swung at
+  the drawn rate. It now steps on the first stage 15 of a tick
+  (`FramePacing.FirstWalkOfTick`). A rate census while turning
+  (`KF3_RATECENSUS=12`, Left and Right in turn) listed the three words held off;
+  with the hold, none.
+
+### The open checks, answered
+
+- **Stage 10, `func_8002B330(sp+0x18, sp+0x28)`, fills the camera**: position =
+  player x, **player y + `s16[0x801B2650]` + `s16[0x801B2654]` - `0x640`**, player
+  z; rotation = the three halfwords at `0x801B2608` (pitch, the heading at
+  `0x801B260A`, roll). Read from the code, and the handed camera reads
+  `y = -14400` standing at `-12800`, both offsets 0. The two offsets are written
+  by stage 4 `func_80030FCC` and `func_8002ED60` (a fall and a bob, by the code's
+  shape; not watched moving). So the carry interpolates the eye with its bob.
+  Stage 11 `func_800156BC` also takes the pointers; an opencode reading says it
+  copies the player's position to `0x801B2A10` and does not write them, not
+  checked further.
+- **What inside stage 15 reads the player rather than the block**: the arm
+  `func_8003DF50` reads the player's x and z (its light's tile); the model walk
+  reads them for the ambient-sound gate `func_80046884` (a box test, not a
+  listener). **The cull grid reads only the block** (angles `0x801AEC5C/5E`, tile
+  `0x801AEC64/68`, and the flag `u8[0x801B25E5]`), so it follows the override.
+  The map walk and the submitter read the block; the queries read the grid.
+- **`func_80030568` and `func_800305D8`** (stage 15 with `0, 0`): an opencode
+  reading puts `func_800305D8` under stage 4 and `func_80030568` under
+  `func_8005C308`/`func_8005E2D0` (message, death or continue flows); not run
+  here. They redraw from the block, which after an override holds the real camera.
+- **Sound**: no listener reads the camera or the player's position; the sound
+  slots read neither.
+
+## Unit 2, done: the camera carried, and the billboard clock held
+
+- **`patches/ViewSmoothing.cs`, `KF3_SMOOTH=1`** (needs `KF3_FPS` and stage 15 in
+  C#; **off until judged**). `Stage15.OnHanded` gives it each camera the main loop
+  hands over; on a frame whose iteration ticked (`FramePacing.Ticks` moved) the
+  pair shifts, and every frame is drawn from the interpolation at
+  `FramePacing.TickFraction` (the clock's credit toward the next tick, 1 when
+  the boundary is lost). A constant one-tick lag, never a prediction. Angles go
+  the short way at 12 bits; a step over 1536 units or `0x300` in a tick snaps,
+  and an overlay load re-primes. Walking moves about 180 units a tick.
+- `KF3_SMOOTH_PROBE=1`, 144 fps: **144.0 frames a second with a new camera while
+  turning or walking**, 0 standing, 15.0 tick samples a second, 0 snaps across
+  the yaw's wrap (4095 to 0). Ticked and idle frames draw the same packets.
+- **`patches/SpriteAnim.cs`** (drafted by an opencode agent, checked against the
+  code): the model walk draws each billboard (`0x80182968`, 128 x `0x18`), then
+  steps its cel `u8[+5]` when the clock `0x80182964` divides its interval
+  `u8[+4]` (wrapping at `u8[+3]`), then bumps the clock. On every walk that is
+  not a tick's first, a pre saves the clock and the cels and a post puts them
+  back, so a held walk draws the tick's cel. On while pacing is on
+  (`KF3_SPRITEANIM=0` to compare). Rate census, `KF3_RATECENSUS=15`, standing:
+  `0x80182964..70` and the eight other records' words listed without it, none
+  with it; 15 walks stepped and 129 held a second at 144 fps. Keyed on the tick
+  count, which the watchdog's ticks advance too.
+
+**Not judged by eye**: turning, walking and the billboards at 144 fps with
+`KF3_SMOOTH=1`; whether the one-tick lag is felt.
 
 ## Handoff: the next session
 
-**Where it stands.** Verdite3 `main`, local commits only (none pushed): the bulk
-assemblers are C# and on (`KF3_POLYASM`, `docs/GEOMETRY.md`); frame pacing is
-built and off until judged. Only one save exists (card A slot 1,
-`KF3_AUTOSTART=1`); keep a copy of `carda.sav` before driving menus, since Cross
-saves over the slot.
+**Where it stands.** Verdite3 `main`, local commits only (none pushed): units 1
+and 2 above are built and measured. Only one save exists (card A slot 1,
+`KF3_AUTOSTART=1`); keep a copy of `carda.sav` before driving menus.
 
-**The work: unit 1 above**, stage 15 and the camera block in C# with verify and a
-view override. Read first: this file; "Stage 15's calls, measured", "The camera
-block" and "The frame's tables and buffers" in `docs/GAME_INTERNALS.md`;
-"Frame pacing" in `docs/DEVELOPMENT.md`; `patches/FramePacing.cs`,
-`patches/PolyAssembler.cs` (the verify harness to generalise). In Verdite2
-(`~/Desktop/KFII-PC`): `patches/Stage13.cs`, `patches/CameraBlock.cs`, and
-"Stage 13 in C#", "Drawing the frame from another camera" and "The view has to be
-carried between ticks" in its `docs/PATCHES_AND_MODS.md`. Copy conventions and
-techniques from Verdite2, never its addresses.
+**First, the user's look** at unit 2:
 
-**Then unit 2**, the first one the user looks at. Ask before starting it: it
-needs the user's eyes, and pacing itself is still unjudged.
+```bash
+KF3_AUTOSTART=1 KF3_FPS=144 KF3_SMOOTH=1 dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
+```
+
+turning, walking, and billboards (compare `KF3_SMOOTH=0`). If it is judged good,
+`KF3_SMOOTH` becomes on whenever pacing is.
+
+**Then unit 3**, on the same structure: the model walk `func_80040AE4` and the
+submitter in C# reading each record interpolated; the MO pose blender at a
+fractional weight (the loop-point judder); the compass needle and the HUD gauges
+carried with the view (the needle now steps at 15 Hz while the view moves at the
+drawn rate); the animated textures; loops that draw their own frames. Read
+Verdite2's `ModelWalk`, `MoPose`, `AnimSmoothing` first.
+
+**Open**: the HUD block's mode 1 under verify; who calls `func_80030568` and
+`func_800305D8` in play (watch them with `KF3_GEOPROBE_FUNCS`).
 
 **Deferred by this plan**: the near path and the Z-buffer (`docs/GEOMETRY.md`,
 "After this unit"), and the shared fill's extraction (Verdite2's
 `docs/SHARING.md`). Nothing waits on them.
 
 **Don't**: push anything without asking; let an opencode agent share a checkout
-being edited (inputs for a read-only agent go in a scratch directory of their
-own); run more than about five subagents at once.
+being edited (inputs for an agent go in its worktree's `scratch/`); run more than
+about five subagents at once.

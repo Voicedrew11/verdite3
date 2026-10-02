@@ -31,8 +31,8 @@ public readonly record struct Camera(int X, int Y, int Z, short Pitch, short Yaw
 /// <c>func_800357E8(VECTOR *pos, SVECTOR *rot)</c> in C#: stage 15's first call, and
 /// the one place the frame's view comes from.
 ///
-///     KF3_CAMERABLOCK=1        this transcription
-///     KF3_CAMERABLOCK=0        the recompiled routine (the default until verify reads clean)
+///     KF3_CAMERABLOCK=1        this transcription (the default)
+///     KF3_CAMERABLOCK=0        the recompiled routine
 ///     KF3_CAMERABLOCK=verify   run both on every call and compare
 ///
 /// A non-null <c>pos</c> is copied to <see cref="Position"/> and its tile derived; a
@@ -66,7 +66,7 @@ public static class CameraBlock
     public const uint Start = ViewMatrix, Bytes = TileZ + 4u - Start;
 
     enum Mode { Off, On, Verify }
-    static Mode _mode = Mode.Off;
+    static Mode _mode = Mode.On;
     static bool _queued;
 
     static readonly Differential _check = new("camerablock", "func_800357E8", 0x400);
@@ -85,9 +85,9 @@ public static class CameraBlock
     {
         _mode = mode?.Trim().ToLowerInvariant() switch
         {
-            "1" or "on" => Mode.On,
+            "0" or "off" => Mode.Off,
             "verify" => Mode.Verify,
-            _ => Mode.Off,
+            _ => Mode.On,
         };
     }
 

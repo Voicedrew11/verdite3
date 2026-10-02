@@ -96,6 +96,30 @@ public static class FramePacing
     /// <summary>Frame boundaries reached: an identity, not a rate.</summary>
     public static long Frames => _frames;
 
+    /// <summary>How far the world clock is toward its next tick, 0..1: where a frame
+    /// drawn now falls between the last two ticks. 1 while the boundary is lost.</summary>
+    public static double TickFraction
+    {
+        get
+        {
+            if (!Enabled || _lastBoundaryMs < 0.0) return 1.0;
+            if (_clock.Elapsed.TotalMilliseconds - _lastBoundaryMs > BoundaryDeadMs) return 1.0;
+            return Math.Clamp(_logicCredit, 0.0, 1.0);
+        }
+    }
+
+    /// <summary>World ticks taken: an identity, not a rate.</summary>
+    public static long Ticks { get; private set; }
+
+    /// <summary>True for the first walk of the current tick, so a per-frame walk
+    /// can be held to the world's rate; always true when pacing is off.</summary>
+    public static bool FirstWalkOfTick(ref long seen)
+    {
+        if (!Enabled) return true;
+        if (seen != Ticks) { seen = Ticks; return true; }
+        return false;
+    }
+
     public static void Configure(string? fps, string? tickRate, string? probe)
     {
         _probe = probe == "1";
@@ -214,7 +238,7 @@ public static class FramePacing
         else if (dt > 0.0) _logicCredit = Math.Min(_logicCredit + dt * LogicHz / 1000.0, 2.0);
 
         _tickThisFrame = _logicCredit >= 1.0;
-        if (_tickThisFrame) { _logicCredit -= 1.0; _windowTicks++; }
+        if (_tickThisFrame) { _logicCredit -= 1.0; _windowTicks++; Ticks++; }
     }
 
     /// <summary>Skip a main-loop stage on an iteration the world clock did not tick.</summary>
@@ -245,7 +269,7 @@ public static class FramePacing
         double period = 1000.0 / LogicHz;
         if (_fallbackNextMs < 0.0 || now - _fallbackNextMs > 4.0 * period) _fallbackNextMs = now;
         bool tick = now >= _fallbackNextMs;
-        if (tick) { _fallbackNextMs += period; _fallbackTicks++; }
+        if (tick) { _fallbackNextMs += period; _fallbackTicks++; Ticks++; }
         _tickThisFrame = tick;
         if (!Uncapped) Floor(1000.0 / TargetFps);
         return tick;

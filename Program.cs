@@ -67,10 +67,19 @@ Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
                             Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"));
 Kf3.PolyAssembler.Install();
 
-// Stage 15's camera block in C#: off until a session of verify reads clean;
-// KF3_CAMERABLOCK=1|verify. See docs/SMOOTHING.md.
+// Stage 15 and its camera block in C#: on unless =0; KF3_STAGE15=verify and
+// KF3_CAMERABLOCK=verify compare them with the recompiled routines. The view carried between ticks,
+// KF3_SMOOTH=1, and the billboard clock held to the tick. See docs/SMOOTHING.md.
 Kf3.CameraBlock.Configure(Environment.GetEnvironmentVariable("KF3_CAMERABLOCK"));
 Kf3.CameraBlock.Install();
+Kf3.Stage15.Configure(Environment.GetEnvironmentVariable("KF3_STAGE15"),
+                      Environment.GetEnvironmentVariable("KF3_STAGE15_NEEDLE"));
+Kf3.Stage15.Install();
+Kf3.ViewSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH"),
+                            Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
+Kf3.ViewSmoothing.Install();
+Kf3.SpriteAnim.Configure(Environment.GetEnvironmentVariable("KF3_SPRITEANIM"));
+Kf3.SpriteAnim.Install();
 
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
