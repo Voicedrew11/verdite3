@@ -356,9 +356,12 @@ into the front table. The record is also copied to `0x8018FAF8`, and redrawn fro
 there after the table when `0x8018FAD4 == 1`.
 
 **`func_800431E8`, the MO pose blender** (Verdite2's `func_80034DA8`, 0.77; the
-same field offsets): its decoders are Verdite2's, `func_80042D70` (0.98),
-`func_80042E34` (identical), `func_80042EB0` (0.98), `func_80042CAC` (0.95),
-`func_80043894` (0.93). The same MO format; three of Verdite2's small callees
+same field offsets), `(slot, bank index, clip byte, clip time)`: its decoders are
+Verdite2's, `func_80042D70` (0.98), `func_80042E34` (identical), `func_80042EB0`
+(0.98), `func_80043894` (0.93); **`func_80042CAC` (0.95) is the clip clock**,
+Verdite2's `func_8003486C`: `(bank, clip, time, &segment)`, the weight through the
+pointer at the caller's `sp+0x10`, the segment record in v0. The clip record
+layout and the blender's re-morph are in "3c" in `docs/SMOOTHING.md`. The same MO format; three of Verdite2's small callees
 (the vertex-cache helpers) are not called.
 
 ### The camera block
@@ -409,13 +412,17 @@ With frame pacing on, `KF3_RATECENSUS=20` (in `fdat02`, standing, 144 fps) lists
 the words that change between two frames on which no stage ran. Besides the
 buffers a frame swaps and the vblank handler's counters:
 
-- **`0x80182964`** (held to the tick by `patches/SpriteAnim.cs` since 2026-10-02,
+- **`0x801AEB20`**: the first scrolling texture's phase, `func_800351FC` (stage 15
+  call #2). Held to the tick by `patches/TextureScroll.cs` since 2026-10-02; the
+  records are in "3e" in `docs/SMOOTHING.md`.
+- **`0x80182964`** (held to the tick by `patches/SpriteAnim.cs` since 2026-10-02, and by the C# walk when it is on,
   `docs/SMOOTHING.md`), a counter `func_80040AE4` (stage 15's call at `0x800428A8`,
   the model walk: see "The geometry path") bumps once a drawn frame, and the nine `0x18`-byte records after it, each with
   a cel index cycling 0-3: billboard or sprite animation, the shape of
   Verdite2's `SpriteAnim` defect. Not fixed.
 - Single words at `0x801920FC`, `0x80192D78`, `0x80192ECC`, `0x80192FDC`,
-  `0x80194274`, `0x801AEB20`, `0x800C87F0` and near `gp` (`0x8009C07C`,
+  `0x80194274` (an opencode reading: object records' `+0x40`, slots 24, 71, 76,
+  80 and 150; no writer found), `0x800C87F0` and near `gp` (`0x8009C07C`,
   `0x8009C1A4..`, `0x8009C20C`, `0x8009EEBC`, written by `func_8006C744`).
   None is reached by a `lui` literal; not identified.
 - **The compass needle** (only while turning, so a standing census misses it):

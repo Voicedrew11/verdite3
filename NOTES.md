@@ -31,7 +31,11 @@ are the agent harness (`KF3_AGENT`, `KF3_SHELL`, `KF3_AUTOSTART`, `KF3_AUTOPAD`)
 frame pacing (`KF3_FPS`, a 15 Hz world, off until judged) and the two bulk
 polygon assemblers in C# (`KF3_POLYASM`, verified, on), stage 15 and its camera block
 in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
-(`KF3_SMOOTH`, judged, on under pacing). `tools/RecompOne` is a `git subtree`
+(`KF3_SMOOTH`, judged, on under pacing), with the compass needle and the gauges;
+the model walk and the MO pose blender in C# (`KF3_MODELWALK`, `KF3_MOPOSE`,
+verified, on), the creatures, objects and their clip times carried between ticks
+(`KF3_SMOOTH_MODELS`, measured, off until judged) and the scrolling textures held
+to the tick (`KF3_TEXSCROLL`). `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `2013e51` (the vblank
 event delivered once), and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in

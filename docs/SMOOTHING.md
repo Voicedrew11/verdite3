@@ -9,13 +9,15 @@ and their write-ups in its `docs/PATCHES_AND_MODS.md` are the background.
 
 ## Status
 
-**Units 1 and 2 built** (2026-10-02). Stage 15 and its camera block are C#,
-verified (0 mismatches standing, turning, walking, and with the menu opened and
-closed) and **on**; the camera is carried between ticks, **judged by the user
+**Units 1, 2 and 3 built** (2026-10-02). Stage 15 and its camera block are C#,
+verified and **on**; the camera is carried between ticks, **judged by the user
 2026-10-02 and on whenever pacing is** (`KF3_SMOOTH=0` to compare); the billboard
-cels and the compass needle are held to the tick under pacing. **Unit 3 is next;
-its handoff is at the end of this file.** Chosen by the user as the next work, ahead of the near path in
-`docs/GEOMETRY.md`, because it is what a player sees first.
+cels, the compass needle's spring and the scrolling textures are held to the tick.
+Unit 3: the model walk and the MO pose blender are C#, verified (0 mismatches with
+creatures in view) and **on**; the compass needle and the HUD gauges are carried
+with the view; **the creatures, objects, effects and billboards and their clip
+times are carried by `KF3_SMOOTH_MODELS=1`, measured and not yet judged by eye,
+so off.** The handoff for what is left is at the end of this file.
 
 ## Why
 
@@ -256,145 +258,147 @@ too). `KF3_STAGE15` and `KF3_CAMERABLOCK` are on; `=0` is the recompiled routine
 **Judged by eye** (the user, 2026-10-02): turning, walking and the billboards at
 144 fps with the carry on.
 
-## Handoff: unit 3, the things in the world carried between ticks
+## Unit 3, done: the things in the world carried between ticks
 
-**Where it stands.** Verdite3 `main`, local commits only (none pushed). Units 1
-and 2 are done and judged: the camera glides at any frame rate, and everything
-else in the world still steps 15 times a second against it. That contrast is the
-defect unit 3 removes; the goal, as in Verdite2, is **animation quality, above all
-the judder when a creature's clip loops**. Movement of whole models is the
-machinery under it.
+Written 2026-10-02 by four opencode agents in worktrees (the walk, the blender,
+the carry's logic, a reading of what still steps) and merged, wired and measured
+by the orchestrator. The plan this followed (3a-3e) is in this file's history.
 
-**Read first**: this file; "The models", "Stage 15's calls, measured", "The
-frame's tables and buffers" and "What still runs at the render rate" in
-`docs/GAME_INTERNALS.md`; "Frame pacing" in `docs/DEVELOPMENT.md`;
-`patches/Stage15.cs`, `patches/ViewSmoothing.cs`, `patches/SpriteAnim.cs`,
-`patches/Differential.cs`. In Verdite2 (`~/Desktop/KFII-PC`), the templates:
-`patches/ModelWalk.cs` (1608 lines), `patches/MoPose.cs` (465),
-`patches/AnimSmoothing.cs` (1588), `patches/ObjectSmoothing.cs` (996); and in its
-`docs/PATCHES_AND_MODS.md`: "The camera is not the only thing that moves" and
-everything under it to "The arm rides the same clock" (the four tables, the
-rotation lanes, the clip as a timeline), "The object and creature walk in C#",
-"The compass is carried with the view", "The gauges are carried like the
-needle", "Loops that render their own frames"; in its `docs/GAME_INTERNALS.md`,
-"The model pipeline has no skeleton" (the clip record's layout and the clip
-clock). **Copy conventions and lessons from Verdite2, never its addresses**; a
-Verdite3 counterpart is found with `tools/verdite-core/scripts/match_code.py`.
+### 3a. The model walk in C#
 
-**The design, decided in unit 1**: stage 15 is C#, so every carried value is
-**handed to C# that already places the geometry**, never written into a record
-and put back. Records stay the game's, so the AI, saves and triggers never see a
-carried value. Sample each value on the first stage 15 of a tick
-(`FramePacing.FirstWalkOfTick`, or `FramePacing.Ticks` moving on an
-`IterationTicked` frame, as `ViewSmoothing.OnHanded` does), keep the previous and
-current sample, and draw at `FramePacing.TickFraction`. Interpolate, never
-extrapolate. Keep each piece off by its own switch until its verify reads clean,
-then on whenever pacing is, as `KF3_SMOOTH` went.
+`patches/ModelWalk.cs`, `func_80040AE4` as a replace hook, one method per table,
+one per submit (`SubmitWorld` `func_8003E34C`, `SubmitFront` `func_8003F304`,
+`SubmitSky` `func_800400AC`). `KF3_MODELWALK`, **on** (`0` the recompiled routine,
+`verify` the comparison).
 
-### 3a. The model walk in C#, with verify (nothing visible changes)
-
-- `func_80040AE4` as a replace hook, `patches/ModelWalk.cs`, every call through
-  its detour (the submitter `func_8003E34C`, the sky `func_800400AC`, the front
-  table submitter `func_8003F304`, the queries `func_80040694`/`func_80040708`,
-  the ambient sound gate `func_80046884`, and the rest). The generated routine is
-  about 1180 lines; it walks the four tables in "The models" with their liveness
-  tests, then the billboards (whose cel stepping `SpriteAnim` now brackets: fold
-  that hold into the C# walk and retire the pre/post pair).
-- `KF3_MODELWALK=0|1|verify`, verify with `Differential` (RAM, scratchpad,
-  registers, GTE; the walk keeps its page bitmaps in the scratchpad at `+0x124`
-  and `+0x270`). Done when verify reads 0 over a session in `fdat02` with
-  creatures and objects on screen, and `KF3_GEOPROBE=1` is identical on and off.
-- **Write down, for each table, which record fields reach the submitter as its
-  arguments**: position, rotation (a creature's yaw has `0x800` added, "The
-  models"), model, clip byte and clip time. That list is 3b's input. A table's
-  entry may be a copy of another (in Verdite2 stage 4 copied object positions into
-  the creature record, which then drew from the copy); find which one is drawn.
+- **Verify**: 0 mismatches (RAM, scratchpad, registers, GTE) standing, turning
+  and walking from slot 1, and with five live creatures in view through the shell's
+  `view 124000 -14400 85044 0 1024 0` (the creatures of `fdat02` wander 20-34k
+  units west of the start, past its cull).
+- `KF3_GEOPROBE=1`: call #13's line is identical on and off (311 packets, 2470
+  words, the same slots, codes and sizes). Uncapped: about 1290-1330 fps
+  recompiled, 1390-1450 with the walk and the blender in C#.
+- **What each submit is handed** (the full table, with line numbers, was the
+  agent's `scratch/u3a-notes.md`): a0 the record's mask byte, a1 the model, **a2 a
+  pointer to the position**, **a3 a pointer to the rotation**, nine stack words.
+  A creature's position is `func_8004EEE0(rec, sp+0x38)`'s result (which is
+  `rec+0x2C` itself when `flags & 3 == 0`), or `rec+0x2C` with the fixed matrix
+  `0x8007E4C4` and no rotation under flag `0x20`; its rotation is
+  `rec+0x40/+0x42+0x800/+0x44` written to `0x1F800114`. An object's is `rec+0x14`
+  and `rec+0x34..`; kind `0xF2` builds its position in `sp+0x38`. An effect's
+  rotation is either the scratch lane or a pointer into its record (`rec+0x28`).
+  **No table draws from another's copy**, except the sky record copied to
+  `0x8018FAF8` and redrawn from there.
+- **The billboard hold** is in the C# walk now: a walk that is not the tick's
+  first neither steps the cels nor bumps the clock; `SpriteAnim`'s pre/post stands
+  down while the walk is C#. The clock `0x80182964` reads 14.96 a second at 144 fps.
+  (A rate census lists it, and `0x801AEB20`, at exactly 25% of idle pairs with the
+  C# walk: the census samples at the vblank, which the walk polls inside its
+  loops; the direct measurement is the one to trust.)
 
 ### 3b. Positions and rotations carried
 
-- In the C# walk, hand the submitter each record's position and rotation
-  interpolated between its last two tick samples, keyed by table and slot, with
-  the slot's identity (its model and liveness) re-checked so a reused slot snaps
-  rather than sweeping from its last occupant. A jump larger than a step (a
-  spawn, a warp, an area change) snaps; angles go the short way at 12 bits.
-- **All four tables**: Verdite2 carried two at first, and both omissions reached a
-  player as "the animation runs at a low frame rate". The object table has a
-  rotation lane (doors turn).
-- The point and volume queries cull against the eye; check they are asked about
-  the drawn position, not the ticked one, or a model pops at the cull's edge.
-- Probe: `KF3_SMOOTH_PROBE` extended with models carried a second and snaps.
-  Done when a creature walking past reads a new position on every drawn frame,
-  and the user has looked.
+`patches/ModelSmoothing.cs` holds the logic; the walk calls it at the submit
+seams. **The record and the scratchpad lane keep the tick's values**: the carried
+position and rotation are copies in the walk's own frame (`0xA8` bytes instead of
+`0x90` while carrying; `+0x90` the `VECTOR`, `+0xA0` the `SVECTOR`), and a2/a3
+point at them. Keyed by table and slot, with an identity per table (a creature's
+model and definition, an object's id and kind, an effect's id and model, a
+billboard's id), so a reused slot primes instead of sweeping. Sampled when
+`FramePacing.Ticks` moved on a ticked iteration; a slot that missed a tick (culled)
+primes; a step over 1536 units or `0x300` snaps; a value moved outside a tick
+snaps; an overlay load forgets everything.
 
-### 3c. The MO pose blender in C#, with verify
+- **All four tables** go through the seam. The sky does not (it is drawn round the
+  camera).
+- **The queries still cull against the ticked position** (`func_80040694`,
+  `func_80040708` are handed the record): a model crossing the cull's edge can
+  appear or go one tick late. Not seen; not changed.
+- `KF3_SMOOTH_PROBE=1` adds a line: records drawn a second by table, carried,
+  snaps, clip calls, clip frames carried, wraps, turns, re-seeks, backward steps.
 
-- `func_800431E8` (Verdite2's `func_80034DA8`, the same field offsets; its
-  decoders are listed in "The models"). Find its clip clock (Verdite2's
-  `func_8003486C(bank, clip, time, &segment, &weight)`: walks the clip's segments,
-  publishes a 12.12 weight, and `0x1000 - weight` for a reversed segment) with
-  `match_code.py`, and confirm the clip record's layout (clip table at
-  `bank + u32[bank + 0x10]`, segment durations at `u16[seg + 2]`) holds here.
-- `KF3_MOPOSE=0|1|verify`. In Verdite2 the blender re-morphs on every drawn frame
-  even when the clip and segment are unchanged (`L80034FCC`), so only the time it
-  morphs to is stuck on the tick; check that holds here, since it is what makes
-  a fractional time move the mesh.
+### 3c. The MO pose blender in C#
 
-### 3d. The clip time carried: the loop-point judder
+`patches/MoPose.cs`, `func_800431E8(slot, bank index, clip byte, clip time)`.
+`KF3_MOPOSE`, **on**; verify 0 mismatches over the same runs, 165-195 calls a
+second with creatures in view (75 standing at the start, every one a rigid bank,
+which has no clip).
 
-- The clip byte and the clip time are the submitter's stack arguments, not table
-  fields (in Verdite2 the eighth and ninth stack words); 3a's list says where each
-  table's come from.
-- **Treat the clip time as a point on a circle whose length is the clip's own**
-  (the sum of its segment durations; every clip Verdite2 measured was 4096). Each
-  tick: the clip byte changed is a cut (draw the game's pose); otherwise unwrap the
-  step against the settled rate, `k = round((rate - step) / length)`, with the two
-  reflection candidates for a clip that turns at an end; nothing matched is a
-  re-seek, so hold at the game's time and re-seed the rate. Draw at
-  `prev + delta * fraction` folded back onto the clip, `floor` to the clock and
-  the fraction into the weight. This is Verdite2's `Mode.Timeline`, which replaced
-  five heuristics that each guessed at the wrap; read "The clip is a timeline, and
-  none of that knew how long it was" before writing any of it.
-- The first-person arm (`func_8003DF50`, returns at once while
-  `s16[0x801B25A4] == -1`, as on slot 1) rides the same clock in Verdite2.
-- Done when a looping creature's clip time reads a new value every drawn frame
-  and **no backward step at the wrap** (a probe line: carried frames, wraps
-  recognised, re-seeks), and the user has looked at a creature looping.
+- **The clip clock is `func_80042CAC(bank, clip, time, &segment)`**, the weight
+  written through the pointer at the blender's `sp+0x10` (no prologue, as
+  Verdite2's `func_8003486C`), the segment record returned in v0. The clip record
+  layout is Verdite2's: clip table at `bank + u32[bank+0x10]`, record at `bank +
+  u32[table + clip*4]`, `u16` segment count, `u32` bank-relative segment offsets
+  from `+4`, `u16[seg+2]` the duration, `u16[seg+0]` the direction flag
+  (`0x1000 - weight` when set).
+- **It re-morphs on every call** even when the clip and segment are unchanged (it
+  skips only the keyframe rebuild), so a fractional time moves the mesh.
+- `MoPose.ClipCarry`: where the blender hands the clock its time, a carried floor
+  time goes in instead and the fraction is spent on the published weight
+  (`frac * 4096 / duration`, negated for a reversed segment, clamped).
 
-### 3e. The HUD with the view, and what else steps
+### 3d. The clip time carried
 
-- The compass needle steps on the tick since unit 1 and now lags the carried view;
-  carry its yaw (`0x80081C3A`/`0x80081C5E`) between its tick samples, inside
-  `Stage15.Run`'s HUD block, written for the HUD's call and restored after
-  (Verdite2: "The compass is carried with the view"). The gauges' lengths the
-  same way, if they are seen to step.
-- Stage 15 call #2, `func_800351FC` (animated textures, Verdite2's
-  `FluidSmoothing`), runs every drawn frame under pacing: find what it advances
-  (the unidentified render-rate words in "What still runs at the render rate" are
-  the leads; Verdite2's `find_writers` finds the code that writes a word).
-- Loops that draw their own frames (Verdite2's `LoopPacing`): the in-game menu
-  does not call stage 15 here; find which loops do (`func_80030568`,
-  `func_800305D8`, with `0, 0`) and whether they need pacing at all.
+`ModelSmoothing.CarryClip`, Verdite2's `Mode.Timeline`: the clip time on a circle
+whose length is the clip's own (summed from the segment table), the tick's step
+unwrapped against the settled rate with the two reflection candidates, a changed
+clip byte a cut, a step nothing explains a re-seek (hold and re-seed). Keyed by
+the record whose submit is in progress (`Enter`/`Leave` round each submit).
 
-**Running the game**: a connected **DualSense stalls `KF3_AUTOSTART` in OPEN.EXE**
-(found 2026-10-02, cause not read); hide it from SDL with
-`SDL_GAMECONTROLLER_IGNORE_DEVICES=0x054C/0x0CE6`. Only one save exists (card A
-slot 1); keep a copy of `carda.sav` before driving menus, since Cross saves over
-the slot. Check every pacing change with `KF3_FPS=144 KF3_FPS_PROBE=1`: 144.0 fps
-drawn at 15.0 ticks/s, equal packets ticked and idle.
+- **Measured** (`KF3_FPS=144`, the `view` above, 24 s): a creature drawn on 144
+  frames a second, its position carried on 144 and its clip time on 144; a wrap
+  recognised about every 2 seconds; **0 re-seeks, 0 backward steps**. Its clip
+  time advances about 85 a tick.
+- The first-person arm (`func_8003DF50`) is not carried: it returns at once on
+  slot 1, so there was nothing to measure.
 
-**Using opencode agents** (as units 1 and 2 did): each in a worktree of its own
-(`git worktree add ../v3wt-<name> -b <branch> main`, with `generated` and the
-cue symlinked in, and Verdite2's files it needs copied into its `scratch/`, since
-opencode works inside its directory), disjoint files per agent, at most five at
-once, and only the orchestrator runs the game. A transcription from generated
-code is a good agent task; verify is what makes it trustworthy. A reading of the
-code is not: unit 1's research agent named the wrong stage as the camera's source
-and the wrong reads in the cull grid. Check an agent's claims against the code.
+### 3e. The HUD, and what else steps
 
-**Deferred by this plan**: the near path and the Z-buffer (`docs/GEOMETRY.md`,
-"After this unit"), and the shared fill's extraction (Verdite2's
-`docs/SHARING.md`). Nothing waits on them.
+- **The compass needle** is drawn between its two tick samples while the view is
+  carried, written for the HUD's call and put back after it (`Stage15.CarryNeedle`).
+  Turning at 144 fps: a new needle on about 141 of 144 frames, 0 snaps. Its target
+  is the camera block's yaw `0x801AEC5E`, which is the drawn camera's under the
+  override.
+- **The gauges**: `Gauge1`/`Gauge2` read HP, MP and two eased followers,
+  `0x801B2502` and `0x801B2506`, which stage 4 steps (`func_8002D2A0`,
+  `func_8002FE1C`), so the bars stepped 15 times a second. The followers are now
+  interpolated for the gauges' build and put back (`Stage15.CarryFollowers`): the
+  bars filling on arrival draw a new length on all 144 frames a second.
+- **The scrolling textures**, stage 15's call #2 `func_800351FC`: two records of
+  `0x18` at `0x801AEB1C`, each a countdown (`+2`, reloaded from `+1`), a phase
+  (`+4`, stepped by `+3`, wrapped at the image's height `+0x16`) and a source
+  rectangle (`+0x10`) copied into VRAM at `(+8, +0xA + phase)` with two
+  `MoveImage`s (`func_80079E90`). It ran every drawn frame, so the textures
+  scrolled at the drawn rate. **`patches/TextureScroll.cs` runs it on the first
+  stage 15 of a tick only** (`KF3_TEXSCROLL=0` to compare): 15 runs a second at
+  144 fps. `KF3_TEXSCROLL=carry` redraws at the interpolated phase too, about two
+  uploads a second here: the step is a pixel or so a tick, so there is little to
+  carry.
+- **Loops that draw their own frames**: an opencode reading says
+  `func_800305D8` (from stage 4) loops over stages 14 and 13 with two VSyncs a
+  pass and `func_80030568` is a one-shot redraw, neither through the frame gate,
+  so neither needs Verdite2's `LoopPacing`. **Not checked against the code or run.**
+  While one runs the world does not tick, so the tick-held clocks above wait for
+  the stage gate's watchdog.
 
-**Don't**: push anything without asking; let an opencode agent share a checkout
-being edited; run more than about five subagents at once; screenshot the game
-(what needs eyes is the user's to judge: ask).
+**Judged by eye**: nothing in unit 3 yet.
+
+## Handoff: what is left
+
+**Where it stands.** Verdite3 `main`, local commits only (none pushed). Units 1-3
+are built; the camera carry is judged; the model carry is measured and off.
+
+1. **The user judges `KF3_SMOOTH_MODELS=1`** at 144 fps: creatures walking and
+   looping, doors turning, effects. If it looks right, make it on whenever pacing
+   is (as `KF3_SMOOTH` went) and say so here. The needle, the gauges and the
+   texture hold are on now and also want a look.
+2. If a model pops at the cull's edge, hand the queries the carried position.
+3. The arm, when a save with one is available.
+4. Check the loops' reading in 3e against the code before trusting it.
+
+**Running the game**: as before (the DualSense, `carda.sav`); the shell port is
+`27903`. `view x y z pitch yaw roll` with `KF3_SMOOTH_PROBE=1` is how a creature is
+put on screen without walking to it.
+
+**Deferred**: the near path and the Z-buffer (`docs/GEOMETRY.md`), and the shared
+fill's extraction (Verdite2's `docs/SHARING.md`).

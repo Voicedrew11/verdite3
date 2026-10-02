@@ -10,7 +10,7 @@ namespace Kf3;
 /// the C# MO blender call in, so a carried value is handed to code that already
 /// places the geometry and never written into a record and put back.
 ///
-///     KF3_SMOOTH_MODELS=0     draw each record from the last tick (comparison only); on under pacing
+///     KF3_SMOOTH_MODELS=1     carry the records between ticks (needs KF3_MODELWALK=1 and pacing; not judged)
 ///     KF3_SMOOTH_PROBE=1      a line a second: models carried, snaps, clip frames, wraps, turns, seeks, backward steps
 ///
 /// <see cref="Carry"/> is the root, sampled and interpolated exactly as
@@ -93,7 +93,8 @@ public static class ModelSmoothing
     // ---- the probe ----
     static readonly Stopwatch _clock = Stopwatch.StartNew();
     static double _probeAt;
-    static long _carried, _snaps, _clipFrames, _wraps, _turns, _reseek, _backward;
+    static readonly long[] _drawnBy = new long[4];
+    static long _drawn, _clipCalls2, _carried, _snaps, _clipFrames, _wraps, _turns, _reseek, _backward;
 
     static ModelSmoothing()
     {
@@ -103,7 +104,8 @@ public static class ModelSmoothing
 
     public static void Configure(string? mode, string? probe)
     {
-        Enabled = mode?.Trim().ToLowerInvariant() is not ("0" or "off");
+        // Off until judged by eye; the model walk must be C# for anything to call in.
+        Enabled = mode?.Trim().ToLowerInvariant() is "1" or "on";
         _probe = probe?.Trim() == "1";
     }
 
@@ -113,6 +115,8 @@ public static class ModelSmoothing
         // Without pacing every frame is a tick, and there is nothing to carry.
         if (!FramePacing.Enabled) { Enabled = false; return; }
         Event.AddListener<OverlayLoadedEvent>(_ => Reprime());
+        // The clip time is carried only through the C# blender; positions need only the walk.
+        MoPose.ClipCarry = CarryClip;
         Console.WriteLine("[KF3] model smoothing: on");
     }
 
@@ -146,6 +150,8 @@ public static class ModelSmoothing
         if (!Enabled) return;
         int i = Index(table, slot);
         if (i < 0) return;
+        _drawn++;
+        _drawnBy[table]++;
 
         int rx = x, ry = y, rz = z;
         short rp = pitch, rw = yaw, rr = roll;
@@ -220,6 +226,7 @@ public static class ModelSmoothing
         frac = 0.0;
         if (!Enabled) return false;
         if (_inTable < 0) return false;
+        _clipCalls2++;
 
         int ci = Index(_inTable, _inSlot);
         if (ci < 0 || (uint)_clipCalls >= ClipStates) return false;
@@ -312,12 +319,13 @@ public static class ModelSmoothing
         if (_probeAt <= 0.0) { _probeAt = now; return; }
         double dt = now - _probeAt;
         if (dt < 1000.0) return;
-        Console.WriteLine($"[KF3] model smoothing: {_carried * 1000.0 / dt:0} model(s) carried/s, " +
-                          $"{_snaps} snap(s), {_clipFrames * 1000.0 / dt:0} clip frame(s) carried/s, " +
+        Console.WriteLine($"[KF3] model smoothing: {_drawn * 1000.0 / dt:0} record(s) drawn/s ({_drawnBy[0] * 1000.0 / dt:0}/{_drawnBy[1] * 1000.0 / dt:0}/{_drawnBy[2] * 1000.0 / dt:0}/{_drawnBy[3] * 1000.0 / dt:0} by table), {_carried * 1000.0 / dt:0} carried, " +
+                          $"{_snaps} snap(s), {_clipCalls2 * 1000.0 / dt:0} clip call(s)/s, {_clipFrames * 1000.0 / dt:0} carried, " +
                           $"{_wraps} wrap(s), {_turns} turn(s), {_reseek} re-seek(s), " +
                           $"{_backward} backward step(s)");
         _probeAt = now;
-        _carried = _snaps = _clipFrames = _wraps = _turns = _reseek = _backward = 0;
+        Array.Clear(_drawnBy);
+        _drawn = _clipCalls2 = _carried = _snaps = _clipFrames = _wraps = _turns = _reseek = _backward = 0;
     }
 
     // ---- sampling helpers ------------------------------------------------------

@@ -83,6 +83,17 @@ Kf3.SpriteAnim.Install();
 Kf3.TextureScroll.Configure(Environment.GetEnvironmentVariable("KF3_TEXSCROLL"));
 Kf3.TextureScroll.Install();
 
+// The model walk func_80040AE4 in C#, verified 2026-10-02;
+// KF3_MODELWALK=verify compares it with the recompiled routine. Installed after
+// SpriteAnim so its pre/post pair on the same routine is registered first.
+Kf3.ModelWalk.Configure(Environment.GetEnvironmentVariable("KF3_MODELWALK"));
+Kf3.ModelWalk.Install();
+Kf3.MoPose.Configure(Environment.GetEnvironmentVariable("KF3_MOPOSE"));
+Kf3.MoPose.Install();
+Kf3.ModelSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH_MODELS"),
+    Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
+Kf3.ModelSmoothing.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200

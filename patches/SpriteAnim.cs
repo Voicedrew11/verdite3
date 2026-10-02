@@ -122,6 +122,8 @@ public static class SpriteAnim
     /// post; on the tick's first walk the game steps them itself.</summary>
     public static void Before(CpuContext c, IMemory m)
     {
+        // The C# walk holds the cels itself.
+        if (ModelWalk.InCSharp) { _held = false; return; }
         _walks++;
         if (FramePacing.FirstWalkOfTick(ref _seen))
         {
@@ -159,7 +161,7 @@ public static class SpriteAnim
             }
         }
 
-        if (_probe) PrintProbe();
+        if (_probe && !ModelWalk.InCSharp) PrintProbe();
     }
 
     static void PrintProbe()
