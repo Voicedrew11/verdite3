@@ -40,6 +40,58 @@ public static partial class NearPath
 
     static bool _queuedMap, _queuedModels;
 
+    // ---- depth records (docs/PICTURE.md, "Unit 4") --------------------------
+
+    struct NearSz { public uint W; public float Z; }
+
+    /// <summary>The SZ an RTPT produced for a subdivided corner, kept beside the
+    /// 0x18-byte stack record it wrote that corner's screen word into. Host-side
+    /// only; the records themselves are never touched.</summary>
+    static readonly Dictionary<uint, NearSz> _sz = new();
+
+    /// <summary>Records only while the Z-buffer is on and this routine is the C# one.</summary>
+    static bool DepthRecording => _mode == Mode.On && GtePacketDepth.Active;
+
+    /// <summary>Keep the SZ an RTPT produced next to the record's screen word.</summary>
+    static void NoteSz(uint rec, uint w, uint sz)
+    {
+        if (!DepthRecording) return;
+        _sz[rec] = new NearSz { W = w, Z = sz == 0u ? 0f : sz };
+    }
+
+    /// <summary>A record's corner depth, if the kept SZ still matches the screen word
+    /// the record holds; otherwise no depth.</summary>
+    static float CornerZ(PSMemory mem, uint rec)
+    {
+        uint w = mem.ReadU32(rec + 0x10u);
+        return _sz.TryGetValue(rec, out var e) && e.W == w && e.Z > 0f ? e.Z : 0f;
+    }
+
+    /// <summary>Seal an emitter's finished packet as PolyAssemblerDepth does (command
+    /// word, first and last vertex words), or drop its address's old record so a stale
+    /// seal cannot match.</summary>
+    static void RecordNear(uint pkt, uint r0, uint r1, uint r2, uint r3, PSMemory mem)
+    {
+        if (!DepthRecording) return;
+        uint cmd = mem.ReadU32(pkt + 4u);
+        uint op = cmd >> 24;
+        if (op < 0x20u || op >= 0x40u) { GtePacketDepth.Slot(pkt).Cmd = 0u; return; }
+        int tex = (op & 4u) != 0 ? 1 : 0, g = (op & 0x10u) != 0 ? 1 : 0;
+        int n = (op & 8u) != 0 ? 4 : 3;
+        int per = 1 + tex + g;
+
+        ref var r = ref GtePacketDepth.Slot(pkt);
+        r.Z0 = CornerZ(mem, r0);
+        r.Z1 = CornerZ(mem, r1);
+        r.Z2 = CornerZ(mem, r2);
+        r.Z3 = n == 4 ? CornerZ(mem, r3) : 0f;
+        if (r.Z0 <= 0f || r.Z1 <= 0f || r.Z2 <= 0f || (n == 4 && r.Z3 <= 0f)) { r.Cmd = 0u; return; }
+        r.Cmd = cmd;
+        r.Xy0 = mem.ReadU32(pkt + 8u);
+        r.XyLast = mem.ReadU32(pkt + 4u + (uint)(1 + (n - 1) * per) * 4u);
+        GtePacketDepth.Recorded++;
+    }
+
     static readonly ModInfo _self = new()
     {
         Id = "kf3.nearpath",
@@ -113,8 +165,8 @@ public static partial class NearPath
         else RunModels(c, mem);
     }
 
-    static void RunMap(CpuContext c, PSMemory mem) { MapCalls++; BodyMap(c, mem); }
-    static void RunModels(CpuContext c, PSMemory mem) { ModelCalls++; BodyModels(c, mem); }
+    static void RunMap(CpuContext c, PSMemory mem) { MapCalls++; if (DepthRecording) PolyAssembler.EnsureRange(); BodyMap(c, mem); }
+    static void RunModels(CpuContext c, PSMemory mem) { ModelCalls++; if (DepthRecording) PolyAssembler.EnsureRange(); BodyModels(c, mem); }
 
     const uint StackWindow = 0x2000;
     static readonly Differential _mapCheck = new("nearpath", "func_8003AB04", StackWindow);

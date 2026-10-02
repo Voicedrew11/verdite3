@@ -74,7 +74,7 @@ public static class ZBuffer
 
     /// <summary>The records only exist while the bulk assemblers are in C#; the
     /// Testing tab moves that at run time, so ask again every frame.</summary>
-    public static void SyncSource() => GtePacketDepth.Enabled = Enabled && PolyAssembler.Setting == 1;
+    public static void SyncSource() => GtePacketDepth.Enabled = Enabled && (PolyAssembler.Setting == 1 || NearPath.Setting == 1);
 
     public static void Install()
     {

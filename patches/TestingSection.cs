@@ -221,6 +221,8 @@ public sealed class TestingSection : ISettingsSection
             "Per-pixel occlusion from the depths the C# assemblers record; what they do not build keeps painter's order.");
         if (ZBuffer.Enabled && PolyAssembler.Setting != 1)
             Note("Needs the polygon assemblers in C#.");
+        else if (ZBuffer.Enabled && NearPath.Setting != 1)
+            Note("The geometry nearest the eye keeps painter's order: set the near path to C# below.");
 
         ImGui.SeparatorText("Routines in C#");
         Note("Verify runs both versions every call and prints mismatches to the console; it is slow.");

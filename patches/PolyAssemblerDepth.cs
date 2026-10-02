@@ -42,8 +42,9 @@ public static partial class PolyAssembler
     static uint _rangeSize;
 
     /// <summary>The record table covers RAM, since the packet buffer can move above
-    /// 2 MB; allocated once, and again if the run mode gives more RAM.</summary>
-    static void EnsureRange()
+    /// 2 MB; allocated once, and again if the run mode gives more RAM. Public so the
+    /// near path records into the same table.</summary>
+    public static void EnsureRange()
     {
         uint ram = RecompOne.Runtime.Runtime.RamSize;
         if (_rangeSize == ram) return;

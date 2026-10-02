@@ -29,6 +29,10 @@ fetches the PSY-Q bank `--autoconfigure` reads; `--pull-fork`/`--push-fork` and
 
 Run it from the repository root: the runtime writes `carda.sav`, `cardb.sav`,
 `settings.json` and `interface.ini` into the working directory (all gitignored).
+**The disc comes from `settings.json`'s `CdPath`, not the command line**: in a
+directory with no `settings.json` (a fresh git worktree) the runtime opens its
+disc picker and waits for a person, cue argument or not. Copy `settings.json` and
+the two cards into a worktree before running there.
 
 ## Diagnostics
 

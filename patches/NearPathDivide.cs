@@ -183,6 +183,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x34u); var _lw = mem.ReadU32(_a); Gte.Write(5, _lw); }
         { var _a = (c.T0 + 0x8u); c.T4 = mem.ReadU8(_a); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x18u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x30u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T1 + 0x8u); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0x8u); c.T6 = mem.ReadU8(_a); }
         { var _s = c.T4; var _t = c.T5; c.T7 = _s + _t; }
@@ -318,6 +324,7 @@ public static partial class NearPath
         c.T6 = 0x07000000u;
         { var _s = c.T8; var _t = c.T6; c.T8 = _s | _t; }
         { var _a = c.A0; mem.WriteU32(_a, c.T8); }
+        if (DepthRecording) RecordNear(c.A0, c.T0, c.T1, c.T2, 0u, mem);
         { var _v = c.A0; c.A0 = c.A0 + 0x20u; }
         return;
     }
@@ -537,6 +544,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x64u); var _lw = mem.ReadU32(_a); Gte.Write(5, _lw); }
         { var _a = (c.T0 + 0x8u); c.T4 = mem.ReadU8(_a); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x18u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x60u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T1 + 0x8u); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0x8u); c.T6 = mem.ReadU8(_a); }
         { var _a = (c.T3 + 0x8u); c.T7 = mem.ReadU8(_a); }
@@ -567,6 +580,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x4Cu); var _lw = mem.ReadU32(_a); Gte.Write(3, _lw); }
         { var _a = (c.T0 + 0x9u); c.T4 = mem.ReadU8(_a); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3 + 0x30u, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x48u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x60u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T1 + 0x9u); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0x9u); c.T6 = mem.ReadU8(_a); }
         { var _a = (c.T3 + 0x9u); c.T7 = mem.ReadU8(_a); }
@@ -710,6 +729,7 @@ public static partial class NearPath
         c.T6 = 0x09000000u;
         { var _s = c.T8; var _t = c.T6; c.T8 = _s | _t; }
         { var _a = c.A0; mem.WriteU32(_a, c.T8); }
+        if (DepthRecording) RecordNear(c.A0, c.T0, c.T1, c.T2, c.T3, mem);
         { var _v = c.A0; c.A0 = c.A0 + 0x28u; }
         return;
     }
@@ -890,6 +910,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x20u); mem.WriteU8(_a, (byte)c.T8); }
         { var _a = (c.A3 + 0x38u); mem.WriteU8(_a, (byte)c.T9); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x18u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x30u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T0 + 0x9u); c.T4 = mem.ReadU8(_a); }
         { var _a = (c.T1 + 0x9u); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0x9u); c.T6 = mem.ReadU8(_a); }
@@ -1056,6 +1082,7 @@ public static partial class NearPath
         { var _a = (c.A0 + 0x10u); mem.WriteU32(_a, c.T5); }
         { var _a = (c.A0 + 0x1Cu); mem.WriteU32(_a, c.T6); }
         { var _a = c.A0; mem.WriteU32(_a, c.T8); }
+        if (DepthRecording) RecordNear(c.A0, c.T0, c.T1, c.T2, 0u, mem);
         { var _v = c.A0; c.A0 = c.A0 + 0x28u; }
         return;
     }
@@ -1275,6 +1302,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x64u); var _lw = mem.ReadU32(_a); Gte.Write(5, _lw); }
         { var _a = (c.T0 + 0x8u); c.T4 = mem.ReadU8(_a); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x18u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x60u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T1 + 0x8u); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0x8u); c.T6 = mem.ReadU8(_a); }
         { var _a = (c.T3 + 0x8u); c.T7 = mem.ReadU8(_a); }
@@ -1324,6 +1357,12 @@ public static partial class NearPath
         { var _a = (c.A3 + 0x4Cu); var _lw = mem.ReadU32(_a); Gte.Write(3, _lw); }
         { var _a = (c.T0 + 0xCu); c.T4 = mem.ReadU8(_a); }
         Gte.Rtpt(12, false);
+        if (DepthRecording)
+        {
+            NoteSz(c.A3 + 0x30u, Gte.Read(12), Gte.Read(17));
+            NoteSz(c.A3 + 0x48u, Gte.Read(13), Gte.Read(18));
+            NoteSz(c.A3 + 0x60u, Gte.Read(14), Gte.Read(19));
+        }
         { var _a = (c.T1 + 0xCu); c.T5 = mem.ReadU8(_a); }
         { var _a = (c.T2 + 0xCu); c.T6 = mem.ReadU8(_a); }
         { var _a = (c.T3 + 0xCu); c.T7 = mem.ReadU8(_a); }
@@ -1511,6 +1550,7 @@ public static partial class NearPath
         { var _a = (c.A0 + 0x1Cu); mem.WriteU32(_a, c.T6); }
         { var _a = (c.A0 + 0x28u); mem.WriteU32(_a, c.T7); }
         { var _a = c.A0; mem.WriteU32(_a, c.T8); }
+        if (DepthRecording) RecordNear(c.A0, c.T0, c.T1, c.T2, c.T3, mem);
         { var _v = c.A0; c.A0 = c.A0 + 0x34u; }
         return;
     }

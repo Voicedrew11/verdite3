@@ -35,7 +35,10 @@ in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
 the model walk and the MO pose blender in C# (`KF3_MODELWALK`, `KF3_MOPOSE`,
 verified, on), the creatures, objects and their clip times carried between ticks
 (`KF3_SMOOTH_MODELS`, judged, on under pacing) and the scrolling textures held
-to the tick (`KF3_TEXSCROLL`); every switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
+to the tick (`KF3_TEXSCROLL`); the picture's 24-bit shading, no dither,
+perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
+near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); every
+switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `2013e51` (the vblank
 event delivered once), and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
@@ -51,7 +54,7 @@ event delivered once), and
 - [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, the
   smoothers, all built and judged.
 - [docs/PICTURE.md](docs/PICTURE.md) — 24-bit colour, perspective, sub-pixel and the
-  Z-buffer: the plan and its work. **The next work.**
+  Z-buffer: the plan and its work, built and awaiting judgement.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 

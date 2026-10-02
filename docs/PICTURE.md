@@ -10,7 +10,7 @@ was culled on whole pixels") and are the background for everything below.
 
 ## Status
 
-**Units 1-3 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
+**All four units built and measured, none judged** (2026-10-02). Every switch is off, in Settings ▸ Testing ▸ Picture; the near path is recompiled until a model close to the eye has run under verify. The runtime half of all four features is already in
 the fork this repository shares with Verdite2 (`tools/RecompOne`), switched off.
 What is missing is Verdite3's half: the switches, the probes, the controls, and
 for the Z-buffer, the depth.
@@ -252,6 +252,50 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   the packet is written (Verdite2's HUD publisher is the shape).
 - **Done when**: the Z-buffer probe's triangles tested rises by the near map's
   share; verify 0; the user judges the Z-buffer as a whole, and it goes on.
+
+#### Unit 4, the transcription: verified
+
+- `patches/NearPath.cs` and `patches/NearPathDivide.cs` (opencode, 4013 lines):
+  `func_8003AB04`, `func_800366A8`, libgte's division bodies `func_80074D90`,
+  `func_80075190`, `func_800756B0`, `func_80075B50` and their emitters
+  `func_80075104`, `func_80075618`, `func_80075AB4`, `func_800760B4`, **copied
+  literally from the recompiled C#**, registers kept in `CpuContext`, calls among
+  the ten made direct. `KF3_NEARPATH=0|1|verify` (and `_MAP`, `_MODELS`);
+  Testing ▸ Routines ▸ *Near path*. Recompiled by default.
+- **A reconstruction did not converge**: the agent's first version, rebuilt from
+  a reading with shared builders, mismatched on 30-43% of calls through two rounds
+  of fixes (it emitted subdivided faces the routine culls: the packet cursor ended
+  0xA0 or 0x140 bytes further on). The literal copy verified at the first run.
+  For a routine whose recompiled form exists, transcribe it, then simplify under
+  verify.
+- **Verify reads 0** for `func_8003AB04` over a session turning and walking in
+  `fdat02` (about 2000 calls a window), with `KF3_POLYASM` and `KF3_STAGE15` also
+  verifying, 0. **`func_800366A8` was not called** in that session: the models'
+  near submit needs a model close to the eye, and it has not run under verify.
+- Uncapped, standing, interleaved: 962, 997 fps recompiled; 1061, 1071 in C#
+  (about 7% more). These runs read about 990 against 1386 earlier in the day with
+  the same switches; a build without the near path's hooks read the same 990, so
+  that is the machine, not the code. Compare only runs taken together.
+
+#### Unit 4, the records: measured, not judged
+
+- The division bodies keep each corner's `SZ` from its `RTPT` in a host-side table
+  keyed by the 0x18-byte stack record, and each of the four emitters seals its
+  packet as `PolyAssemblerDepth` does (or `NoDepth`). Guest memory and the GTE are
+  untouched: verify still reads 0. Records only with the near path in C#;
+  `ZBuffer.SyncSource` turns recording on when either the bulk assemblers or the
+  near path is C#.
+- `KF3_ZBUFFER_PROBE=1`, standing in `fdat02`, 144 fps: near path recompiled,
+  38304 records a second, all found, **60.4% of triangles tested**; in C#, 43920,
+  all found, **74.4%**. The difference is 39 packets a frame, the near map's
+  share (unit 2's table: 40).
+- Everything on together (24-bit, no dither, perspective, sub-pixel, Z-buffer,
+  near path in C#), after turning and walking: 132768 records a second, all
+  found, **90.6% of triangles tested**; 144.0 fps at 14.9 ticks/s.
+- What keeps painter's order: the HUD's models (16 packets a frame), the sky (45,
+  drawn first), the arm, the overlays' sprites, and the blended and front-table
+  variants and the models' near submit wherever they draw. Model depth is two
+  bits coarser than the map's. **Not judged by eye.**
 
 ### After this
 
