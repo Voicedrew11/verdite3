@@ -6,8 +6,10 @@ model, with its `KF2_*` switches becoming `KF3_*` here.
 
 ## Status
 
-Boots, plays, changes areas, saves and loads (2026-10-02). There are no patches
-of the port's own yet: the world runs once per drawn frame, at 60.
+Boots, plays, changes areas, saves and loads (2026-10-02). The port's first
+patches are the agent harness and frame pacing (below). Without pacing the world
+runs at 30, twice the game's 15: see "The session and the main loop" in
+`docs/GAME_INTERNALS.md`.
 
 ## Build and run
 
@@ -82,6 +84,97 @@ What a change to the fork, the config or the maps must keep passing. Measured
    load shows `game overwritten by open`, then `open overwritten by game`.
 7. No `unmapped call` anywhere in the log.
 
-No step yet runs without a person: there is no scripted pad input, auto start or
-state beacon here. Those are the next things that would make this test a
-program, as Verdite2's is.
+Steps 1-3 and 7 now run as a program, with the beacon reading the result:
+
+```bash
+KF3_AUTOSTART=1 KF3_AGENT=1 KF3_SHELL=1 KF3_FPS=144 KF3_FPS_PROBE=1 \
+    dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
+# [KF3] pacing: 144 fps, boundary 3/3 DrawOTag + 3/3 VSync, 14/14 stage(s), frame gate skipped, world at 15 Hz
+# [KF3] autostart: loaded slot 1
+# [KF3] autostart: in fdat02, area 0, HP 50/50, LV 1, slot 1
+# [KF3] pacing: 144.0 fps drawn of 144, 144.0 VSync call(s)/s, 15.0 tick(s)/s of 15 Hz, ...
+```
+
+Changing areas, saving, and the title-screen load still need a person.
+
+## Driving the game without a person
+
+Four switches, all off unless set (see `docs/ENV_VARS.md`). They are Verdite2's
+harness, rebuilt on this game's addresses.
+
+- **`KF3_AGENT=1`**, the beacon (`patches/AgentBeacon.cs`): `[KF3-AGENT] overlay
+  <name>` on each load, and once a second
+  `{"overlay":…,"inGame":…,"loop":…,"hp":…,"maxHp":…,"mp":…,"maxMp":…,"level":…,"exp":…,"area":…,"slot":…,"pos":[x,y,z],"yaw":…}`.
+  `inGame` is an area module up and a non-zero max HP; **`loop` is whether the
+  main loop ran in the last second**, which is false during the New Game's
+  opening movie, a menu's own loop and a load. The fields are "The player" in
+  `docs/GAME_INTERNALS.md`.
+- **`KF3_SHELL=1`** (or a port), the command channel (`patches/AgentServer.cs`):
+  TCP `127.0.0.1:27903` (Verdite2 uses 27900, so both can run), one request a
+  line, one JSON line back: `state`, `press <button> [ms]`, `peek <hex addr>
+  [bytes]`, `dump <file>` (the 2 MB of RAM, for diffing), `help`. Everything runs
+  from the vblank on the game thread. There is no `load` or `warp` yet.
+- **`KF3_AUTOSTART=<1..15>|new`** (`patches/AutoStart.cs`): Start is pulsed
+  through OPEN.EXE; GAME.EXE's start menu is told the title chose Load (the byte
+  `0x800102FA`) and the slot chooser is replaced by the game's own card loader
+  on that slot. No input is needed in GAME.EXE. `new` sets the byte to 0 instead;
+  the opening movie then plays for about 30 s before the loop runs. Measured:
+  slot 1 lands in `fdat02` at HP 50/50, LV 1, the save's position and heading.
+- **`KF3_AUTOPAD=seconds:button:holdMs,…`** (`Program.cs`): scripted pad input
+  through `PAD_dr`, its clock started by the first area module load.
+
+All input goes through `PAD_dr` (a `PadReadEvent` listener: the buffer is
+active-low with its two bytes swapped against `Controller`'s layout), which
+reaches the menus.
+
+**Cross opens the in-game menu, and a few more Crosses save over the slot.** A
+scripted run that pressed Cross to "get past" something rewrote card A's slot 1
+on 2026-10-02 (it had held the same new-game save, so nothing was lost). Circle
+closes the menu. Keep a copy of `carda.sav` before driving the menus.
+
+Diagnostics written for this: `KF3_STAGEPROBE=1` (which main-loop stages write
+the ordering table) and `KF3_RATECENSUS=<seconds>` (which words change on frames
+no stage ran on); their readings are in `docs/GAME_INTERNALS.md`.
+
+## Frame pacing
+
+`patches/FramePacing.cs`, **off unless `KF3_FPS` is set**, because the picture
+has not been judged. Verdite2's mechanism ("Any frame rate" in its
+`docs/PATCHES_AND_MODS.md`) on this game's loop:
+
+- The frame gate `func_80019614` is skipped (its count zeroed), in GAME.EXE only.
+- **The frame boundary** is the `DrawOTag` after a `VSync` call (the three
+  `DrawOTag` and `VSync` entry points `config/kf3.json` binds); the frame is
+  paced there to `KF3_FPS`, and the world clock advanced by wall time.
+- **Stages 1-14 run only on a tick of the 15 Hz world clock**, decided once per
+  loop iteration at stage 1, so the fourteen agree even when the menu inside
+  stage 4 presents frames between them. Only calls from the main loop's own call
+  sites are gated (the card loader's wait loop calls stages 8, 13 and 14). Stage
+  15 runs every frame.
+- **A watchdog**: no boundary for 500 ms and stage 1 ticks the world off the wall
+  clock and paces the loop itself. `KF3_PACING_NOBOUNDARY=1` removes the boundary
+  to test it.
+- OPEN.EXE and END.EXE keep the runtime's 60 Hz throttle and their own waits.
+
+**15, not 30.** The gate's literal is 4 vblanks; the 30 the port ran at was the
+double vblank delivery, not the game.
+
+Measured 2026-10-02, slot 1 in `fdat02`, standing, `KF3_FPS_PROBE=1`, and yaw
+turned by holding Left for 1 s (three times each):
+
+| `KF3_FPS` | drawn | world ticks/s | yaw per s | packets a frame, ticked / idle |
+|---|---|---|---|---|
+| unset (pacing off) | 30 | 30 | 1200 | — |
+| 15 | 15.0 | 15.0 | 600 | 418 / — |
+| 60 | 60.0 | 15.0 | 600 | 733 / 744 (turning) |
+| 144 | 144.0 | 15.0 | 600 | 418 / 418 |
+| off (uncapped) | 1225.5 | 15.0 | 600 | 418 / 418 |
+| 144, boundary removed | — | 14.7-14.8 (watchdog) | 600 | — |
+
+Equal packet counts on ticked and idle frames say no skipped stage feeds the
+picture. **Not judged by eye: the picture at any rate.** Expected, and not
+fixed: the picture only changes 15 times a second (nothing is carried between
+ticks), and whatever stage 15 itself advances runs at the render rate (see "What
+still runs at the render rate" in `docs/GAME_INTERNALS.md`: billboard cels at
+least). Menus, the opening movie and loads present their own frames and are
+paced to `KF3_FPS` like any frame.

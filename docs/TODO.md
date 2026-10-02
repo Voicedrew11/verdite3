@@ -17,12 +17,26 @@ recompiled and running, following Verdite2's method but applied to this disc.
 
 ## Next
 
-- **The world runs at the drawn rate, 60.** Verdite2's `FramePacing` (a 20 Hz
-  world clock, the frame gate skipped) is the model, once this game's frame gate
-  and stages are found.
-- **Make the acceptance test a program**: scripted pad input, an auto start into
-  a save slot, and a state beacon (Verdite2's `KF2_AUTOPAD`, `KF2_AUTOSTART`,
-  `KF2_AGENT`), so a fork change can be checked without a person.
+- ~~The world runs at the drawn rate.~~ It ran at 30, twice the game's 15 (the
+  vblank delivered twice); frame pacing holds it to 15 at any rate, off until
+  judged. See "Frame pacing" in `docs/DEVELOPMENT.md`.
+- ~~Make the acceptance test a program.~~ Beacon, command channel, auto start
+  and scripted pad, 2026-10-02. Still by hand: changing areas, saving, the
+  title-screen load.
+- **The vblank event is delivered twice a vblank** (fork: `LibEtc.TickVBlank`
+  and `Interrupts.ServiceIrq` both deliver `0xF2000003`). Under pacing the world
+  is unaffected, but the game's vblank count and its play-time minute
+  (`0x801B2588`) run at twice the rate. A fork fix reaches Verdite2 too, whose
+  `docs/TODO.md` has the same row.
+- **What stage 15 advances runs at the render rate under pacing**: the billboard
+  cels at `0x80182964` first (Verdite2's `SpriteAnim`), then the unidentified
+  words in "What still runs at the render rate" in `docs/GAME_INTERNALS.md`.
+- **Carrying the view between ticks** (Verdite2's `FrameSmoothing` and the rest),
+  without which a higher rate draws the same picture several times.
+- **`load` and `warp` for the command channel**: the loader is known; how the
+  in-game Load re-enters the area is not.
+- `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's
+  `Program.cs` wiring, which this `Program.cs` does not have.
 - **The fork reads seven `KF2_*` switches by name** (see `docs/ENV_VARS.md`).
   Taking the prefix from the game is a fork change, and Verdite2's acceptance
   test must pass after it.

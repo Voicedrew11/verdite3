@@ -42,6 +42,66 @@ RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.OverlayLoade
     Console.WriteLine($"[KF3] irq callback table: {e.Name} 0x{table:X8}");
 });
 
+// The agent harness: a state beacon and a command channel. See "Driving the game
+// without a person" in docs/DEVELOPMENT.md.
+Kf3.AgentBeacon.Configure(Environment.GetEnvironmentVariable("KF3_AGENT"));
+Kf3.AgentBeacon.Install();
+Kf3.AgentServer.Configure(Environment.GetEnvironmentVariable("KF3_SHELL"));
+Kf3.AgentServer.Install();
+Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
+Kf3.AutoStart.Install();
+Kf3.StageProbe.Install();
+
+// Frame pacing: off unless KF3_FPS is set. See "Frame pacing" in docs/DEVELOPMENT.md.
+Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
+                          Environment.GetEnvironmentVariable("KF3_TICKRATE"),
+                          Environment.GetEnvironmentVariable("KF3_FPS_PROBE"));
+Kf3.FramePacing.Install();
+Kf3.RateCensus.Install();
+
+// Scripted pad input, seconds:button:holdMs, timed from the first area module load
+// (the one moment that means "in game"):
+//     KF3_AUTOPAD=5:Start:1000,8:Circle:200
+// Written through PAD_dr, the path that reaches the game's menus too.
+var autopad = Environment.GetEnvironmentVariable("KF3_AUTOPAD");
+if (!string.IsNullOrWhiteSpace(autopad))
+{
+    var press = new List<(double At, double Until, ushort Bit)>();
+    foreach (var step in autopad.Split(',', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var f = step.Split(':');
+        if (f.Length != 3 || !Kf3.AgentServer.Buttons.TryGetValue(f[1].Trim(), out var bit))
+            throw new ArgumentException($"KF3_AUTOPAD: bad step '{step}'");
+        double at = double.Parse(f[0], System.Globalization.CultureInfo.InvariantCulture);
+        double hold = double.Parse(f[2], System.Globalization.CultureInfo.InvariantCulture) / 1000.0;
+        press.Add((at, at + hold, bit));
+    }
+
+    var clock = new System.Diagnostics.Stopwatch();
+    RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.OverlayLoadedEvent>(e =>
+    {
+        if (clock.IsRunning || !e.Name.StartsWith("fdat", StringComparison.Ordinal)) return;
+        clock.Start();
+        Console.WriteLine($"[KF3] autopad: {press.Count} step(s) armed");
+    });
+
+    ushort last = 0;
+    RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.PadReadEvent>(e =>
+    {
+        if (e.Port != 0 || !clock.IsRunning) return;
+        double t = clock.Elapsed.TotalSeconds;
+        ushort held = 0;
+        foreach (var (at, until, bit) in press)
+            if (t >= at && t < until) held |= bit;
+        if (held != last)
+        {
+            Console.WriteLine($"[KF3] autopad t={t:F1}s held=0x{held:X4}");
+            last = held;
+        }
+        if (held != 0) e.Buttons &= (ushort)~(ushort)((held >> 8) | (held << 8));
+    });
+}
+
 RecompOne.Runtime.Runtime.AppId = "verdite3";
 
 var memory = new PSMemory();

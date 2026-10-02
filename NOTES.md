@@ -26,8 +26,9 @@ their own dump of `SLUS-00255`.
 
 **Boots, plays, changes areas, saves and loads** (2026-10-02). `OPEN.EXE`,
 `GAME.EXE`, `END.EXE` and 28 area code modules from `CD/COM/FDAT.T` are
-recompiled, with 63 PSY-Q entry points bound by address. There are no patches of
-the port's own yet, so the world runs at 60. `tools/RecompOne` is a `git subtree`
+recompiled, with 63 PSY-Q entry points bound by address. The port's own patches
+are the agent harness (`KF3_AGENT`, `KF3_SHELL`, `KF3_AUTOSTART`, `KF3_AUTOPAD`)
+and frame pacing (`KF3_FPS`, a 15 Hz world, off until judged). `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `a617cf8`, and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
 `docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
