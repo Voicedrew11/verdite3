@@ -26,11 +26,10 @@ their own dump of `SLUS-00255`.
 
 **Bootstrapping: nothing has been recompiled yet.** The repository holds the
 license, the conventions, and `tools/RecompOne`, a `git subtree` of the shared
-fork `Voicedrew11/verdite-recompone` pinned at `a617cf8`. There is no `config/`,
-no `generated/`, and no overlay or function map. The disc is in place at
-`disc/KingsField3.cue` and has been read (see "What is on the disc" in
-`docs/RECOMPILATION.md`). The
-bring-up order is in `docs/TODO.md`.
+fork `Voicedrew11/verdite-recompone` pinned at `a617cf8`, and `tools/verdite-core` (Verdite Core) at `536167a`.
+There is no `config/kf3.json`, no `generated/`, and no function map yet. The
+disc is in place at `disc/KingsField3.cue` and has been read (see "What is on
+the disc" in `docs/RECOMPILATION.md`). The bring-up order is in `docs/TODO.md`.
 
 ## The documents
 
