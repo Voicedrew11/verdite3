@@ -91,6 +91,16 @@ public static class Stage15
     static uint _needleA, _needleB;
     static bool _needleDrawn;
 
+    // The gauges' eased HP and MP followers, stepped by stage 4 on the tick: their last
+    // two tick samples, the tick of the last, and whether this frame wrote a carried one.
+    static readonly uint[] Followers = [0x801B2502u, 0x801B2506u];
+    static readonly ushort[] _followPrev = new ushort[2], _followCur = new ushort[2];
+    static long _followTick = -1, _followSampled = -1;
+    static bool _followDrawn;
+
+    /// <summary>Frames a gauge was drawn between its tick samples, for the view probe.</summary>
+    public static long GaugeCarried;
+
     /// <summary>Frames the needle was drawn between its tick samples, for the view probe.</summary>
     public static long NeedleCarried;
     static bool _queued;
@@ -373,6 +383,7 @@ public static class Stage15
 
         // u8[0x801B25DD]: 1 and 2 are the two gauge/digit layouts; anything else leaves
         // the records as built above.
+        CarryFollowers(mem);
         c.V1 = mem.ReadU8(0x801B25DDu);
         if (c.V1 == 1u)
         {
@@ -385,6 +396,46 @@ public static class Stage15
             c.T3 = 0x10620000u;
             if (c.V1 == c.V0) Gauge2(c, mem);
         }
+        if (_followDrawn)
+        {
+            for (int i = 0; i < Followers.Length; i++) mem.WriteU16(Followers[i], _followCur[i]);
+            _followDrawn = false;
+        }
+    }
+
+    /// <summary>With the view carried, the gauges are built from their followers
+    /// interpolated between the last two ticks; the tick's values go back after.</summary>
+    static void CarryFollowers(PSMemory mem)
+    {
+        if (!ViewSmoothing.Enabled || Verifier.Replaying) return;
+        long tick = FramePacing.Ticks;
+        bool first = FramePacing.FirstWalkOfTick(ref _followTick);
+        for (int i = 0; i < Followers.Length; i++)
+        {
+            ushort v = mem.ReadU16(Followers[i]);
+            if (first)
+            {
+                _followPrev[i] = _followSampled < 0 || tick - _followSampled > 1 ? v : _followCur[i];
+                _followCur[i] = v;
+            }
+            else if (v != _followCur[i])
+            {
+                _followPrev[i] = _followCur[i] = v;
+            }
+        }
+        if (first) _followSampled = tick;
+
+        double f = FramePacing.TickFraction;
+        for (int i = 0; i < Followers.Length; i++)
+        {
+            int a = _followPrev[i], b = _followCur[i];
+            if (a == b) continue;
+            ushort drawn = (ushort)(a + (int)Math.Round((b - a) * f));
+            if (drawn == b) continue;
+            mem.WriteU16(Followers[i], drawn);
+            _followDrawn = true;
+        }
+        if (_followDrawn) GaugeCarried++;
     }
 
     /// <summary>With the view carried, the needle is drawn between its last two tick

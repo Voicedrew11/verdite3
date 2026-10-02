@@ -122,10 +122,10 @@ public static class ViewSmoothing
         double dt = now - _probeAt;
         if (dt < 1.0) return;
         Console.WriteLine($"[KF3] view smoothing: {_frames / dt:0.0} frame(s)/s, {_moved / dt:0.0} with a new camera, " +
-                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {Stage15.NeedleCarried / dt:0.0} needle(s) carried/s; " +
+                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {Stage15.NeedleCarried / dt:0.0} needle(s) and {Stage15.GaugeCarried / dt:0.0} gauge(s) carried/s; " +
                           $"drawn [{view.X},{view.Y},{view.Z}] yaw {view.Yaw}, handed [{_cur.X},{_cur.Y},{_cur.Z}] yaw {_cur.Yaw}");
         _probeAt = now;
         _frames = _moved = _samples = _snaps = 0;
-        Stage15.NeedleCarried = 0;
+        Stage15.NeedleCarried = Stage15.GaugeCarried = 0;
     }
 }
