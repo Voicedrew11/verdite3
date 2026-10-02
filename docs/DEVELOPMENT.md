@@ -103,6 +103,12 @@ Changing areas, saving, and the title-screen load still need a person.
 Four switches, all off unless set (see `docs/ENV_VARS.md`). They are Verdite2's
 harness, rebuilt on this game's addresses.
 
+**A connected DualSense stalls `KF3_AUTOSTART`** (2026-10-02): the boot sits in
+OPEN.EXE's pad loop (`func_800136D8`, the managed stack in `BiosB.PadRead`) and
+never reaches GAME.EXE, with or without pacing; the cause is not read. Hide the
+pad from SDL for a scripted run:
+`SDL_GAMECONTROLLER_IGNORE_DEVICES=0x054C/0x0CE6`.
+
 - **`KF3_AGENT=1`**, the beacon (`patches/AgentBeacon.cs`): `[KF3-AGENT] overlay
   <name>` on each load, and once a second
   `{"overlay":…,"inGame":…,"loop":…,"hp":…,"maxHp":…,"mp":…,"maxMp":…,"level":…,"exp":…,"area":…,"slot":…,"pos":[x,y,z],"yaw":…}`.

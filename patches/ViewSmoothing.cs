@@ -7,7 +7,7 @@ namespace Kf3;
 /// tick left, and each drawn frame is given, through <see cref="Stage15.ViewOverride"/>,
 /// the camera interpolated between the last two ticks at the clock's fraction.
 ///
-///     KF3_SMOOTH=1         on (needs KF3_FPS, and stage 15 in C#); off until judged
+///     KF3_SMOOTH=1         on whenever pacing is (judged 2026-10-02); 0 to compare
 ///     KF3_SMOOTH_PROBE=1   a line a second: frames drawn, distinct cameras drawn, ticks, snaps
 ///
 /// Interpolates, never extrapolates; a jump larger than <see cref="SnapUnits"/> or
@@ -37,17 +37,19 @@ public static class ViewSmoothing
 
     public static void Configure(string? mode, string? probe)
     {
-        Enabled = mode?.Trim() is "1" or "on";
+        Enabled = mode?.Trim() is not ("0" or "off");
         _probe = probe?.Trim() == "1";
     }
 
     public static void Install()
     {
         if (!Enabled) return;
-        if (!FramePacing.Enabled || !Stage15.InCSharp)
+        // Without pacing every frame is a tick, and there is nothing to carry.
+        if (!FramePacing.Enabled) { Enabled = false; return; }
+        if (!Stage15.InCSharp)
         {
             Enabled = false;
-            Console.Error.WriteLine("[KF3] view smoothing: needs KF3_FPS, and stage 15 in C# (KF3_STAGE15 unset or 1); off.");
+            Console.Error.WriteLine("[KF3] view smoothing: needs stage 15 in C# (KF3_STAGE15 unset or 1); off.");
             return;
         }
         Stage15.OnHanded = OnHanded;

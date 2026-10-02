@@ -68,8 +68,8 @@ Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
 Kf3.PolyAssembler.Install();
 
 // Stage 15 and its camera block in C#: on unless =0; KF3_STAGE15=verify and
-// KF3_CAMERABLOCK=verify compare them with the recompiled routines. The view carried between ticks,
-// KF3_SMOOTH=1, and the billboard clock held to the tick. See docs/SMOOTHING.md.
+// KF3_CAMERABLOCK=verify compare them with the recompiled routines. The view carried between ticks under
+// pacing (KF3_SMOOTH=0 to compare), and the billboard clock held to the tick. See docs/SMOOTHING.md.
 Kf3.CameraBlock.Configure(Environment.GetEnvironmentVariable("KF3_CAMERABLOCK"));
 Kf3.CameraBlock.Install();
 Kf3.Stage15.Configure(Environment.GetEnvironmentVariable("KF3_STAGE15"),

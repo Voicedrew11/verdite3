@@ -38,9 +38,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   are next on this path, deferred behind smoothing.
 - **Carrying the view between ticks** (chosen 2026-10-02, ahead of the near path).
   Units 1 and 2 are built (2026-10-02): stage 15 and the camera block in C#,
-  verified and on; the camera carried (`KF3_SMOOTH`, off until the user judges it)
-  and the billboard clock held. **Waiting on the user's eyes**; then unit 3
-  (creatures, poses, the HUD with the view). `docs/SMOOTHING.md`.
+  verified and on; the camera carried (`KF3_SMOOTH`, judged, on under pacing)
+  and the billboard clock held. **Next: unit 3** (models, poses, the HUD with the
+  view), handed off at the end of `docs/SMOOTHING.md`.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's
