@@ -5,9 +5,8 @@ recompiled and running, following Verdite2's method but applied to this disc.
 
 ## Phase 2: bring-up
 
-- Obtain `disc/KingsField3.cue`, the user's own dump of `SLUS-00255`.
-- Use `tools/verdite-core/scripts/inspect_disc.py` and `extract_file.py` to find the
-  executables and their load bases.
+- ~~Obtain the disc; find the executables and their load bases.~~ Done
+  2026-10-02: see "What is on the disc" in `docs/RECOMPILATION.md`.
 - Write `config/kf3.json`, declaring the overlays and their addresses.
 - Sweep a function map per executable into `config/funcmaps/`.
 - Identify the PSY-Q functions with the signature bank, and list the
