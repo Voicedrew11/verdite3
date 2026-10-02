@@ -60,6 +60,13 @@ Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
 Kf3.FramePacing.Install();
 Kf3.RateCensus.Install();
 
+// The bulk polygon assemblers in C#: on unless KF3_POLYASM=0; KF3_POLYASM=verify
+// runs both and compares. See "The geometry path in C#" in docs/GEOMETRY.md.
+Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
+                            Environment.GetEnvironmentVariable("KF3_POLYASM_MAP"),
+                            Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"));
+Kf3.PolyAssembler.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200

@@ -7,8 +7,11 @@ order are in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey).
 
 ## Status
 
-**Plan only; nothing built** (2026-10-02). The first unit is the two bulk
-assemblers below. It is not started until the user picks it.
+**The first unit is built and on** (2026-10-02): `func_80039D50` and
+`func_80035CA4` run in C# (`KF3_POLYASM`, on by default; `0` puts both back),
+verified with 0 mismatches over three sessions in `fdat02`. See "The first unit:
+the bulk assemblers" below for the numbers. The three variants stay recompiled
+(see "The variants are not the same loop"). Next is the near path.
 
 ## Why the assemblers, and why these two first
 
@@ -80,9 +83,10 @@ own small unit, before or after this one.
 
 ## Design
 
-**Files.** `patches/PolyAssembler.cs` (install, modes, the hooks, verify) and
-`patches/PolyAssemblerFill.cs` (allocate, `FillTriangle`, `FillQuad`, link),
-namespace `Kf3`. The fill is copied from Verdite2's `PolyAssembler.cs` and kept
+**Files.** `patches/PolyAssembler.cs` (install, modes, the hooks, verify, and the
+map's body), `patches/PolyAssemblerFill.cs` (the `Frame`, allocate,
+`FillTriangle`, `FillQuad`, the GTE lighting, link) and
+`patches/PolyAssemblerLit.cs` (the lit loop, as Verdite2 splits it), namespace `Kf3`. The fill is copied from Verdite2's `PolyAssembler.cs` and kept
 **textually close** (same names, same order of reads and writes, same comments),
 because the unit after the near path diffs the two games' fills to extract one.
 Leave out what Verdite3 has no use for yet: the depth and lighting records,
@@ -160,6 +164,103 @@ first differing address and both values, a line every few seconds.
 
 Nothing in it needs the user's eyes: the picture is identical by construction,
 and verify is the proof.
+
+## The first unit: the bulk assemblers
+
+Built 2026-10-02, as designed above, with these findings and measurements. Slot 1,
+`fdat02`; "the start" is the autostart position, "the walked spot" is where
+`KF3_AUTOPAD=12:Left:3000,20:Up:6000` leaves the player.
+
+**What the routines actually do, where the plan was short.**
+- **The working state goes back to the scratchpad at the end, not as it goes.**
+  `Frame` holds the parameters (`+0x08`, `+0x14`, `+0x18`, `+0x44`, the colour at
+  `+0x54` or `+0x64`) and the working state; `LeaveMap`/`LeaveLit` write what the
+  routine would have left, read first from the scratchpad so that a field the
+  call never reached keeps its old value. The map leaves `+0x14`, `+0x1C..+0x40`,
+  `+0x48`, `+0x50`, `+0x58`, `+0x5C`, `+0x60`, `+0x64` and its counters
+  `+0x68..+0x70`; the lit assembler leaves `+0x14`, `+0x1C..+0x28`, its NCLIP
+  result at `+0x70` and **its own counters at `+0x78` (faces), `+0x7C` (links) and
+  `+0x80` (packets)**, not the map's.
+- **The lit assembler adds a CLUT offset**: every packet's `+0xE` is the face's
+  CLUT plus the u16 at scratchpad `+0x84`. Verdite2's has no such offset.
+- **The map's `0x34` kind reads its corners where a `0x24` face keeps them**
+  (`+0xE`, `+0x10`, `+0x12`), while its normals are at `+0xC`, `+0x10`, `+0x14`:
+  the second corner's index is the second normal's. The lit assembler reads a
+  `0x34` face's corners at `+0xE`, `+0x12`, `+0x16`. The C# keeps the map's
+  reading. No `0x34` face reaches the map assembler in `fdat02` (counted over one
+  session: 0 of 390,310 faces met; no `0x3C` either), so it may never matter.
+- **The map links a negative otz nowhere**: the clamp is to `0x1F0F`, and the
+  link's `sltiu` against `0x1F10` then drops a negative one after its packet was
+  allocated and counted. The models drop a mean of 0 or less, and a slot of
+  `0x2000` or more, as Verdite2's `Place` does.
+- **`LO` and `HI`** are left as the last `mult` (the `/3`) or `div` (the fog
+  weight) left them, including the recompiler's untouched `LO` on a zero
+  divisor, and verify compares them. A zero fog range (`far == near`) never
+  occurred.
+- **Read order is kept for RAM, not for the scratchpad**: every read and write of
+  a vertex, cache entry, face, normal, packet and table entry goes through
+  `PSMemory` in the recompiled order (the cache's fog half is written as the game
+  writes it: zeroed by the otz's word store, the quotient, then each clamp), and
+  the GTE sees the same writes and commands in the same order. Reads of the
+  scratchpad are not repeated.
+
+**Verify** (`KF3_POLYASM=verify`), over three sessions: standing, turning both
+ways, walking, and the in-game menu opened and closed (through `KF3_SHELL`,
+`press Cross` then `press Circle`; `carda.sav` byte-identical afterwards):
+
+| routine | calls | RAM | scratchpad | registers (S0-S7, FP, SP, RA, LO, HI) | GTE |
+|---|---|---|---|---|---|
+| `func_80039D50` | 153,278 | 0 | 0 | 0 | 0 |
+| `func_80035CA4` | 13,337 | 0 | 0 | 0 | 0 |
+
+Faces filled: the map 87,576 `0x24` and 196,433 `0x2C`; the lit assembler
+354,979 `0x24`, 92,079 `0x2C`, 85,768 `0x34` and 14,972 `0x3C`. Two branches
+never run in `fdat02` were forced, under verify only, by edits made for the test
+and then removed: **every `0x24` map face relabelled `0x34`** for the call (32,261
+calls, 0 mismatches), and **the primitive buffer's end pulled to 0x60 bytes past
+the cursor** on every fourth call (32,241 map and 2,364 lit calls, 1,456 and 567
+of them ending early, 0 mismatches).
+
+**`KF3_GEOPROBE=1`** with `KF3_GEOPROBE_FUNCS=8003AB04,80039D50,80035CA4`,
+`KF3_FPS=15` and the survey's autopad: all 206 per-call lines (packets, words,
+slots, GPU codes, sizes, every window) are **identical** with `KF3_POLYASM=1` and
+`0`, once the packet addresses are left out.
+
+**Pacing**: `KF3_FPS=144 KF3_FPS_PROBE=1` reads 144.0 fps drawn at 15.0 ticks/s
+with the C# on.
+
+**Speed** (`KF3_FPS=off`, no probe; the mean of each run's fps lines, two runs
+each way, alternated):
+
+| where | recompiled | C# | per frame |
+|---|---|---|---|
+| the start (the lit assembler; the map's halves all near) | 1,243 and 1,227 | 1,310 and 1,338 | 0.81 → 0.76 ms |
+| the walked spot (147 map calls a frame) | 796 and 791 | 1,172 and 1,171 | 1.26 → 0.85 ms (+48%) |
+
+**The plan's estimate was low**: it expected 10-20% from the map, and the walked
+spot gains 48%, 0.41 ms a frame, most of the routine. The recompiled routine
+reaches the scratchpad through `PSMemory` on almost every instruction, which is
+dearer than Verdite2's stack traffic. Still nothing at 60 or 144 on this machine.
+
+### The variants are not the same loop
+
+The plan said `func_80037BEC`, `func_80038844` and `func_80039428` were the lit
+loop with other parameters. Read against `func_80035CA4` (2026-10-02):
+- `func_80037BEC` (forced blending) is: `a2 << 5` replaces the page's bits 5-6,
+  the code byte is forced (`0x26`, `0x2E`, `0x36`, `0x3E`), and it spills the
+  packet and corners to `+0x2C..+0x3C`, which the C# would have to leave.
+- `func_80038844` (the front table) is not: it always shifts the fog weight right
+  by `3 - a2`, and with `a2` non-zero links into the 8-entry table at `+0x0C` at
+  `((otz >> 11) + bias) & 7` (`>> 13` of the sum for quads), with no range test.
+- `func_80039428` (the sky) is a different loop: kinds `0x30`/`0x38` of its own
+  (corners at `+0xA..`, the colour from the face, untextured `POLY_G3`/`G4`), `0x34`/`0x3C` lit with `NCCT`/`NCCS` and no `IR0`, the slot
+  `(short)a1 & 7` in the `+0x0C` table, no depth from the vertices.
+
+**Only `func_80039428` runs in `fdat02`** (once a frame, 45 packets, `0x34` and
+`0x3C` only; `KF3_GEOPROBE_FUNCS=80037BEC,80038844,80039428`, turning and
+walking): the other two cannot be verified here, and the sky's own kinds are not
+met either. All three stay recompiled until a scene calls them; the sky is drawn
+behind everything into the front table, so the Z-buffer does not need its records.
 
 ## After this unit
 
