@@ -152,6 +152,12 @@ assembler that wrote it. It walks the whole table at every hooked entry and exit
 so it is slow with many functions; the readings are in "The geometry path" in
 `docs/GAME_INTERNALS.md`.
 
+**A run stopped by `timeout` loses its last few kilobytes of console output**:
+stdout is block-buffered when redirected, and SIGTERM ends the process before the
+buffer flushes. A probe that prints rarely can lose every window but the first
+(the first `KF3_MAPCOVERAGE` reading, taken during the load, read as if most rows
+were 0). A probe should `Console.Out.Flush()` after each report.
+
 The survey's run, from the repository root:
 
 ```bash

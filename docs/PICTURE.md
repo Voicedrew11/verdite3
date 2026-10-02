@@ -10,7 +10,7 @@ was culled on whole pixels") and are the background for everything below.
 
 ## Status
 
-**Unit 1 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
+**Units 1 and 2 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
 the fork this repository shares with Verdite2 (`tools/RecompOne`), switched off.
 What is missing is Verdite3's half: the switches, the probes, the controls, and
 for the Z-buffer, the depth.
@@ -131,6 +131,45 @@ screenshots.
   recompiled result stands, so a C# path the map does not follow shows as a
   coverage drop, not a mismatch); the coverage table by routine is written here;
   144.0 fps at 15.0 ticks/s and the uncapped rate both ways; the user judges both.
+
+#### Unit 2, done: measured, not judged
+
+- `patches/Perspective.cs` and `patches/Subpixel.cs` are switches and probes
+  (`KF3_PERSPECTIVE`, `KF3_SUBPIXEL`, `KF3_PERSPECTIVE_PROBE`,
+  `KF3_SUBPIXEL_PROBE`); each sets its `GteDepth` flag and
+  `GteVertexMap.SetActive(GteDepth.Active)`. Testing ▸ Picture, kept as
+  `kf3.perspective` and `kf3.subpixel`.
+- **The fill's fast path needs no guard**: every vertex and screen word in
+  `PolyAssembler*.cs` goes through `ReadU32`/`WriteU32`; the direct `R16`/`W16`/`W8`
+  carry only face fields, UVs, colours and the otz, which the map does not track.
+- **The fractional facing test** (`0052`) is in `PolyAssemblerFill.cs`'s one
+  `Visible`: under sub-pixel, NCLIP on the corners plus their fractions
+  (`GteVertexMap.Peek`); a corner the map did not answer for, or clamped, keeps the
+  whole-pixel answer. It stands down under verify. `KF3_SUBPIXEL_CULL=0`, or the
+  indented Testing box, to compare. Standing in `fdat02` it changed no face's
+  facing (0 kept, 0 dropped a second); a thin face edge-on is where it would.
+- **Verify reads 0** for `KF3_POLYASM`, `KF3_MODELWALK`, `KF3_MOPOSE` and
+  `KF3_STAGE15` with both on, turning and walking.
+- **The map answers for 97.4% of vertices** in total (`KF3_PERSPECTIVE_PROBE=1`).
+  By routine, `KF3_MAPCOVERAGE=1` (`patches/MapCoverage.cs`: the packet cursor
+  `0x1F800014` read round each writer, and each polygon in the table asked of
+  `GteVertexMap.Peek`), `fdat02`, 144 fps:
+
+  | routine | packets a frame | corners answered |
+  |---|---|---|
+  | map bulk `func_80039D50` | 254 | 99.9% |
+  | near map `func_8003AB04` | 40 | **100%** |
+  | lit models `func_80035CA4` | 93 | 100% |
+  | HUD models (`func_80035CA4` under `func_8003C35C`) | 16 | 0% (orthographic) |
+  | sky `func_80039428` | 45 | 90.8% |
+  | anything else | 0 | |
+
+  **The near map is covered**: libgte's division copies whole words from its
+  `RTPT` records into the packets, so unit 4 publishes nothing. The arm, the
+  models' near submit and the blended variants built nothing in this scene.
+- 144.0 fps at 15.0 ticks/s both ways. **Uncapped, the map costs about a
+  fifth**: 1420, 1427, 1404 fps off; 1108, 1135, 1127 on (standing, `fdat02`).
+- **Not judged by eye**: perspective, sub-pixel.
 
 ### Unit 3: depth records from the C# assemblers (a partial Z-buffer)
 

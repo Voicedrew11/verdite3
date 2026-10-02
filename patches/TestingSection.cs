@@ -244,6 +244,8 @@ public sealed class TestingSection : ISettingsSection
         if (ImGui.Checkbox("Dither (KF3_NODITHER_PROBE)", ref d)) NoDither.ProbeOn = d;
         bool pp = Perspective.ProbeOn;
         if (ImGui.Checkbox("Address map (KF3_PERSPECTIVE_PROBE)", ref pp)) Perspective.ProbeOn = pp;
+        bool mc = MapCoverage.ProbeOn;
+        if (ImGui.Checkbox("Address map by routine (KF3_MAPCOVERAGE)", ref mc)) MapCoverage.ProbeOn = mc;
         bool sp = Subpixel.ProbeOn;
         if (ImGui.Checkbox("Sub-pixel (KF3_SUBPIXEL_PROBE)", ref sp)) Subpixel.ProbeOn = sp;
         bool zp = ZBuffer.ProbeOn;

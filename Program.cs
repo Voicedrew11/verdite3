@@ -109,6 +109,8 @@ Kf3.Subpixel.Install();
 Kf3.ZBuffer.Configure(Environment.GetEnvironmentVariable("KF3_ZBUFFER"),
                       Environment.GetEnvironmentVariable("KF3_ZBUFFER_PROBE"));
 Kf3.ZBuffer.Install();
+Kf3.MapCoverage.Configure(Environment.GetEnvironmentVariable("KF3_MAPCOVERAGE"));
+Kf3.MapCoverage.Install();
 
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();
