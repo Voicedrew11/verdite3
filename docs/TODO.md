@@ -28,6 +28,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - **What stage 15 advances runs at the render rate under pacing**: the billboard
   cels at `0x80182964` first (Verdite2's `SpriteAnim`), then the unidentified
   words in "What still runs at the render rate" in `docs/GAME_INTERNALS.md`.
+- **The geometry path in C#** (the sharing plan's picture features rest on it):
+  surveyed, see "The geometry path" in `docs/GAME_INTERNALS.md`; the build order
+  is in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey). Not
+  started.
 - **Carrying the view between ticks** (Verdite2's `FrameSmoothing` and the rest),
   without which a higher rate draws the same picture several times.
 - **`load` and `warp` for the command channel**: the loader is known; how the

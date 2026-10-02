@@ -51,6 +51,7 @@ Kf3.AgentServer.Install();
 Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
 Kf3.StageProbe.Install();
+Kf3.GeometryProbe.Install();
 
 // Frame pacing: off unless KF3_FPS is set. See "Frame pacing" in docs/DEVELOPMENT.md.
 Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),

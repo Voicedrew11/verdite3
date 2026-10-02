@@ -38,7 +38,8 @@ event delivered once), and
 
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run and diagnose.
 - [docs/RECOMPILATION.md](docs/RECOMPILATION.md) — config, overlays, function maps, SDK addresses.
-- [docs/GAME_INTERNALS.md](docs/GAME_INTERNALS.md) — the game's own addresses and routines.
+- [docs/GAME_INTERNALS.md](docs/GAME_INTERNALS.md) — the game's own addresses and routines,
+  including the geometry path (stage 15's calls, the map, the models).
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 

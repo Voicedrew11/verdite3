@@ -137,6 +137,15 @@ Diagnostics written for this: `KF3_STAGEPROBE=1` (which main-loop stages write
 the ordering table) and `KF3_RATECENSUS=<seconds>` (which words change on frames
 no stage ran on); their readings are in `docs/GAME_INTERNALS.md`.
 
+`KF3_GEOPROBE=1` (`patches/GeometryProbe.cs`) goes one level down: it walks the
+ordering table and the front table before and after each of stage 15's calls and
+prints, every 5 seconds, the packets each call added (by GPU command, size, slot
+range and address range). `KF3_GEOPROBE_FUNCS=8003E34C,80035CA4,...` adds any
+function, reported per call site, which is how a packet is traced to the
+assembler that wrote it. It walks the whole table at every hooked entry and exit,
+so it is slow with many functions; the readings are in "The geometry path" in
+`docs/GAME_INTERNALS.md`.
+
 ## Frame pacing
 
 `patches/FramePacing.cs`, **off unless `KF3_FPS` is set**, because the picture
