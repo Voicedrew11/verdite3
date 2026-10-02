@@ -29,7 +29,7 @@ public static partial class PolyAssembler
     static void ReplaceLit(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
         if (Recompiled(LitEnabled) || m is not PSMemory mem) { orig(c, m); return; }
-        if (_mode == Mode.Verify) Verify(_litCheck, orig, c, mem, RunLit);
+        if (_mode == Mode.Verify) _litCheck.Run(orig, c, mem, RunLit);
         else RunLit(c, mem);
     }
 
@@ -52,7 +52,7 @@ public static partial class PolyAssembler
         c.HI = fr.Hi;
     }
 
-    static readonly Check _litCheck = new("func_80035CA4", () =>
+    static readonly Differential _litCheck = new("polyasm", "func_80035CA4", StackWindow, () =>
     {
         string s = $"; {_litExhausted} buffer exhaustion(s); filled 0x24 {_litKinds[0]}, 0x2C {_litKinds[1]}, " +
                    $"0x34 {_litKinds[2]}, 0x3C {_litKinds[3]}";

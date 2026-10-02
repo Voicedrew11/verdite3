@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using RecompOne.Runtime;
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
@@ -97,7 +96,7 @@ public static partial class PolyAssembler
     static void ReplaceMap(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
         if (Recompiled(MapEnabled) || m is not PSMemory mem) { orig(c, m); return; }
-        if (_mode == Mode.Verify) Verify(_mapCheck, orig, c, mem, RunMap);
+        if (_mode == Mode.Verify) _mapCheck.Run(orig, c, mem, RunMap);
         else RunMap(c, mem);
     }
 
@@ -299,21 +298,7 @@ public static partial class PolyAssembler
     /// versions leave different garbage there, and nothing reads it after.</summary>
     const uint StackWindow = 0x2000;
 
-    const int PadWords = 256;
-
-    sealed class Check(string name, Func<string> extra)
-    {
-        public readonly string Name = name;
-        public readonly Func<string> Extra = extra;
-        public byte[] Before = [], Theirs = [];
-        public readonly uint[] PadBefore = new uint[PadWords], PadTheirs = new uint[PadWords], PadOurs = new uint[PadWords];
-        public readonly Gte.State GteEntry = new(), GteTheirs = new(), GteOurs = new();
-        public long Calls, Bad, BadPad, BadReg, BadGte;
-        public readonly List<string> Samples = new();
-        public double ReportAt;
-    }
-
-    static readonly Check _mapCheck = new("func_80039D50", () =>
+    static readonly Differential _mapCheck = new("polyasm", "func_80039D50", StackWindow, () =>
     {
         string s = $"; {_mapExhausted} buffer exhaustion(s), {_zeroFogRange} zero fog range(s); " +
                    $"filled 0x24 {_mapKinds[0]}, 0x2C {_mapKinds[1]}, 0x34 {_mapKinds[2]}; " +
@@ -324,121 +309,4 @@ public static partial class PolyAssembler
         return s;
     });
 
-    /// <summary>The scratchpad is a separate array in PSMemory, outside Ram, so it is
-    /// taken word by word through the accessors.</summary>
-    static void SavePad(PSMemory mem, uint[] to)
-    {
-        for (int i = 0; i < PadWords; i++) to[i] = mem.ReadU32(Pad + (uint)i * 4u);
-    }
-
-    static void LoadPad(PSMemory mem, uint[] from)
-    {
-        for (int i = 0; i < PadWords; i++) mem.WriteU32(Pad + (uint)i * 4u, from[i]);
-    }
-
-    static void Verify(Check k, Action<CpuContext, IMemory> orig, CpuContext c, PSMemory mem,
-                       Action<CpuContext, PSMemory> run)
-    {
-        var ro = mem.Ram;
-        var ram = MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(ro), ro.Length);
-        if (k.Before.Length != ram.Length)
-        {
-            k.Before = new byte[ram.Length];
-            k.Theirs = new byte[ram.Length];
-        }
-
-        uint a0 = c.A0, a1 = c.A1;
-        ram.CopyTo(k.Before);
-        SavePad(mem, k.PadBefore);
-        var entry = c.Snapshot();
-        Gte.Save(k.GteEntry);
-
-        orig(c, mem);
-        ram.CopyTo(k.Theirs);
-        SavePad(mem, k.PadTheirs);
-        var theirs = c.Snapshot();
-        Gte.Save(k.GteTheirs);
-
-        k.Before.CopyTo(ram);
-        LoadPad(mem, k.PadBefore);
-        c.Restore(entry);
-        Gte.Load(k.GteEntry);
-        run(c, mem);
-        SavePad(mem, k.PadOurs);
-        var ours = c.Snapshot();
-        Gte.Save(k.GteOurs);
-
-        k.Calls++;
-        int hi = (int)(entry.SP & (uint)(ram.Length - 1));
-        int lo = Math.Max(0, hi - (int)StackWindow);
-        bool same = ram[..lo].SequenceEqual(k.Theirs.AsSpan(0, lo))
-                 && ram[hi..].SequenceEqual(k.Theirs.AsSpan(hi));
-        if (!same)
-        {
-            k.Bad++;
-            if (k.Samples.Count < 8)
-            {
-                int i = FirstDiff(ram, k.Theirs, 0, lo);
-                if (i < 0) i = FirstDiff(ram, k.Theirs, hi, ram.Length);
-                int diffs = CountDiffs(ram, k.Theirs, 0, lo) + CountDiffs(ram, k.Theirs, hi, ram.Length);
-                k.Samples.Add($"a0={a0:X} a1={a1:X}: {diffs} byte(s), first 0x{0x80000000u + (uint)i:X8} " +
-                              $"recompiled {k.Theirs[i]:X2} ours {ram[i]:X2}");
-            }
-        }
-
-        int pad = k.PadOurs.AsSpan().CommonPrefixLength(k.PadTheirs);
-        if (pad < PadWords)
-        {
-            k.BadPad++;
-            if (k.Samples.Count < 8)
-                k.Samples.Add($"a0={a0:X} a1={a1:X}: scratchpad +0x{pad * 4:X2} recompiled {k.PadTheirs[pad]:X8} " +
-                              $"ours {k.PadOurs[pad]:X8}");
-        }
-
-        if (ours.S0 != theirs.S0 || ours.S1 != theirs.S1 || ours.S2 != theirs.S2 || ours.S3 != theirs.S3 ||
-            ours.S4 != theirs.S4 || ours.S5 != theirs.S5 || ours.S6 != theirs.S6 || ours.S7 != theirs.S7 ||
-            ours.FP != theirs.FP || ours.SP != theirs.SP || ours.RA != theirs.RA ||
-            ours.LO != theirs.LO || ours.HI != theirs.HI)
-        {
-            k.BadReg++;
-            if (k.Samples.Count < 8)
-                k.Samples.Add($"a0={a0:X} a1={a1:X}: registers, LO {theirs.LO:X8}/{ours.LO:X8} HI {theirs.HI:X8}/{ours.HI:X8} " +
-                              $"SP {theirs.SP:X8}/{ours.SP:X8}");
-        }
-
-        if (Gte.Diff(k.GteTheirs, k.GteOurs) is { } gte)
-        {
-            k.BadGte++;
-            if (k.Samples.Count < 8) k.Samples.Add($"a0={a0:X} a1={a1:X}: GTE {gte}");
-        }
-
-        // The recompiled result stands, so a mismatch cannot reach the picture.
-        k.Theirs.CopyTo(ram);
-        LoadPad(mem, k.PadTheirs);
-        c.Restore(theirs);
-        Gte.Load(k.GteTheirs);
-
-        double now = Environment.TickCount64 / 1000.0;
-        if (now < k.ReportAt) return;
-        k.ReportAt = now + 2.0;
-        Console.WriteLine($"[polyasm] verify {k.Name}: {k.Calls} call(s), {k.Bad} RAM mismatch(es), " +
-                          $"{k.BadPad} scratchpad mismatch(es), {k.BadReg} register mismatch(es), " +
-                          $"{k.BadGte} GTE mismatch(es){k.Extra()}");
-        foreach (var s in k.Samples) Console.WriteLine($"[polyasm]   {s}");
-        k.Samples.Clear();
-        k.Calls = k.Bad = k.BadPad = k.BadReg = k.BadGte = 0;
-    }
-
-    static int FirstDiff(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, int from, int to)
-    {
-        int i = a[from..to].CommonPrefixLength(b[from..to]);
-        return i == to - from ? -1 : from + i;
-    }
-
-    static int CountDiffs(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, int from, int to)
-    {
-        int n = 0;
-        for (int i = from; i < to; i++) if (a[i] != b[i]) n++;
-        return n;
-    }
 }
