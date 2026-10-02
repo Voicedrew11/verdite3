@@ -90,6 +90,11 @@ def find_jump_tables(module: dict, funcs: list) -> dict:
     the jump: fdat14 hoists the `lui`/`addiu` pair to the top of the function, 33
     instructions above the `jr` that uses it. So follow the registers over the
     whole function, the way the recompiler's own analyzer does.
+
+    Each `jr` maps to (table, count). The count is the `sltiu` bound that guards
+    the index, when one sits within 16 instructions of the `jr`; without it a
+    table is read until a word stops looking like a label, and a pointer laid out
+    after the table can pass for one.
     """
     lo, hi = module["base"], module["base"] + module["size"]
     tables = {}
@@ -97,12 +102,15 @@ def find_jump_tables(module: dict, funcs: list) -> dict:
     for func in funcs:
         value = {}  # register -> constant address it holds
         table = {}  # register -> table the register was loaded from
+        bound = None  # (pc, n) of the last `sltiu`: the switch's case count
         for pc in range(func["start"], min(func["end"], hi), 4):
             word = module["word"](pc)
             op, rs, rt, rd = word >> 26, (word >> 21) & 31, (word >> 16) & 31, (word >> 11) & 31
             imm = word & 0xFFFF
             simm = imm - 0x10000 if imm & 0x8000 else imm
 
+            if op == 11:  # sltiu
+                bound = (pc, simm & 0xFFFFFFFF)
             if op == 15:  # lui
                 value[rt], table[rt] = (imm << 16), None
             elif op == 9 and rs in value and value[rs] is not None:  # addiu off a lui
@@ -112,7 +120,8 @@ def find_jump_tables(module: dict, funcs: list) -> dict:
                 value[rt] = None
             elif op == 0 and word & 0x3F == 8:  # jr
                 if rs != 31 and table.get(rs) is not None and lo <= table[rs] < hi:
-                    tables[pc] = table[rs]
+                    count = bound[1] if bound and pc - bound[0] <= 64 else None
+                    tables[pc] = (table[rs], count)
             elif op == 0 and word & 0x3F in (32, 33):  # add/addu: base + scaled index
                 known = [value.get(r) for r in (rs, rt) if value.get(r) is not None]
                 value[rd], table[rd] = (known[0] if len(known) == 1 else None), None
@@ -125,11 +134,14 @@ def find_jump_tables(module: dict, funcs: list) -> dict:
     return tables
 
 
-def table_entries(module: dict, start: int, stops: set, text_lo: int, text_hi: int) -> list:
+def table_entries(module: dict, start: int, stops: set, text_lo: int, text_hi: int,
+                  count=None) -> list:
     """Read a table until a word stops looking like a label, or the next table begins."""
     entries = []
     at = start
     while at + 4 <= module["base"] + module["size"]:
+        if count is not None and len(entries) == count:
+            break
         if at != start and at in stops:
             break
         word = module["word"](at)
@@ -172,11 +184,12 @@ def merge_pass(funcs: list, base: int, text: bytes, module: dict) -> tuple:
     # A switch table's entries are all labels in the one function that indexes it,
     # so they carry the same proof a branch does -- and reach cases no branch does.
     tables = find_jump_tables(module, index.funcs)
-    for jr, start in tables.items():
+    stops = {at for at, _ in tables.values()}
+    for jr, (start, count) in tables.items():
         here = index.containing(jr)
         if here is None:
             continue
-        for entry in table_entries(module, start, set(tables.values()), base, end):
+        for entry in table_entries(module, start, stops, base, end, count):
             if index.containing(entry) != here:
                 joins.append(join(here, entry))
 
@@ -213,13 +226,38 @@ def merge_pass(funcs: list, base: int, text: bytes, module: dict) -> tuple:
     return out, notes
 
 
-def jal_targets(base: int, text: bytes) -> set:
-    """Every address the module calls with `jal`. These have to stay entry points."""
+def falls_into(word, start: int, lo: int) -> bool:
+    """Whether the instruction before start runs on into it.
+
+    It does unless the last non-nop instruction before start is an unconditional
+    jump (`j`, `jr`, `b`), or that jump's delay slot. An absorbed start reached
+    this way is the merged function's own next instruction, not a lost entry.
+    """
+    def jump(w):
+        op = w >> 26
+        return (op == OP_J or (op == 0 and w & 0x3F == 8)
+                or (op == 4 and (w >> 16) & 0x3FF == 0))
+    at = start - 4
+    while at >= lo and word(at) == 0:
+        at -= 4
+    if at < lo:
+        return False
+    return not (jump(word(at)) or (at - 4 >= lo and jump(word(at - 4))))
+
+
+def jal_targets(base: int, text: bytes, index) -> set:
+    """Every address the module calls with `jal`. These have to stay entry points.
+
+    Only sites inside a known function count: a data word that decodes as `jal`
+    is not a call (add_call_targets applies the same rule).
+    """
     targets = set()
     for offset in range(0, len(text) - 3, 4):
         word = struct.unpack_from("<I", text, offset)[0]
         if word >> 26 == OP_JAL:
             pc = base + offset
+            if index.containing(pc) is None:
+                continue
             targets.add((pc & 0xF0000000) | ((word & 0x03FFFFFF) << 2))
     return targets
 
@@ -286,31 +324,31 @@ def process(disc, overlay: dict, dry_run: bool, root: Path, config: Path) -> int
     # still reach: a label it emits from a `j`/branch, or an entry in a switch
     # table it resolves. A `jal` to one is unfixable -- a label is not callable --
     # and either way the merge would trade one unmapped call for another.
-    calls = jal_targets(base, text)
     index = FuncIndex(funcs)
+    calls = jal_targets(base, text, index)
     tables = find_jump_tables(module, index.funcs)
-    stops = set(tables.values())
+    stops = {at for at, _ in tables.values()}
     problems = 0
 
     for start, end, absorbed in all_notes:
         labels = jump_reachable(base, text, start, end)
-        for jr, at in tables.items():
+        for jr, (at, count) in tables.items():
             if start <= jr < end:
-                labels.update(table_entries(module, at, stops, base, base + len(text)))
+                labels.update(table_entries(module, at, stops, base, base + len(text), count))
         for addr in absorbed:
             if addr in calls:
                 print(f"    WARNING: 0x{addr:08X} is a `jal` target and cannot become a label")
                 problems += 1
-            elif addr not in labels:
+            elif addr not in labels and not falls_into(module["word"], addr, start):
                 print(f"    WARNING: 0x{addr:08X} is now unreachable inside func_{start:08X}")
                 problems += 1
 
     # A table entry that still points outside the function indexing it means the
     # merge did not go far enough, and the recompiler will read a shorter table
     # than the code indexes -- silently, and only some cases will misdispatch.
-    for jr, at in tables.items():
+    for jr, (at, count) in tables.items():
         here = index.containing(jr)
-        stray = [e for e in table_entries(module, at, stops, base, base + len(text))
+        stray = [e for e in table_entries(module, at, stops, base, base + len(text), count)
                  if index.containing(e) != here]
         if stray:
             where = " ".join(f"{e:08X}" for e in stray)
