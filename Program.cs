@@ -94,6 +94,12 @@ Kf3.ModelSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH_MODE
     Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
 Kf3.ModelSmoothing.Install();
 
+// The picture: 24-bit shading and no dither, off until judged. See docs/PICTURE.md.
+Kf3.TrueColor.Configure(Environment.GetEnvironmentVariable("KF3_TRUECOLOR"));
+Kf3.NoDither.Configure(Environment.GetEnvironmentVariable("KF3_NODITHER"),
+                       Environment.GetEnvironmentVariable("KF3_NODITHER_PROBE"));
+Kf3.NoDither.Install();
+
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();
 

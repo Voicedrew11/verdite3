@@ -10,7 +10,7 @@ was culled on whole pixels") and are the background for everything below.
 
 ## Status
 
-**Planned, nothing built.** The runtime half of all four features is already in
+**Unit 1 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
 the fork this repository shares with Verdite2 (`tools/RecompOne`), switched off.
 What is missing is Verdite3's half: the switches, the probes, the controls, and
 for the Z-buffer, the depth.
@@ -82,6 +82,23 @@ screenshots.
 - **Done when**: `KF3_NODITHER_PROBE=1` (port Verdite2's) reads GPUSTAT bit 9 as 0
   for a session with "None" or "Smooth", the draw-env and table counters say
   which route the bit took, 144.0 fps at 15.0 ticks/s; the user judges.
+
+#### Unit 1, done: measured, not judged
+
+- `patches/TrueColor.cs` is the switch alone (`KF3_TRUECOLOR`);
+  `patches/NoDither.cs` hooks PutDrawEnv and DrawOTag in all three executables
+  (6/6 committed) as pre/post pairs, so `FramePacing`'s post on DrawOTag and the
+  config's HLE replace compose. One Testing control, **Picture ▸ Shading**: Dither
+  (the console) / None / Smooth (24-bit), kept as `kf3.shading`; a set
+  `KF3_TRUECOLOR` or `KF3_NODITHER` wins. Default Dither.
+- **Both routes carry the bit here**, unlike Verdite2. `KF3_NODITHER_PROBE=1` in
+  `fdat02`, 144 fps: 144 draw envs a second ask for dither (one a frame), and
+  **2160 table E1 words a second, 15 a frame, every one with bit 9 set** (the
+  overlays' `DR_MODE`s from `func_80041E68`); no other E1 word is in the table.
+- GPUSTAT bit 9 after each frame: **1** with Dither, **0** with None for the
+  whole session, so nothing reaches the GPU by a third route.
+- 144.0 fps drawn at 15.0 ticks/s both ways.
+- **Not judged by eye**: None's bands and Smooth's gradient.
 
 ### Unit 2: perspective and sub-pixel on the address map
 

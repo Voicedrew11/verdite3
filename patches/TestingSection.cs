@@ -45,7 +45,7 @@ public sealed class TestingSection : ISettingsSection
         new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v),
     ];
 
-    const string FpsKey = "kf3.fps", TexKey = "kf3.texscroll";
+    const string FpsKey = "kf3.fps", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
 
     public static void Install()
     {
@@ -69,6 +69,8 @@ public sealed class TestingSection : ISettingsSection
         foreach (var k in Switches)
             if (Unset(k.Env) && Rt.View.GetInt(k.Key, -1) is >= 0 and var v) k.Set(v != 0);
         if (Unset("KF3_TEXSCROLL") && Rt.View.GetInt(TexKey, -1) is >= 0 and var t) TextureScroll.Setting = t;
+        if (Unset("KF3_TRUECOLOR") && Unset("KF3_NODITHER") && Rt.View.GetInt(ShadingKey, -1) is >= 0 and var sh)
+            SetShading(sh);
     }
 
     static bool Unset(string env) => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(env));
@@ -88,6 +90,15 @@ public sealed class TestingSection : ISettingsSection
             Keep(k.Key, k.Get() ? 1 : 0);
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(tip);
+    }
+
+    // Dither (the console), None (15-bit, no crosshatch), Smooth (24-bit, no crosshatch).
+    static int Shading => TrueColor.Enabled ? 2 : NoDither.Enabled ? 1 : 0;
+
+    static void SetShading(int v)
+    {
+        NoDither.Enabled = v != 0;
+        TrueColor.Enabled = v == 2;
     }
 
     static Kept K(string key) => Switches.First(s => s.Key == key);
@@ -180,6 +191,19 @@ public sealed class TestingSection : ISettingsSection
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Every drawn frame is the game's own code, too fast above 15 fps.");
         if (!FramePacing.Enabled) ImGui.EndDisabled();
 
+        ImGui.SeparatorText("Picture");
+        Note("Not judged yet: each ships off until it has been looked at.");
+        string[] shading = ["Dither (the console)", "None", "Smooth (24-bit)"];
+        int sh = Shading;
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.Combo("Shading", ref sh, shading, shading.Length))
+        {
+            SetShading(sh);
+            Keep(ShadingKey, sh);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("None drops the crosshatch and keeps 15-bit bands; Smooth keeps 8 bits a channel instead.");
+
         ImGui.SeparatorText("Routines in C#");
         Note("Verify runs both versions every call and prints mismatches to the console; it is slow.");
         RoutineCombo("Stage 15", () => Stage15.Setting, v => Stage15.Setting = v,
@@ -198,5 +222,7 @@ public sealed class TestingSection : ISettingsSection
         if (ImGui.Checkbox("Pacing (KF3_FPS_PROBE)", ref p)) FramePacing.ProbeOn = p;
         bool s = ViewSmoothing.ProbeOn;
         if (ImGui.Checkbox("Smoothing (KF3_SMOOTH_PROBE)", ref s)) { ViewSmoothing.ProbeOn = s; ModelSmoothing.ProbeOn = s; }
+        bool d = NoDither.ProbeOn;
+        if (ImGui.Checkbox("Dither (KF3_NODITHER_PROBE)", ref d)) NoDither.ProbeOn = d;
     }
 }
