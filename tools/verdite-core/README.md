@@ -32,6 +32,7 @@ game; a flag overrides it.
 | `add_call_targets.py` | splice the `jal` targets a linear sweep missed into a function map |
 | `merge_branch_spans.py` | rejoin functions the sweep split at an interior `jr`/`j` |
 | `merge_sdk_names.py` | write the PSY-Q names a signature match found into the function maps |
+| `match_code.py` | a function's nearest counterparts in *another game's* executable, by structure (opcodes, GTE commands, record offsets, constants, calls), and two routines' calls aligned in order |
 | `verdite_game.py` | finds the game's root and reads its `config/verdite.json` |
 
 A game's `config/verdite.json` today:
