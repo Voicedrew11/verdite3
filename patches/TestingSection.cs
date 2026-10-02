@@ -230,6 +230,8 @@ public sealed class TestingSection : ISettingsSection
             "The view matrices from the camera.");
         RoutineCombo("Polygon assemblers", () => PolyAssembler.Setting, v => PolyAssembler.Setting = v,
             "The map's and the models' bulk polygons.");
+        RoutineCombo("Near path", () => NearPath.Setting, v => NearPath.Setting = v,
+            "The near map and the models' near submit, with libgte's subdivision. The Z-buffer covers them only in C#.");
         RoutineCombo("Model walk", () => ModelWalk.Setting, v => ModelWalk.Setting = v,
             "Creatures, objects, effects and billboards. Model smoothing needs it in C#.");
         RoutineCombo("MO pose blender", () => MoPose.Setting, v => MoPose.Setting = v,
