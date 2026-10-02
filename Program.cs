@@ -94,11 +94,21 @@ Kf3.ModelSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH_MODE
     Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
 Kf3.ModelSmoothing.Install();
 
-// The picture: 24-bit shading and no dither, off until judged. See docs/PICTURE.md.
+// The picture: 24-bit shading, no dither, perspective, sub-pixel and the Z-buffer, each off until judged. See docs/PICTURE.md.
 Kf3.TrueColor.Configure(Environment.GetEnvironmentVariable("KF3_TRUECOLOR"));
 Kf3.NoDither.Configure(Environment.GetEnvironmentVariable("KF3_NODITHER"),
                        Environment.GetEnvironmentVariable("KF3_NODITHER_PROBE"));
 Kf3.NoDither.Install();
+Kf3.Perspective.Configure(Environment.GetEnvironmentVariable("KF3_PERSPECTIVE"),
+                          Environment.GetEnvironmentVariable("KF3_PERSPECTIVE_PROBE"));
+Kf3.Perspective.Install();
+Kf3.Subpixel.Configure(Environment.GetEnvironmentVariable("KF3_SUBPIXEL"),
+                       Environment.GetEnvironmentVariable("KF3_SUBPIXEL_PROBE"),
+                       Environment.GetEnvironmentVariable("KF3_SUBPIXEL_CULL"));
+Kf3.Subpixel.Install();
+Kf3.ZBuffer.Configure(Environment.GetEnvironmentVariable("KF3_ZBUFFER"),
+                      Environment.GetEnvironmentVariable("KF3_ZBUFFER_PROBE"));
+Kf3.ZBuffer.Install();
 
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();

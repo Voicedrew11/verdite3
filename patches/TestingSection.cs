@@ -43,6 +43,10 @@ public sealed class TestingSection : ISettingsSection
         new("kf3.smooth_models", "KF3_SMOOTH_MODELS", () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v),
         new("kf3.needle_hold", "KF3_STAGE15_NEEDLE", () => Stage15.NeedleHeld, v => Stage15.NeedleHeld = v),
         new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v),
+        new("kf3.perspective", "KF3_PERSPECTIVE", () => Perspective.Enabled, v => Perspective.Enabled = v),
+        new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v),
+        new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v),
+        new("kf3.zbuffer", "KF3_ZBUFFER", () => ZBuffer.Enabled, v => ZBuffer.Enabled = v),
     ];
 
     const string FpsKey = "kf3.fps", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
@@ -203,6 +207,20 @@ public sealed class TestingSection : ISettingsSection
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("None drops the crosshatch and keeps 15-bit bands; Smooth keeps 8 bits a channel instead.");
+        Toggle("Perspective-correct textures", K("kf3.perspective"),
+            "Textures follow each corner's depth instead of warping across a polygon.");
+        Toggle("Sub-pixel vertices", K("kf3.subpixel"),
+            "Corners keep the fraction of a pixel the GTE dropped, so edges stop jittering as the view moves.");
+        if (!Subpixel.Enabled) ImGui.BeginDisabled();
+        ImGui.Indent();
+        Toggle("Facing test on the fractional corners", K("kf3.subpixel_cull"),
+            "Off decides a face's facing on whole pixels, as the game does; thin faces can then drop.");
+        ImGui.Unindent();
+        if (!Subpixel.Enabled) ImGui.EndDisabled();
+        Toggle("Z-buffer", K("kf3.zbuffer"),
+            "Per-pixel occlusion from the depths the C# assemblers record; what they do not build keeps painter's order.");
+        if (ZBuffer.Enabled && PolyAssembler.Setting != 1)
+            Note("Needs the polygon assemblers in C#.");
 
         ImGui.SeparatorText("Routines in C#");
         Note("Verify runs both versions every call and prints mismatches to the console; it is slow.");
@@ -224,5 +242,11 @@ public sealed class TestingSection : ISettingsSection
         if (ImGui.Checkbox("Smoothing (KF3_SMOOTH_PROBE)", ref s)) { ViewSmoothing.ProbeOn = s; ModelSmoothing.ProbeOn = s; }
         bool d = NoDither.ProbeOn;
         if (ImGui.Checkbox("Dither (KF3_NODITHER_PROBE)", ref d)) NoDither.ProbeOn = d;
+        bool pp = Perspective.ProbeOn;
+        if (ImGui.Checkbox("Address map (KF3_PERSPECTIVE_PROBE)", ref pp)) Perspective.ProbeOn = pp;
+        bool sp = Subpixel.ProbeOn;
+        if (ImGui.Checkbox("Sub-pixel (KF3_SUBPIXEL_PROBE)", ref sp)) Subpixel.ProbeOn = sp;
+        bool zp = ZBuffer.ProbeOn;
+        if (ImGui.Checkbox("Z-buffer (KF3_ZBUFFER_PROBE)", ref zp)) ZBuffer.ProbeOn = zp;
     }
 }

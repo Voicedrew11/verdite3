@@ -179,7 +179,8 @@ public static partial class PolyAssembler
     }
 
     /// <summary>NCLIP on the three cached screen words; the result is kept, as the
-    /// game stores it.</summary>
+    /// game stores it. Under sub-pixel the facing is taken on the fractional corners
+    /// too (0052), or thin faces drop on whole pixels.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static bool Visible(ref Frame fr, uint p0, uint p1, uint p2)
     {
@@ -190,7 +191,31 @@ public static partial class PolyAssembler
         Gte.Write(13, w1);
         Gte.Nclip();
         fr.Nclip = Gte.Read(24);
-        return (int)fr.Nclip > 0;
+        bool whole = (int)fr.Nclip > 0;
+        // Verify runs the recompiled routine, which culls on whole pixels; stand down.
+        return Subpixel.Cull && GteDepth.Subpixel && _mode != Mode.Verify
+            ? FacingFractional(whole, p0, w0, p1, w1, p2, w2)
+            : whole;
+    }
+
+    /// <summary>Faces the fractional test kept or dropped that the whole-pixel test
+    /// had the other way round.</summary>
+    public static long CullKept, CullDropped;
+
+    /// <summary>0052. Cull at the corners plus their fractions; a corner the map did
+    /// not answer for, or that was clamped, leaves the game's whole-pixel answer.</summary>
+    static bool FacingFractional(bool whole, uint p0, uint w0, uint p1, uint w1, uint p2, uint w2)
+    {
+        if (!GteVertexMap.Peek(p0, w0, out var a0) || a0.Clipped
+            || !GteVertexMap.Peek(p1, w1, out var a1) || a1.Clipped
+            || !GteVertexMap.Peek(p2, w2, out var a2) || a2.Clipped)
+            return whole;
+        double x0 = (short)w0 + a0.Fx, y0 = (short)(w0 >> 16) + a0.Fy;
+        double x1 = (short)w1 + a1.Fx, y1 = (short)(w1 >> 16) + a1.Fy;
+        double x2 = (short)w2 + a2.Fx, y2 = (short)(w2 >> 16) + a2.Fy;
+        bool front = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0;
+        if (front != whole) { if (front) CullKept++; else CullDropped++; }
+        return front;
     }
 
     /// <summary>The bump allocator on the scratchpad's cursor. The cursor moves even
