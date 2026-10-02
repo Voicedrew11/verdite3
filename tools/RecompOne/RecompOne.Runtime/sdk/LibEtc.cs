@@ -172,10 +172,10 @@ public static class LibEtc
     {
         _vcount++;
 
-        //RCntCNT3/EvSpINT -- the vblank root counter. a game that opened it with
-        //EvMdINTR expects its handler once a frame; the recompiled build has no
-        //timer interrupt, so this is the only place it can come from.
-        Bios.BiosB.DeliverEventIntr(c, m, 0xF2000003u, 0x0002u);
+        //0021: RCntCNT3/EvSpINT, the vblank root counter's event, is not delivered
+        //here. IRQ 0 below delivers it (Interrupts.ServiceIrq -> DeliverIrqEvents),
+        //as on upstream's blocking timeline; delivering it here as well ran every
+        //handler on it twice a vblank.
 
         if (Event.HasAnyListeners<VSyncEvent>())
         {

@@ -40,6 +40,14 @@ Four files in the directory have no entry below:
   60 Hz grid rather than when the game asks; `KF2_VSYNC=block` is upstream's
   blocking timeline. See "The vblank fired when the game asked" in
   `docs/RUNTIME.md`.
+  **Amended 2026-10-02: the vblank root counter's event (`0xF2000003`,
+  `EvSpINT`) is delivered once a vblank, by IRQ 0's service, and no longer
+  directly from `LibEtc.TickVBlank` as well.** Both deliveries ran, so every
+  handler on that event ran twice a vblank on this timeline (upstream's blocking
+  one raises IRQ 0 only). Measured 120.0 → 60.0 a second in both games: Verdite2's
+  `func_80017850` clock `0x801B6CAC`, Verdite3's `func_80019570` count
+  `0x801C12E8`. Verdite3's own frame gate then holds it to 15 frames, not 30;
+  Verdite2's acceptance numbers are unchanged. **No recompile.**
 - `0045-frame-profiler.patch` — a diagnostic: `Diagnostics/Profiler.cs`, and
   sections around `HookManager.Invoke` (the hooked body and each delegate apart),
   `LibEtc.VSync`, `Runtime.PresentFrame`, the window's events, render and swap,
