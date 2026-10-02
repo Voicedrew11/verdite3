@@ -169,6 +169,36 @@ Two readings are the probe's, not the game's: call #5 shows one 4-word packet at
 #20 (the swap) shows about 600 "removed", because once the front table is linked
 in at slot 8190 the walk of the main table stops there.
 
+## The Testing tab
+
+Settings ▸ **Testing** (`patches/TestingSection.cs`, added 2026-10-02) holds every
+switch the port has, live, so a change can be compared without a restart:
+
+- **Frame pacing** on or off, the frame rate (30-360, or uncapped), and a readout
+  of the frames drawn and ticks taken a second.
+- **Smoothing**: the camera (with the compass needle and the gauges), creatures
+  and objects (not judged), the needle's and the billboards' tick holds, and the
+  scrolling textures (every frame, held, carried). Dimmed while pacing is off.
+- **Routines in C#**: stage 15, the camera block, the polygon assemblers, the
+  model walk and the MO pose blender, each recompiled, C# or verify.
+- The pacing and smoothing **console probes**.
+
+To make that possible, **every one of those patches now attaches in every state**
+and checks its switch on each call: pacing passes the stages, the frame gate and
+the boundary straight through while it is off, and a routine set to recompiled
+calls the original. Measured: with nothing set, the model walk runs 14.94 times a
+second (the game's own rate, the frame gate in place); `KF3_FPS=144` still reads
+144.0 fps at 15.0 ticks/s.
+
+**Kept**: the on/off choices, the frame rate and the textures' mode go in
+`interface.ini` as `kf3.*` and come back at the next boot, applied on
+`RuntimeReadyEvent` (the config loads after `Program.cs`). **A `KF3_*` variable
+that is set wins** over a kept value. Checked: `kf3.pacing=1`, `kf3.fps=120` and
+`kf3.smooth_models=1` with no variables boot to 120.0 fps at 14.9 ticks/s with a
+creature carried on 120 of 120 frames. The routines' modes are not kept: verify
+is a comparison for one session. Pacing turned on from the tab with no rate
+chosen aims for 144.
+
 ## Frame pacing
 
 `patches/FramePacing.cs`, **off unless `KF3_FPS` is set**, because the picture

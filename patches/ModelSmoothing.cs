@@ -71,7 +71,12 @@ public static class ModelSmoothing
         public long LastDrawTick;
     }
 
-    public static bool Enabled { get; private set; }
+    public static bool Enabled { get; set; }
+
+    /// <summary>Carrying now: on and under pacing.</summary>
+    public static bool Active => Enabled && FramePacing.Enabled;
+
+    public static bool ProbeOn { get => _probe; set => _probe = value; }
     static bool _probe;
 
     // ---- the root carry ----
@@ -111,13 +116,11 @@ public static class ModelSmoothing
 
     public static void Install()
     {
-        if (!Enabled) return;
-        // Without pacing every frame is a tick, and there is nothing to carry.
-        if (!FramePacing.Enabled) { Enabled = false; return; }
+        // Installed in every state; Active decides per call, so the Testing tab can switch it.
         Event.AddListener<OverlayLoadedEvent>(_ => Reprime());
         // The clip time is carried only through the C# blender; positions need only the walk.
         MoPose.ClipCarry = CarryClip;
-        Console.WriteLine("[KF3] model smoothing: on");
+        Console.WriteLine($"[KF3] model smoothing: {(Enabled ? "on" : "off")}");
     }
 
     /// <summary>Forget every slot and every cached clip length: an overlay load
@@ -148,6 +151,7 @@ public static class ModelSmoothing
         ref int x, ref int y, ref int z, ref short pitch, ref short yaw, ref short roll)
     {
         if (!Enabled) return;
+        if (!FramePacing.Enabled) return;
         int i = Index(table, slot);
         if (i < 0) return;
         _drawn++;
@@ -224,7 +228,7 @@ public static class ModelSmoothing
     {
         floorTime = time;
         frac = 0.0;
-        if (!Enabled) return false;
+        if (!Active) return false;
         if (_inTable < 0) return false;
         _clipCalls2++;
 

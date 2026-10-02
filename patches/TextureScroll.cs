@@ -63,7 +63,7 @@ public static class TextureScroll
 
     public static void Install()
     {
-        if (_mode == Mode.Off || !FramePacing.Enabled) return;
+        // Attached in every mode, so the Testing tab can switch it live.
         HookAttach.OnOverlayLoad("texture scroll", Attach);
     }
 
@@ -87,8 +87,12 @@ public static class TextureScroll
         return ok;
     }
 
+    /// <summary>The mode as the Testing tab sets it: 0 every frame, 1 held, 2 carried.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
+
     static void Replace(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
+        if (_mode == Mode.Off || !FramePacing.Enabled) { orig(c, m); return; }
         _calls++;
         if (FramePacing.FirstWalkOfTick(ref _seen))
         {

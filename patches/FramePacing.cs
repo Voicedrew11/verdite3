@@ -137,15 +137,46 @@ public static class FramePacing
         else throw new ArgumentException($"KF3_FPS: cannot read '{fps}'");
     }
 
+    /// <summary>The frame rate pacing aims for when the Testing tab turns it on with
+    /// none chosen; KF3_FPS unset leaves pacing off.</summary>
+    public const double DefaultFps = 144.0;
+
+    static double _hostFps = -1.0;
+
+    /// <summary>Turn pacing on or off while the game runs. The hooks are attached in
+    /// either state and pass everything through while it is off.</summary>
+    public static void SetEnabled(bool on)
+    {
+        if (on == Enabled) return;
+        Enabled = on;
+        _iterationTicks = _tickThisFrame = true;
+        _logicClockMs = -1.0;
+        _lastBoundaryMs = -1.0;
+        if (!_inGame) return;
+        if (on) ApplyHostCeiling();
+        else if (_hostFps >= 0.0) RecompOne.Runtime.Runtime.TargetFps = _hostFps;
+    }
+
+    /// <summary>The drawn rate, 0 for uncapped.</summary>
+    public static void SetTarget(double fps)
+    {
+        TargetFps = fps <= 0.0 ? 0.0 : Math.Clamp(fps, 5.0, 1000.0);
+        _due = 0.0;
+        if (Enabled && _inGame) ApplyHostCeiling();
+    }
+
+    public static bool ProbeOn { get => _probe; set => _probe = value; }
+
     public static void Install()
     {
-        if (!Enabled) return;
+        // Attached whether or not KF3_FPS is set, so the Testing tab can turn pacing on.
         // Only GAME.EXE has a world to pace. OPEN.EXE and END.EXE keep the runtime's
         // own 60 Hz throttle and their own waits, as with pacing off.
         Event.AddListener<OverlayLoadedEvent>(e =>
         {
-            if (e.Name is "open" or "end") { _inGame = false; RecompOne.Runtime.Runtime.TargetFps = 60.0; }
-            else if (e.Name == "game") { _inGame = true; _logicClockMs = -1.0; ApplyHostCeiling(); }
+            if (_hostFps < 0.0) _hostFps = RecompOne.Runtime.Runtime.TargetFps;
+            if (e.Name is "open" or "end") { _inGame = false; if (Enabled) RecompOne.Runtime.Runtime.TargetFps = 60.0; }
+            else if (e.Name == "game") { _inGame = true; _logicClockMs = -1.0; if (Enabled) ApplyHostCeiling(); }
         });
         Event.AddListener<VSyncEvent>(_ => WatchdogProbe());
         HookAttach.OnOverlayLoad("pacing", Attach, "See \"Frame pacing\" in docs/DEVELOPMENT.md.");
@@ -205,6 +236,7 @@ public static class FramePacing
     /// <summary>The game's frame gate, skipped; the count it would have zeroed is.</summary>
     public static bool BeforeFrameGate(CpuContext c, IMemory m)
     {
+        if (!Enabled) return true;
         m.WriteU32(VBlankCount, 0u);
         return false;
     }
@@ -214,7 +246,7 @@ public static class FramePacing
     /// <summary>The frame boundary: the ordering table drawn after a VSync call.</summary>
     public static void AfterDrawOTag(CpuContext c, IMemory m)
     {
-        if (_vsyncCalls == 0 || !_inGame) return;
+        if (!Enabled || _vsyncCalls == 0 || !_inGame) return;
         _vsyncCalls = 0;
         _frames++;
 
@@ -244,7 +276,7 @@ public static class FramePacing
     /// <summary>Skip a main-loop stage on an iteration the world clock did not tick.</summary>
     public static bool BeforeStage(CpuContext c, IMemory m)
     {
-        if (!_sites.Contains(c.RA)) return true;
+        if (!Enabled || !_sites.Contains(c.RA)) return true;
         if (c.RA == FirstSite)
         {
             double now = _clock.Elapsed.TotalMilliseconds;

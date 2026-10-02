@@ -22,7 +22,13 @@ public static class ViewSmoothing
     /// <summary>An angle step in one tick past which the view snaps (a cut), 0x1000 a turn.</summary>
     public const int SnapAngle = 0x300;
 
-    public static bool Enabled { get; private set; }
+    public static bool Enabled { get; set; }
+
+    /// <summary>Carrying now: on, under pacing, with stage 15 in C#.</summary>
+    public static bool Active => Enabled && FramePacing.Enabled && Stage15.InCSharp;
+
+    public static bool ProbeOn { get => _probe; set => _probe = value; }
+    static bool _wasActive;
 
     /// <summary>Held off by the shell's fixed <c>view</c>.</summary>
     public static bool Suspended { get; set; }
@@ -43,23 +49,21 @@ public static class ViewSmoothing
 
     public static void Install()
     {
-        if (!Enabled) return;
-        // Without pacing every frame is a tick, and there is nothing to carry.
-        if (!FramePacing.Enabled) { Enabled = false; return; }
-        if (!Stage15.InCSharp)
-        {
-            Enabled = false;
-            Console.Error.WriteLine("[KF3] view smoothing: needs stage 15 in C# (KF3_STAGE15 unset or 1); off.");
-            return;
-        }
+        // Hooked in every state; Active decides per frame, so the Testing tab can switch it.
         Stage15.OnHanded = OnHanded;
         Event.AddListener<OverlayLoadedEvent>(_ => _primed = false);
-        Console.WriteLine("[KF3] view smoothing: on");
+        Console.WriteLine($"[KF3] view smoothing: {(Enabled ? "on" : "off")}");
     }
 
     static void OnHanded(Camera handed)
     {
         if (Suspended) return;
+        if (!Active)
+        {
+            if (_wasActive) { Stage15.ViewOverride = null; _primed = false; _wasActive = false; }
+            return;
+        }
+        _wasActive = true;
         long tick = FramePacing.Ticks;
         if (!_primed)
         {

@@ -29,6 +29,9 @@ public static partial class PolyAssembler
 
     enum Mode { Off, On, Verify }
     static Mode _mode = Mode.On;
+
+    /// <summary>The mode as the Testing tab sets it: 0 recompiled, 1 C#, 2 verify.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
     static bool _queuedMap;
 
     public static bool MapEnabled { get; set; } = true;
@@ -58,7 +61,7 @@ public static partial class PolyAssembler
 
     public static void Install()
     {
-        if (_mode == Mode.Off) return;
+        // Attached in every mode, so the Testing tab can switch it live; off runs the recompiled routine.
         HookAttach.OnOverlayLoad("polyasm", Attach);
     }
 
@@ -91,7 +94,7 @@ public static partial class PolyAssembler
     }
 
     // PGXP follows values through the registers, which locals do not have.
-    static bool Recompiled(bool on) => !on || RecompOne.Runtime.Pgxp.Pgxp.CpuTracking;
+    static bool Recompiled(bool on) => !on || _mode == Mode.Off || RecompOne.Runtime.Pgxp.Pgxp.CpuTracking;
 
     static void ReplaceMap(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {

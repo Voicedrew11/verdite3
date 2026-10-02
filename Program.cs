@@ -94,6 +94,9 @@ Kf3.ModelSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH_MODE
     Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
 Kf3.ModelSmoothing.Install();
 
+// The Testing tab in Settings: every switch above, live.
+Kf3.TestingSection.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200

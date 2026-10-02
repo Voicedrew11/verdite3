@@ -67,6 +67,9 @@ public static class CameraBlock
 
     enum Mode { Off, On, Verify }
     static Mode _mode = Mode.On;
+
+    /// <summary>The mode as the Testing tab sets it: 0 recompiled, 1 C#, 2 verify.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
     static bool _queued;
 
     static readonly Differential _check = new("camerablock", "func_800357E8", 0x400);
@@ -93,7 +96,7 @@ public static class CameraBlock
 
     public static void Install()
     {
-        if (_mode == Mode.Off) return;
+        // Attached in every mode, so the Testing tab can switch it live; off runs the recompiled routine.
         HookAttach.OnOverlayLoad("camera block", Attach);
     }
 
@@ -119,7 +122,7 @@ public static class CameraBlock
     static void Replace(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
         // PGXP's RAM shadow is kept by the recompiled stores, which C# stores skip.
-        if (RecompOne.Runtime.Pgxp.Pgxp.CpuTracking || m is not PSMemory mem)
+        if (_mode == Mode.Off || RecompOne.Runtime.Pgxp.Pgxp.CpuTracking || m is not PSMemory mem)
         {
             orig(c, m);
             return;

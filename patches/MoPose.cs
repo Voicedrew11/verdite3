@@ -48,6 +48,9 @@ public static class MoPose
 
     enum Mode { Off, On, Verify }
     static Mode _mode = Mode.On;
+
+    /// <summary>The mode as the Testing tab sets it: 0 recompiled, 1 C#, 2 verify.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
     static bool _queued;
     static Action<CpuContext, IMemory>[]? _callees;
 
@@ -73,7 +76,7 @@ public static class MoPose
 
     public static void Install()
     {
-        if (_mode == Mode.Off) return;
+        // Attached in every mode, so the Testing tab can switch it live; off runs the recompiled routine.
         HookAttach.OnOverlayLoad("mo pose", Attach);
     }
 

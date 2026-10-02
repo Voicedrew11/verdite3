@@ -5,6 +5,10 @@ default. This fills in as diagnostics are added, the way Verdite2's
 `docs/ENV_VARS.md` did. Add an entry here when a switch is added to
 `Program.cs`.
 
+Most of the switches below also have a live control in Settings ▸ Testing ("The
+Testing tab" in `docs/DEVELOPMENT.md`); a set variable wins over a value the tab
+kept.
+
 ## Status
 
 | switch | what | default |

@@ -33,7 +33,7 @@ public static class SpriteAnim
     const uint Table = 0x80182968;
     const int Stride = 0x18, Count = 0x80, IdOff = 0x0, CelOff = 0x5;
 
-    public static bool Enabled { get; private set; } = true;
+    public static bool Enabled { get; set; } = true;
 
     static readonly ModInfo _self = new()
     {
@@ -72,16 +72,7 @@ public static class SpriteAnim
     /// world's rate is the whole point, so pacing off means nothing to hold.</summary>
     public static void Install()
     {
-        if (!FramePacing.Enabled)
-        {
-            Console.WriteLine("[KF3] sprite anim: not installed (frame pacing off)");
-            return;
-        }
-        if (!Enabled)
-        {
-            Console.WriteLine("[KF3] sprite anim: not installed (disabled)");
-            return;
-        }
+        // Attached whether or not pacing is on, so the Testing tab can switch both live.
         HookAttach.OnOverlayLoad("sprite anim", Attach);
     }
 
@@ -109,7 +100,6 @@ public static class SpriteAnim
         _paired = n == 2 && HookAttach.Installed(target);
         if (!_paired)
         {
-            Enabled = false;
             Console.Error.WriteLine("[KF3] sprite anim: not installed (the pair did not attach)");
             return false;
         }
@@ -123,7 +113,7 @@ public static class SpriteAnim
     public static void Before(CpuContext c, IMemory m)
     {
         // The C# walk holds the cels itself.
-        if (ModelWalk.InCSharp) { _held = false; return; }
+        if (ModelWalk.InCSharp || !Enabled || !FramePacing.Enabled) { _held = false; return; }
         _walks++;
         if (FramePacing.FirstWalkOfTick(ref _seen))
         {

@@ -79,6 +79,9 @@ public static class ModelWalk
     enum Mode { Off, On, Verify }
     static Mode _mode = Mode.On;
 
+    /// <summary>The mode as the Testing tab sets it: 0 recompiled, 1 C#, 2 verify.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
+
     /// <summary>Whether the C# walk draws (KF3_MODELWALK unset or 1), so the carry and the
     /// billboard hold are this file's.</summary>
     public static bool InCSharp => _mode == Mode.On;
@@ -119,7 +122,7 @@ public static class ModelWalk
 
     public static void Install()
     {
-        if (_mode == Mode.Off) return;
+        // Attached in every mode, so the Testing tab can switch it live; off runs the recompiled routine.
         HookAttach.OnOverlayLoad("model walk", Attach);
     }
 
@@ -185,7 +188,7 @@ public static class ModelWalk
     static void Run(CpuContext c, PSMemory mem)
     {
         uint entry = c.SP;
-        _carry = _mode == Mode.On && ModelSmoothing.Enabled;
+        _carry = _mode == Mode.On && ModelSmoothing.Active;
         uint frame = _carry ? CarryFrame : Frame;
         uint sp = entry - frame;
         c.SP = sp;

@@ -35,7 +35,7 @@ in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
 the model walk and the MO pose blender in C# (`KF3_MODELWALK`, `KF3_MOPOSE`,
 verified, on), the creatures, objects and their clip times carried between ticks
 (`KF3_SMOOTH_MODELS`, measured, off until judged) and the scrolling textures held
-to the tick (`KF3_TEXSCROLL`). `tools/RecompOne` is a `git subtree`
+to the tick (`KF3_TEXSCROLL`); every switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `2013e51` (the vblank
 event delivered once), and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in

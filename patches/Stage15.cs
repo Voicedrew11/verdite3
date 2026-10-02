@@ -82,6 +82,9 @@ public static class Stage15
 
     enum Mode { Off, On, Verify }
     static Mode _mode = Mode.On;
+
+    /// <summary>The mode as the Testing tab sets it: 0 recompiled, 1 C#, 2 verify.</summary>
+    public static int Setting { get => (int)_mode; set => _mode = (Mode)Math.Clamp(value, 0, 2); }
     static long _needleTick = -1;
     static bool _needleHeld = true;
 
@@ -105,6 +108,9 @@ public static class Stage15
     public static long NeedleCarried;
     static bool _queued;
     static Action<CpuContext, IMemory>[]? _callees;
+
+    /// <summary>Whether the compass needle's spring is held to the tick (KF3_STAGE15_NEEDLE).</summary>
+    public static bool NeedleHeld { get => _needleHeld; set => _needleHeld = value; }
 
     /// <summary>Whether the C# routine draws (KF3_STAGE15 unset or 1), so the override is read.</summary>
     public static bool InCSharp => _mode == Mode.On;
@@ -143,7 +149,7 @@ public static class Stage15
 
     public static void Install()
     {
-        if (_mode == Mode.Off) return;
+        // Attached in every mode, so the Testing tab can switch it live; off runs the recompiled routine.
         HookAttach.OnOverlayLoad("stage 15", Attach);
     }
 
@@ -407,7 +413,7 @@ public static class Stage15
     /// interpolated between the last two ticks; the tick's values go back after.</summary>
     static void CarryFollowers(PSMemory mem)
     {
-        if (!ViewSmoothing.Enabled || Verifier.Replaying) return;
+        if (!ViewSmoothing.Active || Verifier.Replaying) return;
         long tick = FramePacing.Ticks;
         bool first = FramePacing.FirstWalkOfTick(ref _followTick);
         for (int i = 0; i < Followers.Length; i++)
@@ -444,7 +450,7 @@ public static class Stage15
     static void CarryNeedle(PSMemory mem, uint a, uint b, short yaw, bool stepped)
     {
         _needleDrawn = false;
-        if (!ViewSmoothing.Enabled || !_needleHeld || Verifier.Replaying) return;
+        if (!ViewSmoothing.Active || !_needleHeld || Verifier.Replaying) return;
         long tick = FramePacing.Ticks;
         if (stepped || a != _needleA)
         {

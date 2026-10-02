@@ -388,7 +388,7 @@ the record whose submit is in progress (`Enter`/`Leave` round each submit).
 **Where it stands.** Verdite3 `main`, local commits only (none pushed). Units 1-3
 are built; the camera carry is judged; the model carry is measured and off.
 
-1. **The user judges `KF3_SMOOTH_MODELS=1`** at 144 fps: creatures walking and
+1. **The user judges `KF3_SMOOTH_MODELS=1`** (or Settings ▸ Testing) at 144 fps: creatures walking and
    looping, doors turning, effects. If it looks right, make it on whenever pacing
    is (as `KF3_SMOOTH` went) and say so here. The needle, the gauges and the
    texture hold are on now and also want a look.
