@@ -5,13 +5,13 @@ How the recompiler turns the disc's MIPS into C#: the overlays in
 PSY-Q entry points by address to the runtime's HLE. Verdite2's
 `docs/RECOMPILATION.md` is the model, and it documents the traps to expect here
 too — overlays that share an address range, entry points a linear sweep misses,
-and `ScanCrossImage` splitting one function into several. None of those is yet
-known to apply to this disc; they are what to look for, not findings.
+and functions split in two. Which of them applied here, and what was new, is
+below.
 
 ## Status
 
-Nothing recompiled yet. The disc has been read; the overlays below are what
-`config/kf3.json` will declare.
+Recompiled 2026-10-02: the boot stub, `OPEN.EXE`, `GAME.EXE`, `END.EXE` and 28
+area modules, 2501 functions, `applied 63 patches, 0 reimplementations`.
 
 ## What is on the disc
 
@@ -41,8 +41,8 @@ other two are close in size (Verdite2: `OPEN.EXE` 0x2E000, `END.EXE` 0x29000).
 
 The rest of the disc:
 - `CD/COM/*.T` archives: `MO`, `MOF`, `VAB`, `RTIM`, `FDAT`, `RTMD`, `ITEM`,
-  `TALK`, `STALK`. Going by Verdite2, `FDAT.T` probably holds the per-area code
-  modules. That is unchecked.
+  `TALK`, `STALK`. `FDAT.T` holds the per-area code modules, as on Verdite2's
+  disc: see "GAME.EXE loads code" below.
 - `DRM/D00.S`-`D17.S` (18 files, 0x17F800 each).
 - `STR/S03.S`-`S15.S` and `OP/` (`L0`, `L1`, `M0`-`M6` `.S`, `OP.D`). These
   look like streamed audio and video. That is also unchecked.

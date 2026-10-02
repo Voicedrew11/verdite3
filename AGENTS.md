@@ -44,32 +44,30 @@ Findings go in the right document, not in commit messages and not in this file.
 
 ## Build and run
 
-Nothing here builds yet: the disc is not present and nothing has been
-recompiled. The names and commands below are the intended shape, **planned**
-until the files they name exist. The disc is gitignored, user-supplied, and
-expected at `disc/KingsField3.cue`.
+Nothing here builds without the disc (gitignored, user-supplied, at
+`disc/KingsField3.cue`).
 
 ```bash
-# planned: build the recompiler (tools/RecompOne)
-bash scripts/setup_tools.sh
+bash scripts/setup_tools.sh        # build the recompiler (tools/RecompOne)
 
-# planned: recompile MIPS -> C# into generated/
+# recompile MIPS -> C# into generated/
 dotnet run --project tools/RecompOne/RecompOne.Recompiler -c Release --no-build -- config/kf3.json
 
-# planned
 dotnet build KingsField3Recomp.csproj -c Release
-dotnet run --project KingsField3Recomp.csproj -- disc/KingsField3.cue
+dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
 ```
 
 The assembly is `KingsField3`, the environment-variable prefix is `KF3_`, and the
 MCP project is `KingsField3Mcp`. `tools/RecompOne` is a **subtree** of the fork
-`Voicedrew11/verdite-recompone`, pinned at `a617cf8`; `tools/verdite-core` will be
-a subtree of the shared, game-agnostic `Voicedrew11/verdite-core`. Their sources
+`Voicedrew11/verdite-recompone`, pinned at `a617cf8`; `tools/verdite-core` is a
+subtree of the shared, game-agnostic `Voicedrew11/verdite-core`. `setup_tools.sh`
+moves them (`--pull-fork`/`--push-fork`, `--pull-core`/`--push-core`). Their sources
 are tracked here, so a fresh clone already has them and nothing needs fetching.
 
 There are no tests. Verification is empirical: run the game with log channels on
 and check the trace against what the SDK sequence should look like. The `KF3_*`
-switches are listed in `docs/ENV_VARS.md`; none exist yet.
+switches are listed in `docs/ENV_VARS.md`, and the acceptance test is in
+`docs/DEVELOPMENT.md`.
 
 **Anything judged by eye is the user's job, not yours.** Do not capture,
 screenshot or otherwise scrape the game window — it burns a lot of context and

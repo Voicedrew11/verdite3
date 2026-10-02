@@ -24,12 +24,13 @@ their own dump of `SLUS-00255`.
 
 ## Status
 
-**Bootstrapping: nothing has been recompiled yet.** The repository holds the
-license, the conventions, and `tools/RecompOne`, a `git subtree` of the shared
-fork `Voicedrew11/verdite-recompone` pinned at `a617cf8`, and `tools/verdite-core` (Verdite Core) at `536167a`.
-There is no `config/kf3.json`, no `generated/`, and no function map yet. The
-disc is in place at `disc/KingsField3.cue` and has been read (see "What is on
-the disc" in `docs/RECOMPILATION.md`). The bring-up order is in `docs/TODO.md`.
+**Boots, plays, changes areas, saves and loads** (2026-10-02). `OPEN.EXE`,
+`GAME.EXE`, `END.EXE` and 28 area code modules from `CD/COM/FDAT.T` are
+recompiled, with 63 PSY-Q entry points bound by address. There are no patches of
+the port's own yet, so the world runs at 60. `tools/RecompOne` is a `git subtree`
+of the shared fork `Voicedrew11/verdite-recompone` at `a617cf8`, and
+`tools/verdite-core` of Verdite Core at `acf4873`. The acceptance test is in
+`docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
 
 ## The documents
 
