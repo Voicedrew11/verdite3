@@ -146,6 +146,19 @@ assembler that wrote it. It walks the whole table at every hooked entry and exit
 so it is slow with many functions; the readings are in "The geometry path" in
 `docs/GAME_INTERNALS.md`.
 
+The survey's run, from the repository root:
+
+```bash
+KF3_AUTOSTART=1 KF3_GEOPROBE=1 KF3_AUTOPAD=12:Left:3000,20:Up:6000 \
+KF3_GEOPROBE_FUNCS=8003F304,800400AC,800366A8,80037BEC,80074D88,80075188,800756A8,80075B48,8003AB04,80039D50,80035CA4 \
+    timeout 50 dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue | grep geoprobe
+```
+
+Two readings are the probe's, not the game's: call #5 shows one 4-word packet at
+`0x8009C1B0` "added" at slot 0 (a fixed node the cleared table ends in), and call
+#20 (the swap) shows about 600 "removed", because once the front table is linked
+in at slot 8190 the walk of the main table stops there.
+
 ## Frame pacing
 
 `patches/FramePacing.cs`, **off unless `KF3_FPS` is set**, because the picture

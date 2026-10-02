@@ -364,11 +364,26 @@ the rotation to `0x801AEC5C`, `RotMatrix` into the view matrix `0x801AEB4C`,
 matrices at `0x801AEB8C + 0x20 k`** (`func_80016290`), which the map's halves load
 by their rotation. Verdite2 negates the yaw and has no precomposed four.
 
+### How the assemblers are entered
+
+- `func_80039D50(mesh)` and `func_8003AB04(mesh)`: `a0` the mesh id (`& 0xFFFF`),
+  everything else from the scratchpad. `func_80039D50` is a leaf with no stack
+  frame; it reads the fog's near and far itself.
+- `func_80035CA4(model, bias)`: `a0` the model index (its 28-byte entry, as the
+  map's), `a1` a slot bias added to the face's average otz. Unlike the map
+  assembler, a face whose average is 0 or less, or whose slot is `0x2000` or
+  more, is dropped, as Verdite2's `Place` drops. The vertex cache is already
+  filled by the caller (the submitter's inline pass, or `func_8003C35C`'s).
+- `func_80037BEC(model, bias, rate)`: the same, `a2` the blend rate (0-3).
+
 ### What a C# assembler would have to keep
 
-- the scratchpad block, which every routine reads and the verify mode must
-  snapshot and compare alongside RAM;
-- the per-frame packet counters at `+0x68..+0x70` and `0x801AEB10..18`;
+- **The scratchpad is not in `PSMemory.Ram`**: it is a separate 1 KB array
+  (`PSMemory._scratchpad`, private), reached only through `ReadU32`/`WriteU32` at
+  `0x1F800000`. Verdite2's verify modes snapshot `Ram` alone, which here would
+  miss every parameter and counter the routines share; a verify needs the
+  scratchpad snapshotted too (1 KB through the accessors, or a fork accessor).
+- The per-frame packet counters at `+0x68..+0x70` and `0x801AEB10..18`.
 - libgte's division, which writes packets from library code: a C# near path
   means rewriting those four routines too, since they are where the near map's
   packets come from.
