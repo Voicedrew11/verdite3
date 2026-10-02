@@ -10,7 +10,7 @@ was culled on whole pixels") and are the background for everything below.
 
 ## Status
 
-**Units 1 and 2 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
+**Units 1-3 built and measured, not judged** (2026-10-02). The runtime half of all four features is already in
 the fork this repository shares with Verdite2 (`tools/RecompOne`), switched off.
 What is missing is Verdite3's half: the switches, the probes, the controls, and
 for the Z-buffer, the depth.
@@ -201,6 +201,35 @@ screenshots.
 - **Done when**: recorded equals found in the probe, the share of triangles tested
   is written here (expect about three quarters), 0 unmatched, the verify modes still
   0, 144.0 fps; the user judges it, **knowing the near map is not covered yet**.
+
+#### Unit 3, done: measured, not judged
+
+- `patches/PolyAssemblerDepth.cs` (drafted by an opencode agent, checked by its
+  measurements): every packet the C# bulk map and lit-model fills finish gets a
+  `GtePacketDepth` record of its corners' depths, sealed with the command word and
+  the first and last vertex words; a packet not recorded gets `NoDepth`. Recording
+  runs only while `GtePacketDepth.Enabled`, which `ZBuffer.SyncSource` sets each
+  frame to "Z-buffer on and `KF3_POLYASM` in C#" (so never under verify).
+- **Depth**: the map keeps the full `SZ3` per cache slot from its C# vertex pass,
+  checked against the two cache words. The models' vertex pass is still the
+  recompiled submitter's, so their records use `otz << 2` and lose two bits.
+- **Not recorded**: the HUD's models (`func_80035CA4` under `func_8003C35C`) and
+  the arm (`func_8003DF50`), by pre/post flags; the near path, the sky and
+  everything else are not C# and have no records. They keep painter's order.
+- `patches/ZBuffer.cs` (agent-drafted from Verdite2's): the switch, the coplanar
+  tolerance (`DepthBias` 1, `DepthSlope` 0.5), blended surfaces after the opaque
+  ones behind them (`KF3_BLENDORDER`), the restart threshold (off), the probe.
+- **Measured**, `KF3_ZBUFFER_PROBE=1`, `fdat02` after turning and walking, 144
+  fps: 104832 records a second and **104832 polygons found theirs**; 15264 a
+  second had none (87.3% of polygons recorded); **84.1% of submitted triangles
+  depth-tested** (the plan expected about three quarters). Verify reads 0 for
+  `KF3_POLYASM`, `KF3_MODELWALK` and `KF3_STAGE15` with the Z-buffer on.
+- 144.0 fps at 15.0 ticks/s. **Uncapped it costs about a quarter**: 1386, 1386,
+  1373 fps off; 1022, 1065, 1072 on (standing).
+- Packets a frame are 418 standing whatever the switches; a view after walking
+  read 865, which is the view, not the records.
+- **Not judged by eye**, and **the near map is not recorded yet** (unit 4): it is
+  the geometry nearest the eye.
 
 ### Unit 4: the near path in C#, recorded
 

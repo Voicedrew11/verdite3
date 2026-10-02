@@ -50,6 +50,9 @@ public static partial class PolyAssembler
         public ushort Clut;
         // LO and HI, left as the last mult or div left them.
         public uint Lo, Hi;
+        // The depth records want this call's packet depths; DepthTable is the table
+        // being active at all, Depth additionally that this call is one to record.
+        public readonly bool DepthTable, Depth;
 
         public Frame(PSMemory mem, CpuContext c)
         {
@@ -57,6 +60,9 @@ public static partial class PolyAssembler
             Ram = ref Unsafe.AsRef(in MemoryMarshal.GetReference(mem.Ram));
             Lo = c.LO;
             Hi = c.HI;
+            DepthTable = GtePacketDepth.Active;
+            Depth = DepthOn();
+            if (DepthTable) EnsureRange();
             Refresh();
         }
 
@@ -129,6 +135,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x0C);
         W8(ref fr, pkt + 7u, (byte)((cmd & 2u) | 0x3Cu));
+        RecordDepth(ref fr, pkt, 0x2Cu, 4, p0, p1, p2, p3);
     }
 
     /// <summary>A POLY_GT3. The game runs NCCS twice on the same normal.</summary>
@@ -152,6 +159,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x09);
         W8(ref fr, pkt + 7u, (byte)((cmd & 2u) | 0x34u));
+        RecordDepth(ref fr, pkt, 0x20u, 3, p0, p1, p2, 0u);
     }
 
     /// <summary>The map's 0x34 kind: a POLY_GT3 with an NCDS per corner on three
@@ -176,6 +184,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x09);
         W8(ref fr, pkt + 7u, (byte)cmd);
+        RecordDepth(ref fr, pkt, 0x20u, 3, p0, p1, p2, 0u);
     }
 
     /// <summary>NCLIP on the three cached screen words; the result is kept, as the

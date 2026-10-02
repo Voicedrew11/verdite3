@@ -231,8 +231,9 @@ public static partial class PolyAssembler
         Gte.Write(0, mem.ReadU32(src));
         Gte.Write(1, mem.ReadU32(src + 4u));
         Gte.Rtps(12, false);
-        mem.WriteU32(dst, Gte.Read(14));
-        mem.WriteU32(dst + 4u, (uint)((int)Gte.Read(19) >> 2));
+        uint sxy = Gte.Read(14), sz3 = Gte.Read(19);
+        mem.WriteU32(dst, sxy);
+        mem.WriteU32(dst + 4u, (uint)((int)sz3 >> 2));
         if (fr.Near < 32000)
         {
             uint z = (uint)(short)R16(ref fr, dst + 4u);
@@ -243,6 +244,7 @@ public static partial class PolyAssembler
         else W16(ref fr, dst + 6u, 0);
         if ((short)R16(ref fr, dst + 6u) >= 0x1F10) W16(ref fr, dst + 6u, 0x1F0F);
         if ((short)R16(ref fr, dst + 6u) < 0) W16(ref fr, dst + 6u, 0);
+        if (fr.Depth) NoteDepth(ref fr, dst, sxy, sz3);
     }
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]

@@ -151,6 +151,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x07);
         W8(ref fr, pkt + 7u, (byte)cmd);
+        RecordDepth(ref fr, pkt, 0x18u, 3, p0, p1, p2, 0u);
 
         Insert(ref fr, Third(ref fr, (short)R16(ref fr, p0 + 4u) + (short)R16(ref fr, p1 + 4u) + (short)R16(ref fr, p2 + 4u)), bias, pkt);
         return true;
@@ -186,6 +187,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x09);
         W8(ref fr, pkt + 7u, (byte)cmd);
+        RecordDepth(ref fr, pkt, 0x20u, 4, p0, p1, p2, p3);
 
         Insert(ref fr, QuadDepth(ref fr, p0, p1, p2, p3), bias, pkt);
         return true;
@@ -218,6 +220,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x09);
         W8(ref fr, pkt + 7u, (byte)cmd);
+        RecordDepth(ref fr, pkt, 0x20u, 3, p0, p1, p2, 0u);
 
         Insert(ref fr, Third(ref fr, (short)R16(ref fr, p0 + 4u) + (short)R16(ref fr, p1 + 4u) + (short)R16(ref fr, p2 + 4u)), bias, pkt);
         return true;
@@ -253,6 +256,7 @@ public static partial class PolyAssembler
 
         W8(ref fr, pkt + 3u, 0x0C);
         W8(ref fr, pkt + 7u, (byte)cmd);
+        RecordDepth(ref fr, pkt, 0x2Cu, 4, p0, p1, p2, p3);
 
         Insert(ref fr, QuadDepth(ref fr, p0, p1, p2, p3), bias, pkt);
         return true;

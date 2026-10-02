@@ -66,6 +66,7 @@ Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
                             Environment.GetEnvironmentVariable("KF3_POLYASM_MAP"),
                             Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"));
 Kf3.PolyAssembler.Install();
+Kf3.PolyAssembler.InstallDepth();
 
 // Stage 15 and its camera block in C#: on unless =0; KF3_STAGE15=verify and
 // KF3_CAMERABLOCK=verify compare them with the recompiled routines. The view carried between ticks under
