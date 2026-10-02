@@ -15,9 +15,10 @@ verified and **on**; the camera is carried between ticks, **judged by the user
 cels, the compass needle's spring and the scrolling textures are held to the tick.
 Unit 3: the model walk and the MO pose blender are C#, verified (0 mismatches with
 creatures in view) and **on**; the compass needle and the HUD gauges are carried
-with the view; **the creatures, objects, effects and billboards and their clip
-times are carried by `KF3_SMOOTH_MODELS=1`, measured and not yet judged by eye,
-so off.** The handoff for what is left is at the end of this file.
+with the view; the creatures, objects, effects and billboards and their clip
+times are carried, **judged by the user 2026-10-02 ("looks good") and on whenever
+pacing is** (`KF3_SMOOTH_MODELS=0` to compare). What is left is at the end of this
+file, and the user has put all of it off.
 
 ## Why
 
@@ -381,7 +382,8 @@ the record whose submit is in progress (`Enter`/`Leave` round each submit).
   While one runs the world does not tick, so the tick-held clocks above wait for
   the stage gate's watchdog.
 
-**Judged by eye**: nothing in unit 3 yet.
+**Judged by eye** (the user, 2026-10-02, at 144 fps): the creatures carried,
+"looks good"; on whenever pacing is since.
 
 ## Handoff: what is left
 

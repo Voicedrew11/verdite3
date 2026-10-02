@@ -157,7 +157,7 @@ public sealed class TestingSection : ISettingsSection
         }
         Toggle("Camera, compass needle and gauges", K("kf3.smooth"),
             "Draws the view, the needle and the HP/MP bars between the world's ticks.");
-        Toggle("Creatures and objects (not judged)", K("kf3.smooth_models"),
+        Toggle("Creatures and objects", K("kf3.smooth_models"),
             "Draws creatures, objects, effects and their animation between the world's ticks.");
         if (ModelSmoothing.Enabled && ModelWalk.Setting != 1)
             Note("Needs the model walk in C#.");

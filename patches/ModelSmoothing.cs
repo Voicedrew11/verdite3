@@ -10,7 +10,7 @@ namespace Kf3;
 /// the C# MO blender call in, so a carried value is handed to code that already
 /// places the geometry and never written into a record and put back.
 ///
-///     KF3_SMOOTH_MODELS=1     carry the records between ticks (needs KF3_MODELWALK=1 and pacing; not judged)
+///     KF3_SMOOTH_MODELS=0     draw each record from the last tick (comparison only); on under pacing, judged
 ///     KF3_SMOOTH_PROBE=1      a line a second: models carried, snaps, clip frames, wraps, turns, seeks, backward steps
 ///
 /// <see cref="Carry"/> is the root, sampled and interpolated exactly as
@@ -109,8 +109,8 @@ public static class ModelSmoothing
 
     public static void Configure(string? mode, string? probe)
     {
-        // Off until judged by eye; the model walk must be C# for anything to call in.
-        Enabled = mode?.Trim().ToLowerInvariant() is "1" or "on";
+        // Judged 2026-10-02: on whenever pacing is; the model walk must be C# for anything to call in.
+        Enabled = mode?.Trim().ToLowerInvariant() is not ("0" or "off");
         _probe = probe?.Trim() == "1";
     }
 

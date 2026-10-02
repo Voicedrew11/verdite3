@@ -27,7 +27,7 @@ recompiled and running, following Verdite2's method but applied to this disc.
   `2013e51` (amends `0021`; `0825391` here), 2026-10-02: 60.0 a second.
 - **What stage 15 advances runs at the render rate under pacing**: the billboard
   cels and the compass needle are held to the tick (2026-10-02, `docs/SMOOTHING.md`);
-  the unidentified words in "What still runs at the render rate" in
+  the scrolling textures too since; the unidentified words in "What still runs at the render rate" in
   `docs/GAME_INTERNALS.md` remain.
 - **The geometry path in C#** (the sharing plan's picture features rest on it):
   surveyed, see "The geometry path" in `docs/GAME_INTERNALS.md`; the build order
@@ -35,12 +35,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
   handoff). `func_80039D50` and `func_80035CA4` are C# and verified
   (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). The near
   path (`func_8003AB04`, `func_800366A8` and libgte's division) and the Z-buffer
-  are next on this path, deferred behind smoothing.
-- **Carrying the view between ticks** (chosen 2026-10-02, ahead of the near path).
-  Units 1 and 2 are built (2026-10-02): stage 15 and the camera block in C#,
-  verified and on; the camera carried (`KF3_SMOOTH`, judged, on under pacing)
-  and the billboard clock held. **Next: unit 3** (models, poses, the HUD with the
-  view), handed off at the end of `docs/SMOOTHING.md`.
+  are next on this path, now that smoothing is done.
+- ~~**Carrying the view between ticks**~~ (chosen 2026-10-02, ahead of the near
+  path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
+  their clip times, verified and judged, on under pacing; every switch is live in
+  Settings ▸ Testing. See `docs/SMOOTHING.md`; its leftovers are put off.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's
