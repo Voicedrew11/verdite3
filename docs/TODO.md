@@ -24,8 +24,7 @@ recompiled and running, following Verdite2's method but applied to this disc.
   and scripted pad, 2026-10-02. Still by hand: changing areas, saving, the
   title-screen load.
 - ~~The vblank event is delivered twice a vblank.~~ Fixed in the fork,
-  `0825391` (amends `0021`), 2026-10-02: 60.0 a second. Not pushed yet, so this
-  repo's `tools/RecompOne` is ahead of every fork commit until it is.
+  `2013e51` (amends `0021`; `0825391` here), 2026-10-02: 60.0 a second.
 - **What stage 15 advances runs at the render rate under pacing**: the billboard
   cels at `0x80182964` first (Verdite2's `SpriteAnim`), then the unidentified
   words in "What still runs at the render rate" in `docs/GAME_INTERNALS.md`.
