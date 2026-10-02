@@ -7,8 +7,9 @@ model, with its `KF2_*` switches becoming `KF3_*` here.
 ## Status
 
 Boots, plays, changes areas, saves and loads (2026-10-02). The port's first
-patches are the agent harness and frame pacing (below). Without pacing the world
-runs at 30, twice the game's 15: see "The session and the main loop" in
+patches are the agent harness and frame pacing (below). Without pacing the game's
+own gate holds the world to 15 (it ran at 30 until the fork's vblank fix
+`0825391`): see "The session and the main loop" in
 `docs/GAME_INTERNALS.md`.
 
 ## Build and run
@@ -157,7 +158,9 @@ has not been judged. Verdite2's mechanism ("Any frame rate" in its
 - OPEN.EXE and END.EXE keep the runtime's 60 Hz throttle and their own waits.
 
 **15, not 30.** The gate's literal is 4 vblanks; the 30 the port ran at was the
-double vblank delivery, not the game.
+fork delivering the vblank event twice, fixed in `0825391`. The table was
+measured before that fix; after it, pacing off reads 15 and 600 a second
+(the game's own gate), and 144 reads 144.0 fps, 14.9-15.0 ticks/s, 600 a second.
 
 Measured 2026-10-02, slot 1 in `fdat02`, standing, `KF3_FPS_PROBE=1`, and yaw
 turned by holding Left for 1 s (three times each):

@@ -88,14 +88,14 @@ func_80019570)`, `EnableEvent`, `SetRCnt`, `StartRCnt`. Each call increments
 `0x801C12EC` (the gate's count), `0x801C12E8` (vblanks in all) and `0x801C12F0`,
 and every 3600th vblank increments the u32 at `0x801B2588`, a play-time minute.
 
-**In the port the handler runs 120 times a second**, not 60: measured,
-`0x801C12E8` advances 119.9997/s. `LibEtc.TickVBlank` delivers `0xF2000003` and
-then raises IRQ 0, whose `ServiceIrq` delivers `0xF2000003` again (Verdite2's
-`docs/TODO.md` records the same double delivery, found there by reading). So the
-gate passes every two vblanks, and **without frame pacing the main loop runs at
-30.0 a second, twice the game's 15** (measured: 30.0 calls/s of every stage;
-holding Left turns 1200 units of yaw a second, against 600 at 15 Hz). The
-play-time minute runs twice as fast too. See `docs/TODO.md`.
+**The port ran the handler 120 times a second until fork commit `0825391`**
+(measured, `0x801C12E8` advancing 119.9997/s): `LibEtc.TickVBlank` delivered
+`0xF2000003` and then raised IRQ 0, whose `ServiceIrq` delivered it again. The
+gate then passed every two vblanks, and without frame pacing the main loop ran at
+30.0 a second, twice the game's 15 (holding Left turned 1200 units of yaw a
+second), and the play-time minute ran twice as fast. Since `0825391` (an
+amendment of `0021`) it is delivered once: 60.0 a second, and the game's own
+gate holds the loop to 15 (600 units a second).
 
 ## The player
 
