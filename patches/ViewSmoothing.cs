@@ -93,6 +93,9 @@ public static class ViewSmoothing
         Math.Abs(Wrap(b.Pitch - a.Pitch)) > SnapAngle || Math.Abs(Wrap(b.Yaw - a.Yaw)) > SnapAngle ||
         Math.Abs(Wrap(b.Roll - a.Roll)) > SnapAngle;
 
+    /// <summary>An angle step in one tick too large to sweep.</summary>
+    internal static bool Jumped(short a, short b) => Math.Abs(Wrap(b - a)) > SnapAngle;
+
     static int Wrap(int d) => ((d + 0x800) & 0xFFF) - 0x800;
 
     static Camera Lerp(in Camera a, in Camera b, double t) => new(
@@ -102,7 +105,7 @@ public static class ViewSmoothing
     static int Mix(int a, int b, double t) => (int)(a + Math.Round(((long)b - a) * t));
 
     /// <summary>The short way round at 12 bits, kept in 0..0xFFF when both ends are.</summary>
-    static short Turn(short a, short b, double t)
+    internal static short Turn(short a, short b, double t)
     {
         int v = a + (int)Math.Round(Wrap(b - a) * t);
         if ((uint)a < 0x1000u && (uint)b < 0x1000u) v &= 0xFFF;
@@ -119,9 +122,10 @@ public static class ViewSmoothing
         double dt = now - _probeAt;
         if (dt < 1.0) return;
         Console.WriteLine($"[KF3] view smoothing: {_frames / dt:0.0} frame(s)/s, {_moved / dt:0.0} with a new camera, " +
-                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s); " +
+                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {Stage15.NeedleCarried / dt:0.0} needle(s) carried/s; " +
                           $"drawn [{view.X},{view.Y},{view.Z}] yaw {view.Yaw}, handed [{_cur.X},{_cur.Y},{_cur.Z}] yaw {_cur.Yaw}");
         _probeAt = now;
         _frames = _moved = _samples = _snaps = 0;
+        Stage15.NeedleCarried = 0;
     }
 }

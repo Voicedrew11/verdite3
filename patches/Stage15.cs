@@ -84,6 +84,15 @@ public static class Stage15
     static Mode _mode = Mode.On;
     static long _needleTick = -1;
     static bool _needleHeld = true;
+
+    // The needle's yaw at the last two ticks, drawn between them while the view is carried.
+    static short _needlePrev, _needleCur;
+    static long _needleSampled = -1;
+    static uint _needleA, _needleB;
+    static bool _needleDrawn;
+
+    /// <summary>Frames the needle was drawn between its tick samples, for the view probe.</summary>
+    public static long NeedleCarried;
     static bool _queued;
     static Action<CpuContext, IMemory>[]? _callees;
 
@@ -232,6 +241,7 @@ public static class Stage15
         Call(c, mem, Site.Arm);
         Hud(c, mem, stepNeedle);
         Call(c, mem, Site.HudModels);
+        if (_needleDrawn) PutNeedleBack(mem);
         Call(c, mem, Site.Overlays);
         Call(c, mem, Site.Overlays2);
         Call(c, mem, Site.Tiles);
@@ -353,6 +363,7 @@ public static class Stage15
             c.At = 0x80081C3Au;
             { var _s = c.At; var _t = c.V0; c.At = _s + _t; }
             mem.WriteU16(c.At, (ushort)c.A0);
+            CarryNeedle(mem, c.V1 + 0x1Au, c.At, (short)c.A0, stepNeedle);
             c.A0 = mem.ReadU16(0x801AEC5Cu);
             mem.WriteU16(c.V1 + 0x18u, (ushort)c.A0);
             c.At = 0x80081C38u;
@@ -374,6 +385,44 @@ public static class Stage15
             c.T3 = 0x10620000u;
             if (c.V1 == c.V0) Gauge2(c, mem);
         }
+    }
+
+    /// <summary>With the view carried, the needle is drawn between its last two tick
+    /// samples and put back after the HUD's call, so the spring reads the tick's yaw.
+    /// <paramref name="a"/> and <paramref name="b"/> are the two records it is written to.</summary>
+    static void CarryNeedle(PSMemory mem, uint a, uint b, short yaw, bool stepped)
+    {
+        _needleDrawn = false;
+        if (!ViewSmoothing.Enabled || !_needleHeld || Verifier.Replaying) return;
+        long tick = FramePacing.Ticks;
+        if (stepped || a != _needleA)
+        {
+            bool fresh = a != _needleA || _needleSampled < 0 || tick - _needleSampled > 1;
+            _needlePrev = fresh ? yaw : _needleCur;
+            _needleCur = yaw;
+            _needleA = a;
+            _needleSampled = tick;
+            if (ViewSmoothing.Jumped(_needlePrev, _needleCur)) _needlePrev = _needleCur;
+        }
+        else if (yaw != _needleCur)
+        {
+            _needlePrev = _needleCur = yaw;
+        }
+
+        short drawn = ViewSmoothing.Turn(_needlePrev, _needleCur, FramePacing.TickFraction);
+        if (drawn == yaw) return;
+        mem.WriteU16(a, (ushort)drawn);
+        mem.WriteU16(b, (ushort)drawn);
+        _needleB = b;
+        _needleDrawn = true;
+        NeedleCarried++;
+    }
+
+    static void PutNeedleBack(PSMemory mem)
+    {
+        mem.WriteU16(_needleA, (ushort)_needleCur);
+        mem.WriteU16(_needleB, (ushort)_needleCur);
+        _needleDrawn = false;
     }
 
     static void Gauge1(CpuContext c, PSMemory mem)
