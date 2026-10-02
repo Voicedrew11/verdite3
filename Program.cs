@@ -67,6 +67,11 @@ Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
                             Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"));
 Kf3.PolyAssembler.Install();
 
+// Stage 15's camera block in C#: off until a session of verify reads clean;
+// KF3_CAMERABLOCK=1|verify. See docs/SMOOTHING.md.
+Kf3.CameraBlock.Configure(Environment.GetEnvironmentVariable("KF3_CAMERABLOCK"));
+Kf3.CameraBlock.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200
