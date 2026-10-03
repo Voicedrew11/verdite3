@@ -6,6 +6,7 @@ using Recompiled;
 // generated/. Init and hooks go here, before Entry.Run.
 
 Verdite.Core.Game.Configure(tag: "KF3");
+Verdite.Core.Kept.BoolsAsInts = true;
 
 // The runtime's log channels, through an env var:
 //     KF3_LOG=bios,cd,gpu,dma,sdk,spu,mdec,irq   (or KF3_LOG=all)
@@ -146,8 +147,8 @@ Kf3.MapCoverage.Install();
 // releases; the settings are under Gameplay. "Instant mouse look" (KF3_MOUSE_LEAD)
 // shows the motion before the tick spends it, in ViewSmoothing. See "Mouse look"
 // in docs/INPUT.md.
-Kf3.Mouse.Configure();
-Kf3.Mouse.Install();
+Mouse.Configure(Kf3.MouseLook.Game);
+Mouse.Install();
 Kf3.MouseLook.Install();
 
 // The Gameplay tab: the mouse look options, beside the runtime's own sections.

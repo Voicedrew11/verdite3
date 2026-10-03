@@ -92,7 +92,9 @@ one key per button.
 
 ## Mouse look
 
-`Mouse.cs` collects the motion, and `patches/MouseLook.cs` is a **replace hook on
+`Mouse` (Verdite Core's since 2026-10-02, `tools/verdite-core/src/Mouse.cs`, with
+this game's values in `MouseLook.Game`) collects the motion, and
+`patches/MouseLook.cs` is a **replace hook on
 `func_8002F5C0`**. The hook pre-loads the axis's velocity with `step ± accel` and
 masks that axis's buttons out of the pad word for the call — **both L2 and R2 for
 pitch**, because held together they recentre — then puts the word back. The tick

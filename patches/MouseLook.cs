@@ -1,4 +1,5 @@
 using System.Reflection;
+using ImGuiNET;
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
 using RecompOne.Runtime.Modding;
@@ -24,6 +25,22 @@ namespace Kf3;
 /// </summary>
 public static class MouseLook
 {
+    /// <summary>This game's values for Verdite.Core.Mouse: the look routine's
+    /// units, limits and base angles, and where the pointer's absence is noticed.</summary>
+    public static readonly MouseGame Game = new(
+        UnitsPerDegree: 4096f / 360f,   // 12 bits to yaw's circle
+        DegreesPerPixel: 0.15f,         // a quarter turn is about 600 px at sensitivity 1
+        StepCap: 1024,                  // the most one tick may turn, in yaw units
+        PitchLimit: 0x2BC,              // func_8002F5C0's limit, 0x2BC and 0xD44 at 12 bits
+        YawAddress: 0x801B2612,         // u16, the base yaw the look routine accumulates
+        PitchAddress: 0x801B2610,       // u16, the base pitch, a 12-bit angle
+        DefaultLeftButton: 4,           // Triangle: attack
+        DefaultRightButton: 3,          // Square: magic
+        DefaultMiddleButton: 2,         // Circle: examine, open, talk
+        TextEditing: () => ImGui.GetCurrentContext() != nint.Zero && ImGui.GetIO().WantTextInput,
+        Frames: () => FramePacing.Frames,
+        LogicHz: () => FramePacing.LogicHz);
+
     const uint Routine = 0x8002F5C0;
     const uint Pad = 0x801B265C;            // u16, the pad word stage 4 tests
     const uint YawVel = 0x801B264C;

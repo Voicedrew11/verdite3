@@ -74,7 +74,7 @@ public static class AgentServer
         Event.AddListener<VSyncEvent>(_ => Drain(_fast));
 
         // PAD_dr's buffer is active-low with its two button bytes swapped against
-        // Controller's layout, as in Verdite2's patches/Mouse.cs.
+        // Controller's layout, as in Verdite Core's Mouse.
         Event.AddListener<PadReadEvent>(e =>
         {
             if (e.Port != 0) return;
