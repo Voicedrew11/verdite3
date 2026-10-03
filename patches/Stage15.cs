@@ -254,7 +254,9 @@ public static class Stage15
         Call(c, mem, Site.CullGrid);
         Call(c, mem, Site.FrameHead);
         Call(c, mem, Site.SoundMark);
+        ModelSmoothing.EnterArm();
         Call(c, mem, Site.Arm);
+        ModelSmoothing.Leave();
         Hud(c, mem, stepNeedle);
         Call(c, mem, Site.HudModels);
         if (_needleDrawn) PutNeedleBack(mem);

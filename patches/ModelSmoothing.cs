@@ -35,6 +35,9 @@ public static class ModelSmoothing
     static readonly int[] TableBase = [0, 200, 596, 724];
     const int Total = 852;
 
+    // The first-person arm: a fifth table with a single slot, drawn by stage 15.
+    const int ArmTable = 4;
+
     // A small fixed number of clip states per slot: one submit usually runs the
     // blender once, and the index is the CarryClip call since Enter.
     const int ClipStates = 4;
@@ -89,7 +92,7 @@ public static class ModelSmoothing
     static readonly short[] _cp = new short[Total], _cw = new short[Total], _cr = new short[Total];
 
     // ---- the clip carry ----
-    static readonly ClipState[] _clips = new ClipState[Total * ClipStates];
+    static readonly ClipState[] _clips = new ClipState[(Total + 1) * ClipStates];
     static readonly Dictionary<(uint Bank, uint Clip), int> _lengths = [];
 
     // The record whose submit is in progress; -1 outside Enter/Leave.
@@ -100,6 +103,7 @@ public static class ModelSmoothing
     static double _probeAt;
     static readonly long[] _drawnBy = new long[4];
     static long _drawn, _clipCalls2, _carried, _snaps, _clipFrames, _wraps, _turns, _reseek, _backward;
+    static long _armCalls, _armFrames;
 
     static ModelSmoothing()
     {
@@ -154,6 +158,8 @@ public static class ModelSmoothing
         if (!FramePacing.Enabled) return;
         int i = Index(table, slot);
         if (i < 0) return;
+        // The arm carries only its clip; it never walks the position arrays.
+        if (table == ArmTable) return;
         _drawn++;
         _drawnBy[table]++;
 
@@ -218,6 +224,9 @@ public static class ModelSmoothing
         _clipCalls = 0;
     }
 
+    /// <summary>The first-person arm's submit is in progress; it has one slot.</summary>
+    public static void EnterArm() => Enter(ArmTable, 0);
+
     /// <summary>
     /// The carried clip time for the blender's clock, or false to draw the game's
     /// own time. <paramref name="floorTime"/> is the integer time and
@@ -231,6 +240,7 @@ public static class ModelSmoothing
         if (!Active) return false;
         if (_inTable < 0) return false;
         _clipCalls2++;
+        if (_inTable == ArmTable) _armCalls++;
 
         int ci = Index(_inTable, _inSlot);
         if (ci < 0 || (uint)_clipCalls >= ClipStates) return false;
@@ -312,6 +322,7 @@ public static class ModelSmoothing
         }
 
         _clipFrames++;
+        if (_inTable == ArmTable) _armFrames++;
         return true;
     }
 
@@ -327,9 +338,12 @@ public static class ModelSmoothing
                           $"{_snaps} snap(s), {_clipCalls2 * 1000.0 / dt:0} clip call(s)/s, {_clipFrames * 1000.0 / dt:0} carried, " +
                           $"{_wraps} wrap(s), {_turns} turn(s), {_reseek} re-seek(s), " +
                           $"{_backward} backward step(s)");
+        if (_armCalls != 0)
+            Console.WriteLine($"[KF3] model smoothing: arm {_armCalls * 1000.0 / dt:0} clip call(s)/s, {_armFrames * 1000.0 / dt:0} carried");
         _probeAt = now;
         Array.Clear(_drawnBy);
         _drawn = _clipCalls2 = _carried = _snaps = _clipFrames = _wraps = _turns = _reseek = _backward = 0;
+        _armCalls = _armFrames = 0;
     }
 
     // ---- sampling helpers ------------------------------------------------------
@@ -351,6 +365,7 @@ public static class ModelSmoothing
 
     static int Index(int table, int slot)
     {
+        if (table == ArmTable) return slot == 0 ? Total : -1;
         if ((uint)table >= 4u || (uint)slot >= (uint)TableCount[table]) return -1;
         return TableBase[table] + slot;
     }

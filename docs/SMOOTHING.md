@@ -350,8 +350,29 @@ the record whose submit is in progress (`Enter`/`Leave` round each submit).
   frames a second, its position carried on 144 and its clip time on 144; a wrap
   recognised about every 2 seconds; **0 re-seeks, 0 backward steps**. Its clip
   time advances about 85 a tick.
-- The first-person arm (`func_8003DF50`) is not carried: it returns at once on
-  slot 1, so there was nothing to measure.
+- **The first-person arm** (`func_8003DF50`, stage 15's `Site.Arm`) is carried
+  too. It calls the blender `func_800431E8` with `a0 = 0x801B259C` (fixed),
+  `a1 = 0x20`, `a2 = u8[0x801B25AE]` (the clip byte) and `a3 = s16[0x801B25A4]`
+  (the clip time), and returns before drawing while that s16 is -1. The s16 is
+  **the swing clock**, not a missing weapon: it is -1 between swings and steps
+  0x180 a tick, 0x0180 to 0x0F80, over about 0.7 s when a Square press starts a
+  swing on slot 1 (`fdat02`); `func_8002D2A0` (stage 4) steps it, `func_8002BDC0`
+  writes -1 and `func_8002C040` writes 0. Triangle does not swing, and a recovery
+  gate means 20 presses 1.2 s apart gave 6 swings. The arm's placement record
+  (`*0x801B2594`, `+0x34..+0x3F`) did not change during a swing: the whole swing
+  is the MO clip, as in Verdite2.
+- **The change**: `ModelSmoothing` gained one clip slot for the arm (`ArmTable` 4,
+  index `Total`; clip state only, never the position arrays), and stage 15 calls
+  `ModelSmoothing.EnterArm()` before `Site.Arm` and `Leave()` after, so the carry
+  sees the arm's clip like a creature's. Verdite2 needed an idle latch to reset the
+  slot between swings; Verdite3 does not, because `CarryClip` primes a slot that
+  missed a tick and the arm never reaches the blender while idle.
+- **Measured** (`KF3_FPS=144`; `KF3_SMOOTH_PROBE=1` prints
+  `[KF3] model smoothing: arm N clip call(s)/s, M carried` in a second the arm
+  drew): one swing drew the arm on 93 frames and carried the clip time on 87 (the
+  first tick primes and draws the game's own time); over six swings, 0 re-seeks and
+  0 backward steps. The mechanism is measured; the picture has not been judged by
+  eye.
 
 ### 3e. The HUD, and what else steps
 
@@ -464,7 +485,8 @@ said the rest is not important yet (2026-10-02)**; it is kept here for when it i
 1. The needle, the gauges and the texture hold are on and were not looked at
    separately.
 2. If a model pops at the cull's edge, hand the queries the carried position.
-3. The arm, when a save with one is available.
+3. The arm is carried and measured (3d); waiting to be judged by eye (swing with
+   Square).
 4. Check the loops' reading in 3e against the code before trusting it.
 
 **Running the game**: as before (the DualSense, `carda.sav`); the shell port is

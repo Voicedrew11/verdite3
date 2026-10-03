@@ -165,7 +165,7 @@ the autostart position, turning and walking (`KF3_AUTOPAD=12:Left:3000,20:Up:600
 | 4 | `func_80034BF4` | 0 | | the cull grid: writes the 25x25 grid at `0x1F800120` (`func_8002D3A8`'s job) |
 | 5 | `func_80035630` | clears both tables | | flip the buffers, `ClearOTagR` both tables, reset the primitive buffer (`func_8002E064`) |
 | 6 | `func_80043858` | 0 | | sound slots (`func_800353AC`, instruction for instruction) |
-| 7 | `func_8003DF50` | 0 here | | the first-person arm: returns at once while the s16 at `0x801B25A4` is -1 (this save), lit from the player's own tile's light record (`func_80032400`) |
+| 7 | `func_8003DF50` | 0 here | | the first-person arm: `0x801B25A4` is the swing clock (-1 idle, 0..0xFFF stepped 0x180 a tick by `func_8002D2A0` during a Square swing), its clip byte is `u8[0x801B25AE]`, and its blender call's slot is `0x801B259C`; it returns before drawing while the clock is -1, lit from the player's own tile's light record (`func_80032400`) |
 | 8 | `func_80016A98` | 0 | | wrapped angle difference (`func_80015374`, identical) |
 | | (inline) | | | the HUD block: the HUD model table at `0x800819B4..0x80081C44` from the player block |
 | 9 | `func_8003C35C` | 16 (`POLY_GT4`/`GT3`, blended) | 7-11 | the HUD's 3D models, the records at `0x80081C20` (`func_80031D5C`) |
