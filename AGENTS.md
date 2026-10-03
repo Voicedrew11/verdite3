@@ -36,6 +36,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/DEVELOPMENT.md` | build, run, diagnose, measure |
 | `docs/RECOMPILATION.md` | config, overlays, function maps, SDK addresses |
 | `docs/GAME_INTERNALS.md` | the game's own addresses and routines |
+| `docs/INPUT.md` | pad, keyboard and mouse: the mask table, turn/look, the layouts |
 | `docs/GEOMETRY.md` | the polygon assemblers in C#: the plan and its work |
 | `docs/SMOOTHING.md` | drawing between ticks: stage 15 in C#, the smoothers |
 | `docs/PICTURE.md` | 24-bit colour, perspective, sub-pixel, the Z-buffer: the next work |

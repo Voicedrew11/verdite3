@@ -47,6 +47,8 @@ public sealed class TestingSection : ISettingsSection
         new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v),
         new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v),
         new("kf3.zbuffer", "KF3_ZBUFFER", () => ZBuffer.Enabled, v => ZBuffer.Enabled = v),
+        new(Mouse.OnKey, "KF3_MOUSE", () => Mouse.Enabled, v => Mouse.Enabled = v),
+        new(Mouse.LeadKey, "KF3_MOUSE_LEAD", () => Mouse.Lead, v => Mouse.Lead = v),
     ];
 
     const string FpsKey = "kf3.fps", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
@@ -223,6 +225,12 @@ public sealed class TestingSection : ISettingsSection
             Note("Needs the polygon assemblers in C#.");
         else if (ZBuffer.Enabled && NearPath.Setting != 1)
             Note("The geometry nearest the eye keeps painter's order: set the near path to C# below.");
+
+        ImGui.SeparatorText("Mouse");
+        Toggle("Mouse look", K(Mouse.OnKey),
+            "Steers with the mouse and presses pad buttons with its buttons; more options under Gameplay.");
+        Toggle("Instant mouse look", K(Mouse.LeadKey),
+            "Turns the view the frame you move the mouse, instead of on the game's next tick.");
 
         ImGui.SeparatorText("Routines in C#");
         Note("Verify runs both versions every call and prints mismatches to the console; it is slow.");

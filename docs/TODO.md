@@ -42,6 +42,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
   their clip times, verified and judged, on under pacing; every switch is live in
   Settings ▸ Testing. See `docs/SMOOTHING.md`; its leftovers are put off.
+- **Keyboard and mouse**: built 2026-10-02 (`docs/INPUT.md`); the pitch direction,
+  sensitivity and feel are to be judged; the menu pointer (Verdite2's `MenuMouse`)
+  and twin-stick analog are not ported.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's

@@ -26,6 +26,13 @@ if (channels.Count > 0)
     Console.WriteLine($"[KF3] log channels: {string.Join(",", channels)}");
 }
 
+// The keyboard layout the port ships, as the default bindings rather than an
+// override: Configure must run before ConfigManager.Load so a fresh install gets
+// it and a later launch keeps the player's file. See "The keyboard layout" in
+// docs/INPUT.md.
+Kf3.KeyLayout.Configure();
+Kf3.KeyLayout.Install();
+
 // libapi's interrupt-callback table, per executable: the table setIntr indexes by
 // irq*4, intrEnv + 4. See "The interrupt-callback table" in docs/RECOMPILATION.md.
 RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.OverlayLoadedEvent>(e =>
@@ -116,6 +123,18 @@ Kf3.ZBuffer.Configure(Environment.GetEnvironmentVariable("KF3_ZBUFFER"),
 Kf3.ZBuffer.Install();
 Kf3.MapCoverage.Configure(Environment.GetEnvironmentVariable("KF3_MAPCOVERAGE"));
 Kf3.MapCoverage.Install();
+
+// Mouse look, spent through the game's own turn and look routine (MouseLook), and
+// the mouse buttons pressed as pad buttons inside PAD_dr. Escape captures and
+// releases; the settings are under Gameplay. "Instant mouse look" (KF3_MOUSE_LEAD)
+// shows the motion before the tick spends it, in ViewSmoothing. See "Mouse look"
+// in docs/INPUT.md.
+Kf3.Mouse.Configure();
+Kf3.Mouse.Install();
+Kf3.MouseLook.Install();
+
+// The Gameplay tab: the mouse look options, beside the runtime's own sections.
+Kf3.GameplaySection.Install();
 
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();

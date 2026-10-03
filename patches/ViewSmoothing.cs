@@ -60,11 +60,19 @@ public static class ViewSmoothing
         if (Suspended) return;
         if (!Active)
         {
-            if (_wasActive) { Stage15.ViewOverride = null; _primed = false; _wasActive = false; }
+            // Carrying off under pacing, the mouse still leads: the tick's view plus
+            // what the hand has moved since.
+            if (Leading && Lead(handed, 1.0, false) is { } led)
+            {
+                Stage15.ViewOverride = led;
+                _wasActive = true;
+            }
+            else if (_wasActive) { Stage15.ViewOverride = null; _primed = false; _wasActive = false; }
             return;
         }
         _wasActive = true;
         long tick = FramePacing.Ticks;
+        bool ticked = false, snapped = false;
         if (!_primed)
         {
             _prev = _cur = handed;
@@ -77,19 +85,85 @@ public static class ViewSmoothing
             _prev = _cur;
             _cur = handed;
             _samples++;
-            if (Jump(_prev, _cur)) { _prev = _cur; _snaps++; }
+            ticked = true;
+            if (Jump(_prev, _cur)) { _prev = _cur; _snaps++; snapped = true; }
         }
         else if (handed != _cur)
         {
             // Moved without a tick of the world (a stage outside pacing): no pair to carry.
             _prev = _cur = handed;
             _snaps++;
+            snapped = true;
         }
 
-        var view = Lerp(_prev, _cur, FramePacing.TickFraction);
+        double frac = FramePacing.TickFraction;
+        var view = Lerp(_prev, _cur, frac);
+        if (Leading)
+        {
+            if (snapped) _tickYaw = _tickPitch = 0;
+            else if (ticked) TakeSpent();
+            view = Lead(view, frac, true) ?? view;
+        }
         Stage15.ViewOverride = view;
         if (_probe) Probe(view);
     }
+
+    // ---- the mouse leads the tick ------------------------------------------------
+    //
+    // The look routine spends the mouse once a tick, and the lerp reaches that turn
+    // only at the next tick: up to two ticks from hand to picture. A mouse asks for
+    // a displacement the game adds unchanged (patches/MouseLook.cs), so the view
+    // can show it the frame it happens: the lerp's share of the last tick's mouse
+    // turn is replaced by all of it, and the motion not yet spent is added on top.
+    // Verdite2's FrameSmoothing.MouseLead; see "The mouse leads the tick" in
+    // docs/INPUT.md.
+
+    static bool Leading => Mouse.Lead && FramePacing.Enabled && Stage15.InCSharp;
+    static int _tickYaw, _tickPitch;
+    static long _ledFrames, _ledTicks;
+    static double _ledMiss;
+
+    /// <summary>What the game turned by for the mouse on this tick, measured off
+    /// the base angles.</summary>
+    static void TakeSpent()
+    {
+        var m = MouseLook.Memory;
+        var spent = m == null ? null : Mouse.SpentThisFrame(m);
+        (_tickYaw, _tickPitch) = spent is { } t ? (t.Yaw, t.Pitch) : (0, 0);
+        if (_probe && spent is { } q)
+        {
+            _ledTicks++;
+            _ledMiss += Math.Abs(q.Yaw - q.AskedYaw) + Math.Abs(q.Pitch - q.AskedPitch);
+        }
+    }
+
+    /// <summary>The view with the mouse's lead added, or null when there is none.
+    /// <paramref name="frac"/> is the lerp's phase, 1 when nothing is carried.</summary>
+    static Camera? Lead(Camera view, double frac, bool carried)
+    {
+        var m = MouseLook.Memory;
+        if (m == null) return null;
+        Mouse.Poll();
+        var (turn, look) = Mouse.Pending;
+
+        double keep = 1.0 - frac;
+        double yaw = (carried ? _tickYaw * keep : 0) + turn;
+
+        // Held inside the game's pitch limit, off the base angle the next tick adds
+        // to, so looking into the limit stops at it instead of overshooting.
+        int basePitch = S12(m.ReadU16(Mouse.PitchAddress));
+        int ahead = Math.Clamp(basePitch + (int)Math.Round(look), -Mouse.PitchLimit, Mouse.PitchLimit) - basePitch;
+        double pitch = (carried ? _tickPitch * keep : 0) + ahead;
+
+        int dy = (int)Math.Round(yaw), dp = (int)Math.Round(pitch);
+        if (dy == 0 && dp == 0) return carried ? view : null;
+        if (_probe) _ledFrames++;
+        return view with { Yaw = Add12(view.Yaw, dy), Pitch = Add12(view.Pitch, dp) };
+    }
+
+    static int S12(ushort a) => ((a + 0x800) & 0xFFF) - 0x800;
+
+    static short Add12(short a, int d) => (uint)a < 0x1000u ? (short)((a + d) & 0xFFF) : (short)(a + d);
 
     static bool Jump(in Camera a, in Camera b) =>
         Math.Abs((long)b.X - a.X) > SnapUnits || Math.Abs((long)b.Y - a.Y) > SnapUnits ||
@@ -127,9 +201,11 @@ public static class ViewSmoothing
         if (dt < 1.0) return;
         Console.WriteLine($"[KF3] view smoothing: {_frames / dt:0.0} frame(s)/s, {_moved / dt:0.0} with a new camera, " +
                           $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {Stage15.NeedleCarried / dt:0.0} needle(s) and {Stage15.GaugeCarried / dt:0.0} gauge(s) carried/s; " +
-                          $"drawn [{view.X},{view.Y},{view.Z}] yaw {view.Yaw}, handed [{_cur.X},{_cur.Y},{_cur.Z}] yaw {_cur.Yaw}");
+                          $"drawn [{view.X},{view.Y},{view.Z}] yaw {view.Yaw}, handed [{_cur.X},{_cur.Y},{_cur.Z}] yaw {_cur.Yaw}; " +
+                          $"mouse led {_ledFrames / dt:0.0} frame(s)/s, |applied - asked| {(_ledTicks > 0 ? _ledMiss / _ledTicks : 0):0.00} a tick");
         _probeAt = now;
         _frames = _moved = _samples = _snaps = 0;
+        _ledFrames = _ledTicks = 0; _ledMiss = 0;
         Stage15.NeedleCarried = Stage15.GaugeCarried = 0;
     }
 }

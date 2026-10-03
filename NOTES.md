@@ -35,7 +35,9 @@ in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
 the model walk and the MO pose blender in C# (`KF3_MODELWALK`, `KF3_MOPOSE`,
 verified, on), the creatures, objects and their clip times carried between ticks
 (`KF3_SMOOTH_MODELS`, judged, on under pacing) and the scrolling textures held
-to the tick (`KF3_TEXSCROLL`); the picture's 24-bit shading, no dither,
+to the tick (`KF3_TEXSCROLL`); keyboard and mouse controls (`KF3_KEYS`,
+`KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
+picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
 near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
@@ -50,6 +52,7 @@ event delivered once), and
 - [docs/RECOMPILATION.md](docs/RECOMPILATION.md) — config, overlays, function maps, SDK addresses.
 - [docs/GAME_INTERNALS.md](docs/GAME_INTERNALS.md) — the game's own addresses and routines,
   including the geometry path (stage 15's calls, the map, the models).
+- [docs/INPUT.md](docs/INPUT.md) — pad, keyboard and mouse: the mask table, turn/look, the layouts.
 - [docs/GEOMETRY.md](docs/GEOMETRY.md) — the polygon assemblers in C#: the plan and its work.
 - [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, the
   smoothers, all built and judged.
