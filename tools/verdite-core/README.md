@@ -69,3 +69,4 @@ from a file.
 | `Game.cs` | the game's tag, its log and env prefixes and its id |
 | `HookAttach.cs` | attach on overlay loads until the pass succeeds, and read back what `HookManager` actually committed |
 | `Differential.cs` | run a recompiled routine and its C# transcription from one state and compare RAM, the scratchpad, the callee-saved registers with LO/HI, and the GTE; the recompiled result stands (a game's `verify` modes) |
+| `MouseIndicator.cs` | the glyph shown over the game picture when the mouse is captured or released; `Picture` is the rectangle it sits in, `OutputView` unless the game sets it |
