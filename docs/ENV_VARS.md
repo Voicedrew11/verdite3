@@ -30,6 +30,7 @@ kept.
 | `KF3_RATECENSUS` | seconds: which words change on frames no stage ran on (needs `KF3_FPS`) | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
 | `KF3_GEOPROBE_FUNCS` | `hex,hex,...` (up to 16): more functions for `KF3_GEOPROBE`, reported per call site | none |
+| `KF3_PRIMBUF_PROBE` | `1`: every 2 s, the primitive buffer's capacity, peak and mean frame use, frames, frames that ran out (cursor past or within one `0x34`-byte packet of end), and half-tiles that set the near bit `0x04` but had under 10 KB left and got the bulk assembler; measures only, moves nothing | off |
 | `KF3_POLYASM` | the bulk polygon assemblers `func_80039D50` and `func_80035CA4` in C#: `1` (or unset), `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE), a report every 2 s | on |
 | `KF3_POLYASM_MAP` | `0`: `func_80039D50` recompiled, the rest as `KF3_POLYASM` says | on |
 | `KF3_POLYASM_LIT` | `0`: `func_80035CA4` recompiled | on |

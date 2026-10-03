@@ -62,6 +62,10 @@ Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
 Kf3.StageProbe.Install();
 Kf3.GeometryProbe.Install();
+// The primitive buffer's per-frame use, a measurement only. See
+// "The primitive buffer" in docs/GAME_INTERNALS.md.
+Kf3.PrimBufferProbe.Configure(Environment.GetEnvironmentVariable("KF3_PRIMBUF_PROBE"));
+Kf3.PrimBufferProbe.Install();
 
 // Frame pacing: off unless KF3_FPS is set. See "Frame pacing" in docs/DEVELOPMENT.md.
 Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
