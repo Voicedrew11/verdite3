@@ -46,6 +46,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
   their clip times, verified and judged, on under pacing; every switch is live in
   Settings ▸ Testing. See `docs/SMOOTHING.md`; its leftovers are put off.
+- **Widescreen**: built 2026-10-02 (`docs/WIDESCREEN.md`): the margin, the tints
+  and the cull cone (verified cell for cell), off until judged. **To judge by eye**:
+  the margins in play, fades and flashes at the edges, tiles appearing at the sides
+  as you turn. The primitive buffer is re-asked in a busier area than `fdat02`.
 - **Keyboard and mouse**: built 2026-10-02 (`docs/INPUT.md`); the pitch direction,
   sensitivity and feel are to be judged; the menu pointer (Verdite2's `MenuMouse`)
   and twin-stick analog are not ported.
