@@ -5,6 +5,8 @@ using Recompiled;
 // Japanese numbering. Hand-owned, so RecompOne does not generate one into
 // generated/. Init and hooks go here, before Entry.Run.
 
+Verdite.Core.Game.Configure(tag: "KF3");
+
 // The runtime's log channels, through an env var:
 //     KF3_LOG=bios,cd,gpu,dma,sdk,spu,mdec,irq   (or KF3_LOG=all)
 var channels = (Environment.GetEnvironmentVariable("KF3_LOG") ?? "")

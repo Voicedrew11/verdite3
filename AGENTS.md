@@ -102,6 +102,12 @@ other.
   shared subtree touches nothing else — and are pushed to that subtree's shared
   repo soon after.
 - **This repository's copy must always equal some commit of the shared repo.**
+- **Verdite Core's C# (`tools/verdite-core/src/`) compiles into this assembly as
+  source**, in namespace `Verdite.Core`, imported by a global using in the csproj,
+  so callers name its types (`HookAttach`, ...) as they named this game's copies.
+  `Program.cs` sets the game's tag first (`Game.Configure(tag: "KF3")`), which
+  gives core its `[KF3]` log prefix. A shared file is changed there, in its own
+  commit, not copied back into `patches/`.
 - **Nothing goes upstream.** Not a pull request, and not an issue either.
   Upstream rejects AI-authored pull requests. A defect found here is recorded in
   `docs/` and fixed in the vendored tree, which is the point of vendoring it.

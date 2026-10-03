@@ -31,4 +31,10 @@
         <None Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
     </ItemGroup>
 
+    <!-- Verdite Core's C# compiles into this assembly as source (the remove above keeps RecompOne's own sources out). -->
+    <ItemGroup>
+        <Compile Include="tools/verdite-core/src/**/*.cs" />
+        <Using Include="Verdite.Core" />
+    </ItemGroup>
+
 </Project>
