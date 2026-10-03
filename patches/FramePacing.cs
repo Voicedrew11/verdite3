@@ -28,7 +28,9 @@ public static class FramePacing
     public static double LogicHz { get; private set; } = 15.0;
     public static double TargetFps { get; private set; }
     public static bool Enabled { get; private set; }
-    static bool Uncapped => TargetFps <= 0.0;
+
+    /// <summary>The picture is drawn as fast as it can, with no target rate.</summary>
+    public static bool Uncapped => TargetFps <= 0.0;
 
     const double SpinMs = 1.5;
 

@@ -67,6 +67,13 @@ Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
 Kf3.FramePacing.Install();
 Kf3.RateCensus.Install();
 
+// VSync calls outside stage 15 wait a real vblank, as the console's did. On by
+// default; KF3_VBLANKPACING=0 compares against the runtime's clock. See "Menus and
+// loading screens wait for a vblank" in docs/DEVELOPMENT.md.
+Kf3.VBlankPacing.Configure(Environment.GetEnvironmentVariable("KF3_VBLANKPACING"),
+                           Environment.GetEnvironmentVariable("KF3_VBLANKPACING_PROBE"));
+Kf3.VBlankPacing.Install();
+
 // The bulk polygon assemblers in C#: on unless KF3_POLYASM=0; KF3_POLYASM=verify
 // runs both and compares. See "The geometry path in C#" in docs/GEOMETRY.md.
 Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
@@ -83,9 +90,17 @@ Kf3.CameraBlock.Install();
 Kf3.Stage15.Configure(Environment.GetEnvironmentVariable("KF3_STAGE15"),
                       Environment.GetEnvironmentVariable("KF3_STAGE15_NEEDLE"));
 Kf3.Stage15.Install();
+// Loops entered from a gated stage that call stage 15 themselves run once per
+// world tick, the picture drawn at the render rate. See "Loops that draw their
+// own frames" in docs/SMOOTHING.md.
+Kf3.LoopPacing.Configure(Environment.GetEnvironmentVariable("KF3_LOOPPACING"),
+                         Environment.GetEnvironmentVariable("KF3_LOOPPACING_PROBE"));
+Kf3.LoopPacing.Install();
 Kf3.ViewSmoothing.Configure(Environment.GetEnvironmentVariable("KF3_SMOOTH"),
                             Environment.GetEnvironmentVariable("KF3_SMOOTH_PROBE"));
 Kf3.ViewSmoothing.Install();
+Kf3.MessageBoxHold.Configure(Environment.GetEnvironmentVariable("KF3_MSGBOX"));
+Kf3.MessageBoxHold.Install();
 Kf3.SpriteAnim.Configure(Environment.GetEnvironmentVariable("KF3_SPRITEANIM"));
 Kf3.SpriteAnim.Install();
 Kf3.TextureScroll.Configure(Environment.GetEnvironmentVariable("KF3_TEXSCROLL"));

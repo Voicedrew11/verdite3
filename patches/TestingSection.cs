@@ -39,9 +39,12 @@ public sealed class TestingSection : ISettingsSection
     static readonly Kept[] Switches =
     [
         new("kf3.pacing", "KF3_FPS", () => FramePacing.Enabled, FramePacing.SetEnabled),
+        new("kf3.vblank_hold", "KF3_VBLANKPACING", () => VBlankPacing.Enabled, v => VBlankPacing.Enabled = v),
+        new("kf3.loop_pacing", "KF3_LOOPPACING", () => LoopPacing.Enabled, v => LoopPacing.Enabled = v),
         new("kf3.smooth", "KF3_SMOOTH", () => ViewSmoothing.Enabled, v => ViewSmoothing.Enabled = v),
         new("kf3.smooth_models", "KF3_SMOOTH_MODELS", () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v),
         new("kf3.needle_hold", "KF3_STAGE15_NEEDLE", () => Stage15.NeedleHeld, v => Stage15.NeedleHeld = v),
+        new("kf3.msgbox_hold", "KF3_MSGBOX", () => MessageBoxHold.Enabled, v => MessageBoxHold.Enabled = v),
         new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v),
         new("kf3.perspective", "KF3_PERSPECTIVE", () => Perspective.Enabled, v => Perspective.Enabled = v),
         new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v),
@@ -166,6 +169,11 @@ public sealed class TestingSection : ISettingsSection
         if (FramePacing.Enabled) { Rates(); Note($"Drawing {_fps:0.0} fps at {_tps:0.0} ticks a second."); }
         if (!FramePacing.Enabled) ImGui.EndDisabled();
 
+        Toggle("Hold menus and loading screens to the vblank", K("kf3.vblank_hold"),
+            "Waits a real vblank for every VSync call outside stage 15, as the console did.");
+        Toggle("Loops that draw their own frames run at the world's rate", K("kf3.loop_pacing"),
+            "Redraws stage 15 inside an animation loop (an item pickup, a message, a fade) until the world's next tick, instead of stepping the loop once per drawn frame.");
+
         ImGui.SeparatorText("Smoothing");
         if (!FramePacing.Enabled)
         {
@@ -183,6 +191,8 @@ public sealed class TestingSection : ISettingsSection
 
         Toggle("Hold the compass needle's spring to the tick", K("kf3.needle_hold"),
             "Off lets the needle swing at the drawn rate, as the game would.");
+        Toggle("Hold the bottom message box to the tick", K("kf3.msgbox_hold"),
+            "Off lets a pickup's message slide in, hold and slide out at the drawn rate.");
         Toggle("Hold billboard animation to the tick", K("kf3.sprite_hold"),
             "Off lets the sprites animate at the drawn rate, as the game would.");
 

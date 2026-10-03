@@ -375,15 +375,83 @@ the record whose submit is in progress (`Enter`/`Leave` round each submit).
   144 fps. `KF3_TEXSCROLL=carry` redraws at the interpolated phase too, about two
   uploads a second here: the step is a pixel or so a tick, so there is little to
   carry.
-- **Loops that draw their own frames**: an opencode reading says
-  `func_800305D8` (from stage 4) loops over stages 14 and 13 with two VSyncs a
-  pass and `func_80030568` is a one-shot redraw, neither through the frame gate,
-  so neither needs Verdite2's `LoopPacing`. **Not checked against the code or run.**
-  While one runs the world does not tick, so the tick-held clocks above wait for
-  the stage gate's watchdog.
+- **Loops that draw their own frames**: the earlier reading here (that none
+  needed Verdite2's `LoopPacing`) was wrong. A dozen routines call stage 15
+  themselves, and the bottom message box is stepped by stage 15's own call #3;
+  see "Loops that draw their own frames" and "The message box at the bottom"
+  below.
 
 **Judged by eye** (the user, 2026-10-02, at 144 fps): the creatures carried,
 "looks good"; on whenever pacing is since.
+
+## Loops that draw their own frames
+
+`patches/LoopPacing.cs`, **on by default** (`KF3_LOOPPACING=0` to compare). A
+routine entered from a gated stage that calls stage 15 itself presents its own
+frames, and the stage gate cannot reach inside it: the world does not tick there,
+so its body steps once per drawn frame and every counter it advances runs at the
+render rate. The patch hooks stage 15's pre and post. The main loop's own `jal`
+leaves `0x80014FB0` in RA; any other caller is such a loop. A modal call whose
+frame the world did not tick on is followed by redraws of stage 15 with the loop's
+own `a0`/`a1`, and each redraw passes FramePacing's frame boundary, advances the
+logic clock and is paced to `KF3_FPS`; the loop's body therefore waits for the
+next world tick, about 15 times a second, while the picture is drawn at the render
+rate and `ViewSmoothing` and `ModelSmoothing` carry between ticks. The register
+file is snapshotted and restored around the redraws, and a flag makes the nested
+calls ignore the pre and post, so the loop resumes with exactly the registers
+stage 15 left it. A backstop of three ticks' wall time (200 ms) and a check that
+the frame boundary advanced each redraw warn once to stderr if either fails. The
+first version capped the count instead (three ticks' worth at the rate in play,
+never fewer than 64); uncapped, with no rate measured yet at the first fade, 64
+redraws at ~1000 fps fell short of a tick and the warning fired.
+
+The routines, read off the recompiled `generated/*.cs` (only the fade confirmed
+by a run): the **item pickup**
+`func_8005DB30` (spin `s16[slot+0x26] += 0x40` a body, stage 15 called
+`(0, 0x801B2608)`), a **slide-in popup** `func_8005D948` (to `S2 = 4096` by
+`0x200`, `(0, 0)`; called from the action interpreter `func_8005E2D0`), the **fades** `func_80046C00` and `func_8005DA94` (their
+own stack camera blocks), the **message/script interpreter** `func_8005C308`,
+the **item-use dispatcher** `func_8005CBE0`, the **area-module fades** (`fdat08`
+`func_801E8C3C` and the sibling fdat loops), and the one-shot redraw
+`func_80030568` (a single frame, so it has nothing to hold). `func_8005C0D4` was
+on an earlier list and does not call stage 15 at all.
+
+**Left out of Verdite2's `LoopPacing`**, deliberately, it is much more than this
+port needs: its carry of a camera a loop pans itself (three angles at `a1` and a
+position at `a0`, interpolated between the loop's last two iterations), its
+pace-only mode (`LoopPacing=pace`: hold the body, do not redraw, so the speed is
+right and the picture steps at the tick), and its interface-frame pacing
+(`InterfaceHz`, 60) for a modal loop that draws no world -- that last belongs to a
+separate `VBlankPacing` patch here ("Menus and loading screens wait for a vblank"
+in `docs/DEVELOPMENT.md`).
+
+**Measured 2026-10-02**, slot 1 in `fdat02`, `KF3_LOOPPACING_PROBE=1`: the fade-in
+on arriving (`func_80046C00`, RA `0x80046C84`, its own stack blocks
+`0x801FFF50`/`0x801FFF60`) ran **15-16 iterations a second with 7.9-8.6 redraws
+each at `KF3_FPS=144`** (144.0 fps drawn, 15.0-15.9 ticks/s), and 18.8 a second
+with 49 redraws each uncapped (~935 fps); before, its body ran once per drawn
+frame. Opening the menu passes `func_80030568` (RA `0x800305A8`). The item pickup
+and the popup were not reached by a scripted run. **Not judged by eye**: the
+pickup's spin, the popup and the fades.
+
+## The message box at the bottom
+
+`patches/MessageBoxHold.cs`, **on by default** (`KF3_MSGBOX=0` to compare). The
+box a coin pickup shows at the bottom of the screen is a state machine in
+`func_80041F9C`, **stage 15's call #3**, so it ran on every drawn frame. Read off
+the recompiled code: a request is queued by `func_80041EEC(kind, amount)` (kind
+`0x19` carries an amount) into the kind table `0x801AEAED` behind the cursor
+`0x801AEAF6`; the state at `0x801AEAF7` goes 0 (idle) -> 1 (slide in: the level
+`0x801AEAF9` `+0x14` a call to `0x64`) -> 2 (hold: `0x801AEAF8` from `0x0F` down
+by 1) -> 3 (slide out, `-0x14` to 0). It writes only the HUD records stage 15's
+overlay walks (calls #10 and #11, `func_80041E68` and `func_80041D9C`, through
+`func_80041AD4`) draw; its only callees are `func_800277C0` and `func_80041F8C`,
+neither of which writes the table. So the patch skips it on every stage 15 but the
+first of a tick (`FramePacing.FirstWalkOfTick`), and the records it wrote last are
+drawn again: in 5 ticks, held 15, out in 5, about 1.7 s, as the console's 15 Hz
+gate gave it. The slide steps at 15 Hz; nothing is carried between ticks.
+**Not measured by a run (no scripted pickup) and not judged.**
+
 
 ## Handoff: what is left
 

@@ -22,6 +22,10 @@ kept.
 | `KF3_TICKRATE` | the world's rate under pacing; a comparison only | 15 |
 | `KF3_FPS_PROBE` | `1`: a pacing line a second | off |
 | `KF3_PACING_NOBOUNDARY` | `1`: leave the frame boundary unhooked, to test the watchdog | off |
+| `KF3_VBLANKPACING` | `0`: leave every VSync call outside stage 15 on the runtime's clock, to compare (with `KF3_FPS`, they wait a real vblank by default) | on |
+| `KF3_VBLANKPACING_PROBE` | `1`: a line a second while any wait happened: VSync calls held by mode, the mean wait, and calls exempted inside stage 15 | off |
+| `KF3_LOOPPACING` | `0`: let a loop that calls stage 15 itself (item pickup, message box, fades, area-module fades) step once per drawn frame instead of once per world tick; a comparison only | on |
+| `KF3_LOOPPACING_PROBE` | `1`: a line a second while a modal loop runs: modal stage-15 calls a second (the loop body's rate), redraws each, and the last call's `a0`/`a1` and caller | off |
 | `KF3_STAGEPROBE` | `1`: which main-loop stages write the ordering table, every 5 s | off |
 | `KF3_RATECENSUS` | seconds: which words change on frames no stage ran on (needs `KF3_FPS`) | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
@@ -36,6 +40,7 @@ kept.
 | `KF3_SMOOTH_MODELS` | `0`: draw each creature, object, effect and billboard from its last tick instead of at its position, facing and clip time interpolated between the last two ticks (runs only under `KF3_FPS`, needs `KF3_MODELWALK` on; the clip time also needs `KF3_MOPOSE`); judged 2026-10-02 | on |
 | `KF3_SMOOTH_PROBE` | `1`: a line a second: frames drawn and cameras carried, tick samples and snaps; models carried, snaps, clip frames carried, wraps, turns, re-seeks and backward steps; mouse-led frames a second and the mean \|applied − asked\| a tick | off |
 | `KF3_SPRITEANIM` | `0`: let the billboard cels step on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints walks stepped and held) | held |
+| `KF3_MSGBOX` | `0`: step the bottom message box (`func_80041F9C`) on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints calls stepped and held while it is shown) | held |
 | `KF3_TEXSCROLL` | `0`: run the scrolling textures (`func_800351FC`) on every drawn frame under pacing; `carry`: also redraw them each frame at the phase interpolated between ticks (not judged). `KF3_FPS_PROBE=1` prints calls, runs and carried uploads | held |
 | `KF3_TRUECOLOR` | `1`: 24-bit shading on the GL backend (`GteDepth.TrueColor`, fork `0021`); Testing ▸ Picture ▸ Shading ▸ Smooth | off (not judged) |
 | `KF3_NODITHER` | `1`: clear the GPU's dither bit in PutDrawEnv's `dtd` and in the table's E1 words, put back after; Shading ▸ None | off (not judged) |

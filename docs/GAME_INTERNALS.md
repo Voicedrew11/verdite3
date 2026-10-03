@@ -425,6 +425,18 @@ buffers a frame swaps and the vblank handler's counters:
   80 and 150; no writer found), `0x800C87F0` and near `gp` (`0x8009C07C`,
   `0x8009C1A4..`, `0x8009C20C`, `0x8009EEBC`, written by `func_8006C744`).
   None is reached by a `lui` literal; not identified.
+- **The bottom message box** (only while one is shown): stage 15's call #3
+  `func_80041F9C` steps its state machine (`0x801AEAF7..F9`). Held to the tick by
+  `patches/MessageBoxHold.cs` since 2026-10-02 ("The message box at the bottom" in
+  `docs/SMOOTHING.md`).
+- **Loops that present frames of their own**, which no census taken standing in
+  the main loop sees: a dozen routines entered from a gated stage call stage 15
+  themselves (the item pickup `func_8005DB30`, the fades, the script
+  interpreter), held to the tick by `patches/LoopPacing.cs`; and every `VSync`
+  outside stage 15 (the menu's presenter `func_800270F8` and its cursor repeat
+  `func_800279D8`, the loading screens, the movies, `func_80019538`'s two-vblank
+  wait) returned at once, held to a real vblank by `patches/VBlankPacing.cs`. Both
+  2026-10-02; see `docs/SMOOTHING.md` and `docs/DEVELOPMENT.md`.
 - **The compass needle** (only while turning, so a standing census misses it):
   stage 15's HUD block steps its spring, the speed at `gp + 0xD8` (`0x8009C2EC`)
   and the yaw at `0x80081C3A`/`0x80081C5E`. Held to the tick by `Stage15` since

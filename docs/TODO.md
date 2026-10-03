@@ -28,7 +28,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - **What stage 15 advances runs at the render rate under pacing**: the billboard
   cels and the compass needle are held to the tick (2026-10-02, `docs/SMOOTHING.md`);
   the scrolling textures too since; the unidentified words in "What still runs at the render rate" in
-  `docs/GAME_INTERNALS.md` remain.
+  `docs/GAME_INTERNALS.md` remain. The loops that draw their own frames, the
+  menu, the loading screens and the bottom message box are held since
+  2026-10-02 (`LoopPacing`, `VBlankPacing`, `MessageBoxHold`); **to judge by eye:
+  an item pickup's spin, a coin pickup's message box, the menu's cursor repeat,
+  and the fades.**
 - **The geometry path in C#** (the sharing plan's picture features rest on it):
   surveyed, see "The geometry path" in `docs/GAME_INTERNALS.md`; the build order
   is in Verdite2's `docs/SHARING.md` (2026-10-02, the geometry survey, and its

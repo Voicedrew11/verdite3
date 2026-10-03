@@ -253,3 +253,50 @@ ticks), and whatever stage 15 itself advances runs at the render rate (see "What
 still runs at the render rate" in `docs/GAME_INTERNALS.md`: billboard cels at
 least). Menus, the opening movie and loads present their own frames and are
 paced to `KF3_FPS` like any frame.
+
+## Menus and loading screens wait for a vblank
+
+`patches/VBlankPacing.cs`, **on by default** (`KF3_VBLANKPACING=0` compares).
+**The rule: in GAME.EXE, with frame pacing on, a VSync call that is not inside
+stage 15 waits a real vblank.** Mode 0 waits one, mode `n >= 2` waits `n`; mode
+`< 0` and mode 1 are queries and return at once.
+
+**Why.** The runtime's `LibEtc.VSync` presents and returns immediately for any
+mode but 1 (`tools/RecompOne/RecompOne.Runtime/sdk/LibEtc.cs`); it is throttled
+only by the runtime's per-call ceiling, which `FramePacing` sets permissively to
+`max(60, 2*TargetFps)` = 288/s at 144 fps. On the console each `VSync(0)` waited
+one vblank and `VSync(n)` waited `n` vblanks. So every loop that counts VSync
+calls as a delay ran several times too fast once the host rate rose above the
+runtime's ceiling -- the same trap the fork's own comment names, that a caller
+which needs a rate must keep its own deadline.
+
+The class keeps a 60 Hz wall-clock grid of its own (a `Stopwatch`; the runtime's
+`_vcount` cannot be the clock, since it only advances from a VSync call). Its
+deadline is `next += n * 1000/60`, and a deadline more than four periods behind
+resyncs instead of fast-forwarding. It sleeps to ~1.5 ms before the deadline and
+spins the rest, as `FramePacing.Floor` does. Calls made inside stage 15
+(`func_800422B8`) are exempt: a pre at the lowest order and a post at the highest
+keep a depth counter around it, so the frame swap's VSync stays `FramePacing`'s
+frame boundary; the counter resets on every overlay load in case an exception
+skipped a post.
+
+**What it covers**, read from the recompiled code: the in-game menu presenter `func_800270F8` (two
+presents per loop iteration), the cursor auto-repeat `func_800279D8` (up to 8x
+`VSync(0)` while a direction is held), the highlight and window-slide counters
+`func_80026FE4`, the area-transition loading screen `func_8003DAEC`, the area-load
+bar `func_80043BB8` (both presenting through the frame swap `func_80035700`), the
+movie presenter and its loop, the two-vblank wait `func_80019538`, and the
+`VSync(2)`/`VSync(4)` waits.
+
+`KF3_VBLANKPACING_PROBE=1` prints once a second, only when any wait happened in
+that second: held VSync calls per second by mode, the mean wait in ms, and calls
+exempted inside stage 15 per second.
+
+**Measured 2026-10-02**, slot 1 in `fdat02`, the menu opened with Cross and
+Down held for 3 s, `KF3_VBLANKPACING_PROBE=1`: **60.0 held `VSync(0)` calls a
+second** in the menu at both `KF3_FPS=144` and uncapped (the pacing probe reads
+60.0 fps drawn there, 15.0 ticks/s), mean wait 15-16 ms; before, the menu
+presented at the runtime's ceiling, `2 x KF3_FPS` (288 a second at 144). The
+main loop is untouched (144.0 fps, 15.0 ticks/s, 0 held). The loads before the
+area held 25-39 a second. **Not judged by eye**: the cursor repeat (8 vblanks,
+133 ms), the highlight and window slide.
