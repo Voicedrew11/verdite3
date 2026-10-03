@@ -50,6 +50,8 @@ recompiled and running, following Verdite2's method but applied to this disc.
   and the cull cone (verified cell for cell), off until judged. **To judge by eye**:
   the margins in play, fades and flashes at the edges, tiles appearing at the sides
   as you turn. The primitive buffer is re-asked in a busier area than `fdat02`.
+  The near path's screen test now follows the aspect (`NearScreen.cs`), measured,
+  waiting to be judged with the rest.
 - **Keyboard and mouse**: built 2026-10-02 (`docs/INPUT.md`); the pitch direction,
   sensitivity and feel are to be judged; the menu pointer (Verdite2's `MenuMouse`)
   and twin-stick analog are not ported.

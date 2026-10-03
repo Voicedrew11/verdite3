@@ -62,6 +62,8 @@ kept.
 | `KF3_MODELWALK` | the model walk `func_80040AE4` (creatures, objects, effects, billboards) in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
 | `KF3_WIDESCREEN_CULL` | the tile-visibility cone widened to the aspect: `0` leaves the stock 4:3 cone, a number pins the widening factor instead of the aspect's (1 at 4:3) | follows aspect |
 | `KF3_WIDESCREEN_CULL_PROBE` | `1`: every 2 s the factor, the last stock and widened half-angles, tiles lit, tiles added, and the oracle's mismatches (stock classifier against the game's own grid; must be 0); `2` also prints the last grid as ASCII | off |
+| `KF3_NEARSCREEN` | the near assemblers' polygon-division screen block (the u32 at block+4, the game's 320) widened to the aspect; `0` leaves it at 320 | follows aspect |
+| `KF3_NEARSCREEN_PROBE` | `1`: every 2 s, near faces seen, rejects by the entry test's SZ, X-right, X-left, Y-bottom and Y-top groups at the stock 320, and how many X rejects the wide width rescues | off |
 | `KF3_MOPOSE` | the MO pose blender `func_800431E8` in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
 | `KF3_KEYS` | `fps`: the port's WASD keyboard layout (the default for a fresh install); `stock`: RecompOne's own bindings | fps |
 | `KF3_MOUSE` | `0`: hand the mouse back; look and the mouse buttons are off | on |

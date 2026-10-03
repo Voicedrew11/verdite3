@@ -18,7 +18,7 @@ wins over the kept `kf3.widescreen.aspect`.
 | full-screen tints stretched | `Widescreen.Stretch` | ported, by shape |
 | the HUD anchored | off, `KF2_WIDESCREEN_HUD=1` | not ported |
 | the tile cone widened | `CullCone.cs` | a different build; see below |
-| the view-space clipper | `ViewClip.cs`, a no-op below 8:3 | **no clipper in this game** |
+| the view-space clipper | `ViewClip.cs`, a no-op below 8:3 | **no clipper in this game**; the near path's libgte division has a screen test, widened with the aspect (`NearScreen.cs`) |
 | the primitive buffer | ran out; moved to 4 MB (`PrimBuffer.cs`) | measured, see below |
 
 ## The margin, the latches and the tints
@@ -114,13 +114,68 @@ Measured, slot 1, `fdat02`, 144 fps:
 Pacing held at 144.0 fps and 15.0 ticks/s. **Not judged by eye**: whether the
 margins still fill in and empty at the edges as you turn.
 
-## No view-space clipper
+## The near path's screen test
 
-Verdite2's second cull is a clipper set to twice the screen (`ViewClip.cs`).
-This game links no clipper (`Clip3FTP`/`Clip4FTP` are absent; `docs/GAME_INTERNALS.md`,
-"The map"): the bulk assembler sends a face whole, and the near path subdivides.
-The projection is unchanged by the margin, so nothing here gets larger on screen.
-Nothing to port.
+Reported by eye: at a wide aspect, geometry popped in at the bottom corners and
+on walls close to the camera, with smoothing and the mouse lead off, and
+`KF3_WIDESCREEN_CULL=1.6` did not fix it.
+
+The earlier claim that this game has nothing to port from Verdite2's clipper was
+wrong. This game links no `Clip3FTP`/`Clip4FTP`, but near faces go through
+libgte's four polygon-division entries. Cells with grid bit `0x04`, within
+distance² < 5 of the window centre, are drawn by the near assembler
+`func_8003AB04`, and the models' near path is `func_800366A8`; both reach
+`func_80074D88` and `func_800756A8` (triangles), `func_80075188` and
+`func_80075B48` (quads), whose C# twins are `DivTri`/`DivTri2`/`DivQuad`/
+`DivQuad2` in `patches/NearPathDivide.cs`. Their entry test drops the whole face
+when every corner's SZ is under H/2, or every corner's X is past `OFX ± pih/2`,
+or every corner's Y is past `OFY ± piv/2`. `pih` and `piv` are words at `block+4`
+and `block+8` of a stack block the near assemblers fill per face with the
+immediates `0x140` (320) and `0xF0` (240), at seven sites. So a face wholly in
+the margin was dropped. The far assembler `func_80039D50` has no screen test,
+which is why the margins otherwise fill.
+
+The fix: `patches/NearScreen.cs` pre-hooks the four entries, and the C# near path
+calls the same `NearScreen.Widen` at the top of its four twins (they are called
+directly, so the hooks do not fire there). It writes 320 + 2 × margin into
+`block+4` when it reads 320 there and the aspect is wide: 428 at 16:9, 560 at
+21:9. The vertical 240 is unchanged. Because the game writes 320 again for every
+face, 4:3 writes nothing and an aspect change needs no restore. No setting: it is
+part of the aspect the player picked (see Verdite2's "Three checkboxes that were
+not choices"). `KF3_NEARSCREEN=0` is the comparison; `KF3_NEARSCREEN_PROBE=1`
+re-evaluates each face's corners at the entry and prints, every 2 s, faces, the
+SZ/right/left/bottom/top rejects at 320 and how many X rejects the wide width
+keeps.
+
+Measured, `fdat02` from slot 1, a scripted 75 s walk turning left and right (same
+script every run), 144 fps:
+
+| run | width | X rejects (right + left) | kept by the wide width | packets/frame at rest |
+|---|---|---|---|---|
+| 4:3 | 320 | 22,342 + 23,900 | 0 | 113 |
+| 4:3, `KF3_NEARSCREEN=0` | 320 | 22,352 + 23,887 | 0 | 113 |
+| 16:9, `KF3_NEARSCREEN=0` | 320 | 22,409 + 23,962 | 0 | 113 |
+| 16:9 | 428 | 22,230 + 23,669 | 8,916 (19%) | 125 |
+| 21:9 | 560 | 22,415 + 23,963 | 15,618 (34%) | 125 |
+
+The SZ rejects were 0 in every run; the vertical rejects did not change with the
+width. `KF3_NEARPATH=verify` at 16:9 with the fix: 0 RAM, scratchpad, register
+and GTE mismatches over ~2,016 calls a window. `KF3_PRIMBUF_PROBE=1`: peak 8,228
+bytes at 4:3, 8,708 at 16:9, 8,868 at 21:9 of 106,496; 0 frames ran out and 0 near
+halves starved in every run. Pacing 144.0 fps drawn at 15.0 ticks/s.
+
+The cone was checked as the second suspect and ruled out. Unlike Verdite2, the
+window is centred on the camera and the occlusion flood's rays start at the
+camera tile (`func_800345F4` / `func_800348F4`, called from `func_80034BF4`), and
+the `KF3_WIDESCREEN_CULL_PROBE=2` map shows the wedge's apex about four cells
+behind the camera, so every cell round the camera is already lit. A Verdite2-style
+rescue (force-lighting a radius-3 disc round the camera after the flood) was built
+and measured: it lit 33-35 cells a frame, all of them cells the flood had
+cleared, and changed neither the near faces passed (43,270 vs 43,288) nor
+packets/frame (125 vs 125). Not kept.
+
+**Mechanism measured, picture not judged**: whether the corners and the near
+walls still pop in is the user's to look at.
 
 ## The primitive buffer
 

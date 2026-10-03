@@ -20,6 +20,7 @@ public static partial class NearPath
     // transcribed from generated/game.cs:167809
     static void DivTri(CpuContext c, IMemory m)
     {
+        NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Tri);
         { var _v = c.A1; c.A3 = c.A1 + 0x60u; }
         c.A2 = 0x00000000u;
         DivTriBody(c, m);
@@ -331,6 +332,7 @@ public static partial class NearPath
     // transcribed from generated/game.cs:168113
     static void DivQuad(CpuContext c, IMemory m)
     {
+        NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Quad);
         { var _v = c.A1; c.A3 = c.A1 + 0x78u; }
         c.A2 = 0x00000000u;
         DivQuadBody(c, m);
@@ -736,6 +738,7 @@ public static partial class NearPath
     // transcribed from generated/game.cs:168505
     static void DivTri2(CpuContext c, IMemory m)
     {
+        NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Tri2);
         { var _v = c.A1; c.A3 = c.A1 + 0x60u; }
         c.A2 = 0x00000000u;
         DivTri2Body(c, m);
@@ -1089,6 +1092,7 @@ public static partial class NearPath
     // transcribed from generated/game.cs:168851
     static void DivQuad2(CpuContext c, IMemory m)
     {
+        NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Quad2);
         { var _v = c.A1; c.A3 = c.A1 + 0x78u; }
         c.A2 = 0x00000000u;
         DivQuad2Body(c, m);
