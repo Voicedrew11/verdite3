@@ -446,7 +446,7 @@ public static class Mouse
     }
 
     /// <summary>
-    /// Lock or release, and say so on screen -- through patches/MouseIndicator.cs
+    /// Lock or release, and say so on screen -- through Verdite Core's MouseIndicator
     /// rather than through a toast, since this is a state a player changes while
     /// playing. The failure below keeps its toast: it is rare, it is not a state,
     /// and it needs words.
