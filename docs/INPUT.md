@@ -24,10 +24,10 @@ The game tests `pad & u16[table[i]]` against a **14-entry u16 table at
 | `0x8008186A` | `0x4000` | Down | walk back |
 | `0x8008186C` | `0x8000` | Left | turn left |
 | `0x8008186E` | `0x2000` | Right | turn right |
-| `0x80081870` | `0x0010` | Triangle | attack **inferred** |
+| `0x80081870` | `0x0010` | Triangle | magic |
 | `0x80081872` | `0x0040` | Cross | the in-game menu |
-| `0x80081874` | `0x0080` | Square | magic **inferred** |
-| `0x80081876` | `0x0020` | Circle | examine / interact **inferred** |
+| `0x80081874` | `0x0080` | Square | attack |
+| `0x80081876` | `0x0020` | Circle | examine / interact |
 | `0x80081878` | `0x0004` | L1 | strafe left |
 | `0x8008187A` | `0x0001` | L2 | look one way |
 | `0x8008187C` | `0x0008` | R1 | strafe right |
@@ -39,8 +39,20 @@ The game tests `pad & u16[table[i]]` against a **14-entry u16 table at
 indices at `0x801B25E2` (face layout) and `0x801B25E3` (direction layout). The
 direction presets rewrite the eight direction entries; the face presets only ever
 swap **Triangle to Square** and **Cross to Circle**, i.e. the pairs {attack,
-magic} and {menu, examine}. The attack/magic/examine names above are therefore
-**inferred** from those config strings; the buttons and code paths are read.
+magic} and {menu, examine}.
+
+**The verbs were first guessed the wrong way round** (attack on Triangle, magic
+on Square), from those config strings, and the first keyboard layout and mouse
+defaults put attack on Triangle. Read from the code since (2026-10-03, line
+numbers in `generated/game.cs`): the attack routine `func_8002D2A0` starts and
+steps the swing clock `0x801B25A4` on **Square** (entry 6, line 33537) and only
+uses Triangle (entry 4) to skip that block; a new Triangle press in
+`func_8002FE1C` calls `func_8002C040(0)`, which sets the cast-ready latch
+`0x801B25B3` (**magic**, by that and by the pairing); a new **Circle** press in
+`func_800305D8` calls `func_8005E2D0`, which measures the distance to the objects
+in front (**examine, talk, open**); a new **Cross** press there opens the in-game
+menu (`func_8001A774`). Play agrees: Square swings, Triangle does not, Cross opens
+the menu. Layout version 2 corrects the keys and migrates version 1 once.
 Select is **inferred** to be the map screen — its handler `func_80019F58(3)` is
 an empty stub in this build and the body begins at `func_80019F60`.
 
@@ -103,7 +115,7 @@ the game's decay when the hand stops. Fractions are carried tick to tick, so a
 slow hand still turns.
 
 The mouse's buttons press pad buttons through `PadReadEvent`, attached only while
-the pointer is captured: **left Triangle (attack), right Square (magic), middle
+the pointer is captured: **left Square (attack), right Triangle (magic), middle
 Circle (examine)** by default. The game's own config decides the verb, so
 remapping in-game moves the mouse with it. **Escape** captures and releases by
 default (`KF3_MOUSE_KEY`); a popup opening takes the pointer back.

@@ -57,8 +57,8 @@ static class BindingTable
     [
         ("Cross",    b => b.Cross,    (b,v) => b.Cross = v,    p => p.Cross,    (p,v) => p.Cross = v,    "the in-game menu"),
         ("Circle",   b => b.Circle,   (b,v) => b.Circle = v,   p => p.Circle,   (p,v) => p.Circle = v,   "examine, open, talk"),
-        ("Square",   b => b.Square,   (b,v) => b.Square = v,   p => p.Square,   (p,v) => p.Square = v,   "magic"),
-        ("Triangle", b => b.Triangle, (b,v) => b.Triangle = v, p => p.Triangle, (p,v) => p.Triangle = v, "attack"),
+        ("Square",   b => b.Square,   (b,v) => b.Square = v,   p => p.Square,   (p,v) => p.Square = v,   "attack"),
+        ("Triangle", b => b.Triangle, (b,v) => b.Triangle = v, p => p.Triangle, (p,v) => p.Triangle = v, "magic"),
         ("L1",       b => b.L1,       (b,v) => b.L1 = v,       p => p.L1,       (p,v) => p.L1 = v,       "strafe left"),
         ("R1",       b => b.R1,       (b,v) => b.R1 = v,       p => p.R1,       (p,v) => p.R1 = v,       "strafe right"),
         ("L2",       b => b.L2,       (b,v) => b.L2 = v,       p => p.L2,       (p,v) => p.L2 = v,       "tilt the view; with R2, level it"),

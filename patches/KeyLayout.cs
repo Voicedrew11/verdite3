@@ -40,7 +40,7 @@ public static class KeyLayout
     /// <summary>Which version of the layout the config has been migrated to.</summary>
     public const string AppliedKey = "kf3.keys.layout";
 
-    const int Version = 1;
+    const int Version = 2;
 
     /// <summary>
     /// Layouts this port has shipped before and has since changed its mind about.
@@ -51,7 +51,18 @@ public static class KeyLayout
     /// replaces is recorded here and <see cref="Version"/> is bumped: without both,
     /// an existing config reads as customised and is left alone forever.
     /// </summary>
-    static readonly KeyBindings[] Superseded = [];
+    static readonly KeyBindings[] Superseded =
+    [
+        // Version 1 (2026-10-02): attack and magic the wrong way round, from the
+        // guessed verbs; Square swings and Triangle casts.
+        new()
+        {
+            Up = "W", Down = "S", L1 = "A", R1 = "D",
+            Left = "Left", Right = "Right", L2 = "", R2 = "",
+            Triangle = "Space", Circle = "F", Square = "Q", Cross = "Tab",
+            Start = "Enter", Select = "ShiftRight", L3 = "", R3 = "",
+        },
+    ];
 
     /// <summary>
     /// W A S D and the rest. Only the sixteen pad buttons exist, so this says
@@ -79,9 +90,9 @@ public static class KeyLayout
         R2 = "",
 
         // Act: attack, examine, magic, the menu, the card and options menu, the map.
-        Triangle = "Space",
+        Square = "Space",
         Circle = "F",
-        Square = "Q",
+        Triangle = "Q",
         Cross = "Tab",
         Start = "Enter",
         Select = "ShiftRight",
@@ -101,7 +112,7 @@ public static class KeyLayout
         KeyLayoutApply.Configure(Layout, Version, Superseded, Announce, GetApplied, SetApplied);
 
     const string Announce = "WASD layout applied (W/S walk, A/D strafe, arrows walk and turn, " +
-                            "Space attack, F use, Q cast, Tab menu). Input settings has both layouts.";
+                            "Space attack, F examine, Q magic, Tab menu). Input settings has both layouts.";
 
     /// <summary>
     /// Migrate an existing settings.json, once, and only if nothing in it was

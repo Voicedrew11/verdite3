@@ -41,8 +41,8 @@ public static class MousePage
         Check("Invert look Y", Mouse.InvertKey, ref Mouse.InvertY);
 
         ImGui.Spacing();
-        Note("Mouse buttons press pad buttons. By default left is Triangle (attack), right is " +
-             "Square (magic) and middle is Circle (examine); the game's own control configuration " +
+        Note("Mouse buttons press pad buttons. By default left is Square (attack), right is " +
+             "Triangle (magic) and middle is Circle (examine); the game's own control configuration " +
              "decides what each button does and can reassign it.");
         Button("Left button", Mouse.LeftKey, ref Mouse.LeftButton);
         Button("Right button", Mouse.RightKey, ref Mouse.RightButton);
