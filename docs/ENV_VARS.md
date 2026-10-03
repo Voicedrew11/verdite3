@@ -51,6 +51,10 @@ kept.
 | `KF3_SUBPIXEL_CULL` | `0`: decide facing on whole pixels under sub-pixel, as the game does (the fractional test is `0052`) | fractional |
 | `KF3_PERSPECTIVE_PROBE`, `KF3_SUBPIXEL_PROBE` | `1`: every 2 s, the address map's roots, propagations, hits and misses; sub-pixel adds the fractions carried and the facing test's changes | off |
 | `KF3_MAPCOVERAGE` | `1`: every 2 s, packets and corners the map answered for, by the routine that wrote them | off |
+| `KF3_WIDESCREEN` | the presented aspect: `4:3`/`off` (the untouched path), `16:9`, `16:10`, `21:9`, or any `W:H` or decimal ratio; Testing ▸ Picture ▸ Aspect (kept as `kf3.widescreen.aspect`) | 4:3 (off, not judged) |
+| `KF3_WIDESCREEN_PROBE` | `1`: every 2 s, the share of primitives reaching the margin and full-screen tints stretched; `2`: also lists every wide primitive once per shape | off |
+| `KF3_WIDESCREEN_EFFECTS` | `0`: leave the death fade and the damage flash 320 wide, to compare against the default (they are stretched across the margin whenever an aspect is chosen) | on |
+| `KF3_PRESENT_PROBE` | `1` or `2`: every 2 s, what each present picked -- wide, plain, VRAM fallback; the wide setting is `GpuHle.PresentProbe` | off |
 | `KF3_ZBUFFER` | `1`: per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | off (not judged) |
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |

@@ -146,6 +146,16 @@ Kf3.ZBuffer.Install();
 Kf3.MapCoverage.Configure(Environment.GetEnvironmentVariable("KF3_MAPCOVERAGE"));
 Kf3.MapCoverage.Install();
 
+// Widescreen: off (4:3) until judged, like the rest of the picture. The runtime
+// renders the margin; this sets the aspect, clears the margin latch on an
+// executable load and stretches the game's full-screen tints.
+Kf3.Widescreen.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN"),
+                         Environment.GetEnvironmentVariable("KF3_WIDESCREEN_PROBE"),
+                         Environment.GetEnvironmentVariable("KF3_WIDESCREEN_EFFECTS"));
+Kf3.Widescreen.Install();
+var pp = Environment.GetEnvironmentVariable("KF3_PRESENT_PROBE");
+if (pp == "1" || pp == "2") RecompOne.Runtime.Hle.GpuHle.PresentProbe = true;
+
 // Mouse look, spent through the game's own turn and look routine (MouseLook), and
 // the mouse buttons pressed as pad buttons inside PAD_dr. Escape captures and
 // releases; the settings are under Gameplay. "Instant mouse look" (KF3_MOUSE_LEAD)

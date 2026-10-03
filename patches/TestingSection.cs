@@ -26,7 +26,13 @@ public sealed class TestingSection : ISettingsSection
     const string Names = """
     {
       "strings": {
-        "settings.kf3testing": { "en": "Testing", "pt-BR": "Testes", "es-419": "Pruebas" }
+        "settings.kf3testing": { "en": "Testing", "pt-BR": "Testes", "es-419": "Pruebas" },
+        "kf3testing.widescreen.aspect": { "en": "Aspect", "pt-BR": "Proporção", "es-419": "Relación de aspecto" },
+        "kf3testing.widescreen.tip": {
+          "en": "How wide the picture is. Wider shows more of the room, not a stretched 4:3.",
+          "pt-BR": "A largura da imagem. Mais largo mostra mais do ambiente, não um 4:3 esticado.",
+          "es-419": "Qué tan ancha es la imagen. Más ancho muestra más del entorno, no un 4:3 estirado."
+        }
       }
     }
     """;
@@ -219,6 +225,29 @@ public sealed class TestingSection : ISettingsSection
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("None drops the crosshatch and keeps 15-bit bands; Smooth keeps 8 bits a channel instead.");
+
+        // The aspect is the one picture setting whose value is not a tick, so it is
+        // a combo, and it writes kf3.widescreen.aspect on change. A value that is
+        // none of the presets -- from KF3_WIDESCREEN -- keeps its own entry rather
+        // than being rounded onto one.
+        var widescreen = Widescreen.Presets;
+        int aspectIndex = -1;
+        for (int i = 0; i < widescreen.Length; i++)
+            if (Math.Abs(Widescreen.Aspect - widescreen[i].Ratio) < 0.001f) { aspectIndex = i; break; }
+        string[] aspectItems = aspectIndex >= 0
+            ? [.. widescreen.Select(p => p.Name)]
+            : [.. widescreen.Select(p => p.Name), $"Custom ({Widescreen.Aspect:0.###}:1)"];
+        if (aspectIndex < 0) aspectIndex = aspectItems.Length - 1;
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.Combo(Localization.T("kf3testing.widescreen.aspect"), ref aspectIndex, aspectItems, aspectItems.Length)
+            && aspectIndex < widescreen.Length)
+        {
+            Widescreen.SetAspect(widescreen[aspectIndex].Ratio);
+            Rt.View.SetFloat(Widescreen.AspectKey, Widescreen.Aspect);
+            Rt.SaveView();
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("kf3testing.widescreen.tip"));
+
         Toggle("Perspective-correct textures", K("kf3.perspective"),
             "Textures follow each corner's depth instead of warping across a polygon.");
         Toggle("Sub-pixel vertices", K("kf3.subpixel"),

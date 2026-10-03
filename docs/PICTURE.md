@@ -297,6 +297,10 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   variants and the models' near submit wherever they draw. Model depth is two
   bits coarser than the map's. **Not judged by eye.**
 
+### Unit 5: widescreen
+
+Its own document: `docs/WIDESCREEN.md`.
+
 ### After this
 
 The blended and front-table variants (`func_80037BEC`, `func_80038844`) and the

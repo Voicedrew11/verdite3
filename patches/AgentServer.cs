@@ -53,6 +53,7 @@ public static class AgentServer
         "peek <addr> [bytes=16] - read guest memory, hex",
         "dump <file> - write the 2 MB of guest RAM to a file",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
+        "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
     ];
 
     public static void Configure(string? spec)
@@ -172,7 +173,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -213,6 +214,7 @@ public static class AgentServer
         "peek" => DoPeek(cmd.Arg1, cmd.Arg2),
         "dump" => DoDump(cmd.Arg1),
         "view" => DoView(cmd.Args),
+        "aspect" => Widescreen.Shell(cmd.Arg1),
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

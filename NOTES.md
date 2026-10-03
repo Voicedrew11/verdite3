@@ -58,6 +58,8 @@ event delivered once), and
   smoothers, all built and judged.
 - [docs/PICTURE.md](docs/PICTURE.md) — 24-bit colour, perspective, sub-pixel and the
   Z-buffer: the plan and its work, built and awaiting judgement.
+- [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone
+  and the primitive buffer, ported from Verdite2.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 
