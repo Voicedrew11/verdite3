@@ -11,8 +11,8 @@ The main loop, its frame gate and vblank handler, the player block, the card
 loader and the start menu (2026-10-02, for the agent harness and frame pacing).
 The rest of the player block, movement and the view, collision, damage and
 death, the statistics, inventory and equipment, magic and the area change were
-read from the disassembly and the RAM dumps on 2026-10-03 (static, not measured
-in a running game).
+read from the disassembly and the RAM dumps on 2026-10-03 (static), for the
+debug mod (`docs/MODS.md`); what its run measured is marked in each section.
 
 ## Area code modules
 
@@ -39,6 +39,19 @@ destination from the object record) and 0xEB (which also writes the player block
 itself); both run inside stage 3 `func_80047010`. A mod issues
 `func_80017C78(N, N, N, 0xFF, 0xFF, 0x7F, 0x7F, 0x7F)` from a hook on stage 3,
 waits for `0x8018FAD4` to clear, then writes the position.
+
+**Measured 2026-10-03** (the debug mod, seven warps from `fdat02`): the call
+loads any area and the loop carries on in it. It does not place the player:
+with entrance bytes 0x7F the X/Z carry over, and since areas do not share a
+coordinate frame they can sit over nothing. A tile with neither half's mesh
+(both 255) answers the floor query with -44800; the player hangs there and the
+first step onto a real tile is a fall (16 HP in `fdat32`, fatal in `fdat62`).
+`func_8002B760` is the game's own placement on entry (the doors at `0x8004A244`
+and `0x8004A77C`, the respawn `func_80029188` and the session start call it):
+no arguments, it snaps Y to the floor under X/Z through `func_80033B8C`, clears
+the fall state, the action byte and the play-tick counter `0x801B2580`. A warp
+to `fdat08` was sent straight back to `fdat02`, which looks like an exit under
+the carried position; not followed up.
 
 ## Saves
 
@@ -344,6 +357,11 @@ copies 8 bytes of `posPtr` into `0x801B266C` and clears the death timer
 forces HP to 0 every frame. A mod blocks `func_80030A6C` and zeroes the negative
 amounts into `func_8002A6F4`, `func_8002A6A0` and `func_80030BE0`.
 
+**Measured 2026-10-03**: `func_8002A6F4(0, 10, 0)` called from a hook took HP
+50 to 40; `func_80030A6C(0)` set the action byte to 0x11 and the death timer
+counted (0x20 a moment later). With the mod's hooks on, the same calls left HP
+at 50 and the byte at 0.
+
 ### The character's statistics
 
 Two status screens read this block. Page 1 `func_800227EC` draws EXP, level,
@@ -384,10 +402,17 @@ both are saved. `func_8005D898(id)` adds one, `func_8005D7F8(id)` removes one an
 the labels (0x00..0x19 = A..Z, 0x7F space, 0xFF terminator). Weapons 0..33 use
 the table at `0x801D37A4` (stride 0x44); armor and accessories 34..94 use
 `0x801E6078` (stride 0x20: a category byte, a model byte and nine u16 bonuses).
-The seven equipment slots `0x801B25D4..25DA` (helm, armor, gauntlets, boots,
-shield, ring, ring) are set by `func_8002BB84(id, slot)` and the weapon
-`0x801B25AF` by `func_8002BDC0(id)`; both call the recompute and cache the record
-pointers at `0x801B25B8..25D0`. A mod adds through `func_8005D898` (or writes the
+The seven equipment slots are bytes at `0x801B25D4..25DA` (0xFF empty): helm
+`D4`, armor `D5`, shield `D6`, gauntlets `D7`, boots `D8`, two rings `D9`/`DA`.
+`func_8002BB84(id, slot)` sets them through a jump table at `0x800117C8` whose
+slot index is not the address order: 0..6 land on `D4`, `D5`, `D7`, `D8`, `D6`,
+`D9`, `DA`. The weapon `0x801B25AF` is set by `func_8002BDC0(id)`; both setters
+call the recompute and cache the record pointers at `0x801B25B8..25D0`.
+**Measured 2026-10-03**: `func_8005D898` and `func_8005D7F8` called from a hook
+changed the counts as read (ids 3, 43, 104 up, 105 down), slot 1 with id 43 (IRON
+PLATE) wrote `0x801B25D5`, and the names decode as the game's items (EXCELLECTOR
+three times for ids 0..2, the sword's tiers). Which of `D6`/`D7` is the shield is
+the static reading. A mod adds through `func_8005D898` (or writes the
 count directly to exceed the cap) and equips through the two setters.
 
 ### Magic
@@ -401,6 +426,12 @@ record's `+0x16` cost, points `0x801B2590` at the record and, on the release
 pass, subtracts the cost; `func_8002DEEC(id)` is the id-driven alternate and
 `func_8002FE1C` is the pad dispatcher. The charge gauge is `0x801B2502`
 (0..5000) with the cooldown `0x801B2506`.
+
+The magic menu's book is records 0..30, named by item ids 150..180 in the name
+table (FIRE BALL, FIRE WALL, ...); six of them (153, 160, 164, 168, 172, 174)
+are the unused `00 FF` placeholder. **Measured 2026-10-03**: a level-1 save
+knows only LIGHT (record 29, 5 MP), and writing `+0` = 1 into the others marks
+them known; whether the menu then lists and casts them is to be judged in play.
 
 Regeneration runs in stage 4: `func_80030CBC(rec)` and `func_80030D68(rec)` call
 `func_80030BE0(±1)` and `func_80030C6C(±1)` when the play-tick counter

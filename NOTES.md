@@ -60,6 +60,8 @@ event delivered once), and
   Z-buffer: the plan and its work, built and awaiting judgement.
 - [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone
   and the primitive buffer, ported from Verdite2.
+- [docs/MODS.md](docs/MODS.md) — the mods under `mods/`: the debug tools (noclip,
+  invincibility, the character, item and spell editors, area warp).
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 

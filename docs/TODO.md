@@ -55,6 +55,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - **Keyboard and mouse**: built 2026-10-02 (`docs/INPUT.md`); the pitch direction,
   sensitivity and feel are to be judged; the menu pointer (Verdite2's `MenuMouse`)
   and twin-stick analog are not ported.
+- **Debug tools** (`mods/kf3debug`): built and measured 2026-10-03
+  (`docs/MODS.md`); **to judge by eye**: the panel, noclip's feel and speed,
+  learned spells in the magic menu, the equipment slot names, and area-warp
+  landings. A warp to `fdat08` bounced straight back to `fdat02`; the warp lands
+  by the nearest floor tile, not at a real entrance.
 - **`load` and `warp` for the command channel**: the loader is known; how the
   in-game Load re-enters the area is not.
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's

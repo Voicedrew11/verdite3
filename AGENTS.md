@@ -41,6 +41,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/SMOOTHING.md` | drawing between ticks: stage 15 in C#, the smoothers |
 | `docs/PICTURE.md` | 24-bit colour, perspective, sub-pixel, the Z-buffer: the next work |
 | `docs/WIDESCREEN.md` | the margin, the tints, the cull cone, the primitive buffer |
+| `docs/MODS.md` | the runtime-loaded mods: the debug tools |
 | `docs/ENV_VARS.md` | every `KF3_*` switch, in one list |
 | `docs/TODO.md` | next steps and open questions |
 | `tools/RecompOne/docs/RECOMPONE_PATCHES.md` | every change the fork makes to RecompOne |
