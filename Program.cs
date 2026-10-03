@@ -165,14 +165,28 @@ if (pp == "1" || pp == "2") RecompOne.Runtime.Hle.GpuHle.PresentProbe = true;
 
 // Mouse look, spent through the game's own turn and look routine (MouseLook), and
 // the mouse buttons pressed as pad buttons inside PAD_dr. Escape captures and
-// releases; the settings are under Gameplay. "Instant mouse look" (KF3_MOUSE_LEAD)
+// releases; the settings are under Input. "Instant mouse look" (KF3_MOUSE_LEAD)
 // shows the motion before the tick spends it, in ViewSmoothing. See "Mouse look"
 // in docs/INPUT.md.
 Mouse.Configure(Kf3.MouseLook.Game);
 Mouse.Install();
 Kf3.MouseLook.Install();
 
-// The Gameplay tab: the mouse look options, beside the runtime's own sections.
+// Analog twin-stick control: the sticks drive the game's own turn/look velocity
+// through MouseLook's shared hook, and walking through a replace on func_8002F9BC.
+// See "Analog twin-stick control" in docs/INPUT.md.
+Kf3.Analog.Configure();
+Kf3.Analog.Install();
+// KF3_ANALOG_PROBE=1: what the sticks drove, every few seconds.
+Kf3.AnalogProbe.Configure();
+Kf3.AnalogProbe.Install();
+
+// The Input pane, the port's in place of the runtime's: Keyboard (the layout and
+// the bindings), Gamepad (the sticks and the bindings), Mouse. See "The Input pane
+// is the port's" in docs/INPUT.md.
+Kf3.InputSection.Install();
+
+// The Gameplay tab: Instant mouse look, beside the runtime's own sections.
 Kf3.GameplaySection.Install();
 
 // The Testing tab in Settings: every switch above, live.

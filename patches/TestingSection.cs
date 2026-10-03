@@ -267,7 +267,7 @@ public sealed class TestingSection : ISettingsSection
 
         ImGui.SeparatorText("Mouse");
         Toggle("Mouse look", K(Mouse.OnKey),
-            "Steers with the mouse and presses pad buttons with its buttons; more options under Gameplay.");
+            "Steers with the mouse and presses pad buttons with its buttons; more options under Input ▸ Mouse.");
         Toggle("Instant mouse look", K(Mouse.LeadKey),
             "Turns the view the frame you move the mouse, instead of on the game's next tick.");
 

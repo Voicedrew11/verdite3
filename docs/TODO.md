@@ -17,6 +17,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
 
 ## Next
 
+- **Twin-stick control and the Input pane** (2026-10-03, `docs/INPUT.md`):
+  built and measured with a synthetic stick; **to judge on a real pad**: the
+  pitch direction, the left stick's leak into turning, the feel, and whether the
+  Input pane's three tabs read well.
 - ~~The world runs at the drawn rate.~~ It ran at 30, twice the game's 15 (the
   vblank delivered twice); frame pacing holds it to 15 at any rate, off until
   judged. See "Frame pacing" in `docs/DEVELOPMENT.md`.

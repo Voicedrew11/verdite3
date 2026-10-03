@@ -78,6 +78,16 @@ kept.
 | `KF3_MOUSE_LEAD` | `0`: show mouse motion when the next tick spends it, not the frame it happens | on |
 | `KF3_MOUSE_BUTTONS` | the pad button the left, right and middle mouse buttons press, e.g. `Triangle,Square,Circle` (attack, magic, examine) | Triangle,Square,Circle |
 | `KF3_MOUSE_KEY` | a Silk.NET key name: the key that captures and releases the pointer | Escape |
+| `KF3_ANALOG` | `0`: hand the sticks back (the default layout wires the left stick to the D-pad, which in this game turns); on by default | on |
+| `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
+| `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |
+| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.0 |
+| `KF3_ANALOG_DEADZONE`, `KF3_ANALOG_MOVEDEADZONE` | radial deadzones, look (and move unless the second is set) and move | 0.15 |
+| `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
+| `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look ramp: on, the peak multiplier and the seconds to reach it | 1 / 2.2 / 0.5 |
+| `KF3_ANALOG_INSTANTSTOP` | `0`: let a released look axis coast on the game's decay (movement is never stopped) | on |
+| `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis | off |
+| `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 
 The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,

@@ -1,4 +1,4 @@
-# Input: pad, keyboard and mouse
+# Input: pad, sticks, keyboard and mouse
 
 The pad is read by the game as it always was; the port layers a keyboard layout
 and a mouse look on top of it. What each button *does* is the game's — the port
@@ -147,3 +147,94 @@ drawn at 15 ticks/s, the look hook attached in every run.
 - sensitivity;
 - the feel at 60 fps;
 - turning into a menu or a load.
+
+## Analog twin-stick control
+
+`patches/Analog.cs`, Verdite2's `Analog` ported (2026-10-03): the **left stick
+walks and strafes, the right stick turns and looks**, by pre-loading the game's
+own velocity words and asserting the matching button, so collision, the pitch
+limit and the walk all run through the game's code on an amount the stick chose.
+The settings, env vars and defaults are Verdite2's under `kf3.analog.*` and
+`KF3_ANALOG*` (`docs/ENV_VARS.md`); the page is Input ▸ Gamepad.
+
+**One hook spends both the mouse and the sticks.** `MouseLook`'s replace on
+`func_8002F5C0` hands the mouse's whole steps to `Analog.BeforeLook`, which adds
+the right stick's share, owns the turn bits while the left stick is deflected
+(the runtime binds the left stick to the D-pad, and Left/Right turn), and writes
+the velocity through `Drive`. The pad word is put back after the call, as before.
+With the sticks centred the mouse path lands on the same step it always did.
+
+**The walk is a replace of its own on `func_8002F9BC`**, read for the port (line
+numbers in `generated/game.cs`, 2026-10-03):
+
+| axis | velocity | button + | button − | accel, clamp | no button |
+|---|---|---|---|---|---|
+| forward | s16 `0x801B2648` | Up | Down | `max>>2`, ±`max` | decays by `max>>3`, applied unclamped |
+| strafe | s16 `0x801B2646` | R1 | L1 | `max>>2`, ±`max` | decays by `max>>2`, applied unclamped |
+
+`max` is the s32 at `0x801B2664` (200). The two decays differ, unlike Verdite2's;
+it does not matter here, because the stick's walk step is clamped to `max` and
+so always takes a button branch: the stick walks no faster than the D-pad. The
+walk routine reads only those four masks, never the turn bits. Forward moves
+along base yaw `+ 0x400` and strafe right along the base yaw (`func_8002E3F8`),
+so `0x801B2612` is a quarter turn behind the heading; nothing here depends on it.
+
+**Putting the pad word back matters.** Stage 4 reads `0x801B265C` again after
+the look and walk calls and copies it to `0x801B265E`, the previous frame's word
+the edge tests use; a word left changed would be next frame's "previous".
+
+`KF3_ANALOG_PROBE=1` (`patches/AnalogProbe.cs`) reports, every 10 s, how many
+ticks the sticks drove, the velocities, the yaw steps and the pitch, and dumps the
+action-mask table once. It counts a tick by `FramePacing.Ticks`: stage 4's post
+runs every drawn frame, its body only on a tick.
+
+### Measured
+
+2026-10-03, slot 1 in `fdat02`, 144 fps, the sticks synthesised (a local test
+hack overriding the bytes `Analog` reads, not committed; no pad was attached):
+
+- Sticks centred: the hooks attach, the probe reads `look 0 move 0`, and pacing
+  holds at 144.0 fps drawn and 15.0 ticks/s. The D-pad (`KF3_AUTOPAD` Left for 4 s)
+  still turns: 51 of 149 ticks stepped, mean 38.
+- Right stick full right: every tick steps the yaw by exactly 88 (rate 40 x the
+  ramp's 2.2), `turnVel` -88, so the overspeed path holds and right is yaw
+  decreasing.
+- Left stick at (+0.56, −0.68), right stick at +0.38 down: `fwdVel` 136 and
+  `strafeVel` 111 (0.68 and 0.56 of 200), the player walks until a wall stops
+  them, and the pitch runs to the limit 700 and stays there.
+
+### Not yet judged by eye
+
+- **the pitch direction**: stick down and mouse down both raise the base pitch,
+  which in Verdite2 looks down; Verdite3's sign is the same plumbing, not checked
+  on screen;
+- the left stick's leak into turning on a real pad (the synthetic stick did not
+  go through the runtime's D-pad binding);
+- the feel: sensitivities, the ramp, the deadzones, at 60 and 144 fps.
+
+## The Input pane is the port's
+
+`patches/InputSection.cs` **replaces** the runtime's Input section rather than
+extending it. `SettingsRegistry.Register` removes by id and then adds, so
+registering a section with the runtime's own id (`input`) on `RuntimeReadyEvent`
+— after `HostWindow.Load` has registered the runtime's five — takes the pane
+over. `Unregister("input")` is deliberately *not* called first: it would state
+removal where the intent is substitution and would hide the one failure worth
+naming. `Install` instead checks whether a section with id `input` already
+exists and warns on the console if it does not, because then the register adds a
+second Input tab rather than replacing the first. Only the `Register` line
+stands between the port and the runtime's pane, so the wrapper is cheap to
+abandon.
+
+The pane is one tab bar with three tabs — Keyboard, Gamepad, Mouse — each body
+in its own `BeginChild` taking the remaining height, so the bar never scrolls
+away. `patches/BindingTable.cs` is the runtime's own table copied (that section
+is `internal`, so it is unreachable): sixteen rows, one capture field per
+device, an action column saying what each button does in King's Field by
+default. The action verbs are measured from the action-mask table at
+`0x80081868` and are English, not localised; a wrapped note under the table says
+the game's own control-config screen can reassign them. The Pad 1 / Pad 2 tab
+bar is dropped — the game reads pad 1 only, and `Keys2`/`Pad2` are never read or
+written — and `MapButtonPage` does not exist here. Keyboard reset calls
+`KeyLayout.ApplyStock` so it agrees with the RecompOne-layout button directly
+above it; gamepad reset is a plain new `GamepadBindings` for pad 1.
