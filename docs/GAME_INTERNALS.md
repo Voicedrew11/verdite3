@@ -9,6 +9,10 @@ learns, written here rather than left in the commit that found it. Verdite2's
 
 The main loop, its frame gate and vblank handler, the player block, the card
 loader and the start menu (2026-10-02, for the agent harness and frame pacing).
+The rest of the player block, movement and the view, collision, damage and
+death, the statistics, inventory and equipment, magic and the area change were
+read from the disassembly and the RAM dumps on 2026-10-03 (static, not measured
+in a running game).
 
 ## Area code modules
 
@@ -17,6 +21,24 @@ through its slots: `func_80044D9C` calls slot 8 (`+0x20`), the first call that
 reached one. A module is loaded at `0x801E8308` from `CD/COM/FDAT.T` entry
 `3n+2`, and the pointer is the base plus 4 (past a count word). Area n's data are
 entries `3n` and `3n+1`. See "GAME.EXE loads code" in `docs/RECOMPILATION.md`.
+
+### Changing area
+
+The area descriptor is five bytes: the pending/target copy at
+`0x8018FAE4..FAE8` and the loaded copy at `0x8018FAD8..FADC`, byte 0 the area
+index. `0x8018FAD4` is the pending-change flag (nonzero means a load is in
+flight) and `0x8018FAD6` the load sub-state. `func_80018358`, **main-loop stage
+8**, is the loader: it runs the CD reads of FDAT entries `3n` (area data),
+`3n+1` (the module) and `3n+2` (the resident code), and clears `0x8018FAD4`
+when it completes. `func_80017C78(a0..a7)` is the game's own warp primitive:
+five descriptor bytes (0xFF keeps the pending one) and three entrance-offset
+bytes (0x7F none), then the release and the visited-area bookkeeping that set
+`0x8018FAD4` to 1. The doors are object kinds 0xE0 (the common transition,
+`func_80047010` at `0x8004A7F8`, which calls `func_80017C78` with the
+destination from the object record) and 0xEB (which also writes the player block
+itself); both run inside stage 3 `func_80047010`. A mod issues
+`func_80017C78(N, N, N, 0xFF, 0xFF, 0x7F, 0x7F, 0x7F)` from a hook on stage 3,
+waits for `0x8018FAD4` to clear, then writes the position.
 
 ## Saves
 
@@ -47,7 +69,7 @@ Read 2026-10-02, from a managed stack of the live game and the disassembly.
 | 1 | `func_800341E8` | |
 | 2 | `func_80034180` | |
 | 3 | `func_80047010` | 17.7 KB |
-| 4 | `func_80030FCC` | opens the in-game menu (Cross), whose modal loop `func_8002008C` runs inside it and presents its own frames |
+| 4 | `func_80030FCC` | **the player's tick**: `PadRead(1)`, look, walk, gravity, the action state machine (see "The player"); it does not call the in-game menu |
 | 5 | `func_80052E5C` | |
 | 6 | `func_8005BC50` | |
 | | (inline) | `sb 0 → 0x801B24F2` |
@@ -102,22 +124,290 @@ gate holds the loop to 15 (600 units a second).
 The block at `0x801B24E4` (cleared, `0x67` words, when a session starts). Found
 by matching a save's payload against RAM, walking and turning while diffing
 RAM, and from the code that reads it: the save-title filler `func_80028B70`
-reads EXP and level, and `func_8001B2BC..` copies max HP into HP (a full heal).
+reads EXP and level, and `func_8001B254` copies max HP into HP (a full heal).
+The table is the whole block `0x801B24E4..0x801B2680`, read 2026-10-03 from the
+disassembly and the five `scratch/re/ram` dumps of a level-1 character standing
+in `fdat02` (static, not measured in a running game). Where the reports
+disagreed, the field is given as the code and the status screen show it.
 
 | address | type | what |
 |---|---|---|
-| `0x801B24E4` | s32 | EXP |
+| `0x801B24E4` | u32 | EXP |
+| `0x801B24E8` | u32 | EXP for the next level (50 at level 1) |
+| `0x801B24EC` | s32 | EXP checkpoint, -1 unset; an event fires every +13000 EXP |
 | `0x801B24F0` | u8 | level |
+| `0x801B24F1` | u8 | unknown, saved |
+| `0x801B24F2` | u8 | UI/flag byte, cleared every frame |
+| `0x801B24F3` | u8 | cast/attack animation gate (0xA while kicking or channelling); saved |
+| `0x801B24F4` | u8 | cast path secondary state; saved |
+| `0x801B24F5` | u8 | unknown, condition-related; read by `func_8002FE1C` |
+| `0x801B24F6` | s16 | speed percent: walk and turn rates multiplied by `(0x1000 + v)/0x1000` |
+| `0x801B24F8` | u16 | 0x1000 at spawn; saved |
 | `0x801B24FA` | u16 | max HP |
 | `0x801B24FC` | u16 | HP |
 | `0x801B24FE` | u16 | max MP |
 | `0x801B2500` | u16 | MP |
-| `0x801B25F0`/`F4`/`F8` | s32 | position x, y, z (y is height; -12800 standing in `fdat02`) |
-| `0x801B260A` | s16 | heading, `0x1000` a turn; Left increases it, 40 a world tick |
+| `0x801B2502` | u16 | spell charge gauge, 0..0x1388 (5000) |
+| `0x801B2504` | u16 | previous frame's spell charge |
+| `0x801B2506` | u16 | cast lock/cooldown (0x1388 while a cast resolves) |
+| `0x801B2508` | u16 | steps counter; every 100 steps base stat 0 +1, and the condition tick |
+| `0x801B250A` | u16 | action-use counter for base stat 1 |
+| `0x801B250C` | u16 | action-use counter for base stat 2 |
+| `0x801B250E` | u16 | action-use counter for base stat 3 |
+| `0x801B2510` | u16 | action-use counter for base stat 4 |
+| `0x801B2512` | u16 | action-use counter for base stat 5 |
+| `0x801B2514` | u16 | unknown, saved |
+| `0x801B2516` | u16 | base stat 0 (20 at level 1; the level table and the steps grow it) |
+| `0x801B2518` | u16 | base stat 1 (0 at level 1) |
+| `0x801B251A` | u16 | base stat 2 |
+| `0x801B251C` | u16 | base stat 3 |
+| `0x801B251E` | u16 | base stat 4 |
+| `0x801B2520` | u16 | base stat 5 (10 at level 1) |
+| `0x801B2522` | u16 | unknown, saved |
+| `0x801B2524` | u16 | adjusted stat 0 (= `0x2516`; halved by a curse; the magic-attack base) |
+| `0x801B2526` | u16 | adjusted stat 1 |
+| `0x801B2528` | u16 | adjusted stat 2 |
+| `0x801B252A` | u16 | adjusted stat 3 |
+| `0x801B252C` | u16 | adjusted stat 4 |
+| `0x801B252E` | u16 | adjusted stat 5 |
+| `0x801B2530` | u16 | unknown stat, drawn as value + 1; saved |
+| `0x801B2534` | u32 | GOLD |
+| `0x801B2538`..`0x801B2546` | 8 x u16 | OFFENSE 1..8 |
+| `0x801B2548` | u16 | gap, never written by the recompute |
+| `0x801B254A`..`0x801B255A` | 9 x u16 | DEFENSE 1..9 |
+| `0x801B255C` | s16 | POISON condition/timer: every 15 ticks HP -1, then it counts down |
+| `0x801B255E` | s16 | CURSE condition flag (halves the adjusted stats) |
+| `0x801B2560` | s16 | curse pair (magnitude), cleared with `0x255E` |
+| `0x801B2562` | s16 | DARK condition flag |
+| `0x801B2564` | s16 | dark pair, cleared with `0x2562` |
+| `0x801B2566` | s16 | SLOW condition; stage 4 halves the turn rate while set |
+| `0x801B2568` | s16 | PARALYZE condition; stage 4 damps movement while set |
+| `0x801B256A` | s16 | timed stat-effect timer; expiry calls `func_80029500` |
+| `0x801B256C` | s16 | timed stat-effect timer |
+| `0x801B256E` | s16 | timed stat-effect timer |
+| `0x801B2570` | s16 | condition state; read by `func_80030E14`; saved |
+| `0x801B2572` | s16 | MP-drain tick timer (0x384) |
+| `0x801B2574` | s16 | condition state; read by `func_80044B40`; saved |
+| `0x801B2576` | s16 | MP-restore timer; while set, stage 4 writes MP = max MP |
+| `0x801B2578` | s16 | timed-effect timer; expiry calls `func_80029500` |
+| `0x801B2580` | u32 | play-tick counter, incremented once at the end of stage 4 |
 | `0x801B2588` | u32 | play time, minutes (from the vblank handler) |
+| `0x801B2590` | u32 ptr | current spell record (`0x801B77EC + id*0x18`), set at a cast |
+| `0x801B2594` | u32 ptr | current weapon record (`0x801D37A4 + id*0x44`), set on equip |
+| `0x801B259C` | u32 | the first-person arm's swing blender slot |
+| `0x801B25A4` | s16 | arm swing/cast clock, -1 idle, stepped during a swing |
+| `0x801B25A6` | s16 | arm swing window |
+| `0x801B25A8` | s16 | arm swing window |
+| `0x801B25AA` | u8 | arm/spell runtime state; read by `func_8002FE1C` |
+| `0x801B25AB` | u8 | charging spell id |
+| `0x801B25AC` | u8 | committed spell id |
+| `0x801B25AD` | u8 | committed spell id (second slot) |
+| `0x801B25AE` | u8 | arm clip byte / cast phase |
+| `0x801B25AF` | u8 | equipped weapon id and current arm-effect id (0xFF none) |
+| `0x801B25B2` | u8 | queued-cast counter |
+| `0x801B25B3` | u8 | cast-ready latch |
+| `0x801B25B4` | u8 | flag: stage 4 halves the walk and turn rates while nonzero |
+| `0x801B25B8`..`0x801B25D0` | 7 x u32 ptr | resolved equipment records (`0x801E6078 + id*0x20`) |
+| `0x801B25D4`..`0x801B25DA` | 7 x u8 | equipment slots: helm, armor, gauntlets, boots, shield, ring, ring (0xFF empty) |
+| `0x801B25DB`..`0x801B25E4` | 10 x u8 | other owned/equipped item ids |
+| `0x801B25E0` | u8 | moving/on-ground flag (enables the bob) |
+| `0x801B25E5` | u8 | player action state (jump table `0x80011AC0`; 0x11 dead) |
+| `0x801B25E8` | u8 | vertical state: 0 ground, 0x10 fall, 0x20, 0x40, 0x50 |
+| `0x801B25E9` | u8 | timed-status id (0xFF idle) |
+| `0x801B25EA`/`EB` | u8 | condition flags set by `func_8002DEEC` |
+| `0x801B25ED` | u8 | falling-fast flag |
+| `0x801B25F0` | s32 | position x |
+| `0x801B25F4` | s32 | position y, height (more negative is up; -12800 standing in `fdat02`) |
+| `0x801B25F8` | s32 | position z |
+| `0x801B25FC` | s32 | fourth saved position word (0 in `fdat02`) |
+| `0x801B2600` | s16 | accepted X move this tick |
+| `0x801B2602` | s16 | accepted Y move this tick |
+| `0x801B2604` | s16 | accepted Z move this tick |
+| `0x801B2608` | s16 | view/composed pitch, to the camera |
+| `0x801B260A` | s16 | view/composed yaw (heading), to the camera |
+| `0x801B260C` | s16 | view/composed roll, to the camera |
+| `0x801B2610` | s16 | base pitch |
+| `0x801B2612` | s16 | base yaw (0x1000 a turn) |
+| `0x801B2614` | s16 | base roll |
+| `0x801B2618` | s16 | pitch delta A |
+| `0x801B261A` | s16 | yaw delta A |
+| `0x801B261C` | s16 | roll delta A |
+| `0x801B261E` | s16 | death-sequence timer, +1 a frame in the state-17 handler |
+| `0x801B2620` | s16 | pitch delta B |
+| `0x801B2622` | s16 | yaw delta B |
+| `0x801B2624` | s16 | roll delta B |
+| `0x801B2628` | s16 | pitch delta C |
+| `0x801B262A` | s16 | yaw delta C |
+| `0x801B262C` | s16 | roll delta C |
+| `0x801B2630` | s16 | knockback/displacement velocity x |
+| `0x801B2632` | s16 | knockback/displacement velocity z |
+| `0x801B2634` | s16 | knockback/displacement velocity y |
+| `0x801B2638` | s32 | derived depth cache (the eye against a reference plane) |
+| `0x801B263C` | s32 | derived depth cache |
+| `0x801B2640` | s32 | derived depth cache |
+| `0x801B2644` | s16 | surface half id of the tile stood on (0 lower, 5 upper) |
+| `0x801B2646` | s16 | strafe velocity (R1/L1) |
+| `0x801B2648` | s16 | forward velocity (Up/Down) |
+| `0x801B264A` | s16 | applied walk speed, normalised |
+| `0x801B264C` | s16 | yaw turn velocity (Left/Right) |
+| `0x801B264E` | s16 | pitch velocity (R2/L2) |
+| `0x801B2650` | s16 | walk bob vertical offset (the camera adds it) |
+| `0x801B2652` | s16 | bob phase accumulator |
+| `0x801B2654` | s16 | landing-dip offset (the camera adds it) |
+| `0x801B2656` | s16 | fall velocity (gravity) |
+| `0x801B2658` | s16 | camera-shake/hurt countdown (0xDAC on a hit) |
+| `0x801B265A` | s16 | camera-shake step / hurt intensity |
+| `0x801B265C` | u16 | pad word, current frame (active HIGH, byte-swapped) |
+| `0x801B265E` | u16 | pad word, previous frame |
+| `0x801B2664` | s32 | walk max speed (200 / 0xC8), re-derived every frame |
+| `0x801B2668` | s32 | turn max rate (40 standing / 32 moving) |
+| `0x801B266C` | s16 | root-motion delta x |
+| `0x801B266E` | s16 | root-motion delta y |
+| `0x801B2670` | s16 | root-motion delta z |
+| `0x801B2674` | s16 | death-slide horizontal offset |
 
 A New Game starts at `[126976, -15360, 16384]` heading 0 in `fdat02`, with HP
-50/50, MP 30/30, level 1. The camera's copy of the position is at `0x801AEC4C`.
+50/50, MP 30/30, level 1 and gold 0. The camera's copy of the position is at
+`0x801AEC4C` and of the angles at `0x801AEC5C`.
+
+### Movement and the view
+
+Stage 4 `func_80030FCC` (the main-loop call at `0x80014F3C`) is the player's
+tick, not the menu. It calls `PadRead(1)` at `0x80031120` and stores the pad word
+in `0x801B265C`, re-derives the walk and turn maxima `0x801B2664`/`0x801B2668`
+every frame, and dispatches on the action byte `0x801B25E5` through the jump
+table at `0x80011AC0` (19 entries; 0 normal). The normal state runs, in order,
+`func_8002FE1C` (buttons, action, poison/regeneration and cast input),
+`func_8002F5C0` (look), `func_8002F9BC` (walk) and `func_8002ED60` (gravity),
+then the pose tail and the composed-angle block at `0x8003202C`. It runs before
+stage 10 `func_8002B330`, which copies the player into the camera arguments, so a
+write at the end of stage 4 reaches the same frame.
+
+Base angles are pitch `0x801B2610`, yaw `0x801B2612` and roll `0x801B2614`
+(s16, 12-bit, 0x1000 a turn). The view triple the camera reads is the base plus
+three deltas each: pitch `0x801B2608` = `0x2610 + 0x2618 + 0x2620 + 0x2628`, yaw
+`0x801B260A` = `0x2612 + 0x261A + 0x2622 + 0x262A`, roll `0x801B260C` =
+`0x2614 + 0x261C + 0x2624 + 0x262C`. The look routine `func_8002F5C0` clamps the
+pitch to ±0x2BC (700) with the wrap-aware test `func_80016A78`; the walk routine
+`func_8002F9BC` integrates the strafe and forward velocities through
+`func_8002E3F8`, and gravity `func_8002ED60` integrates the fall velocity
+`0x801B2656` through the vertical state `0x801B25E8` and computes the bob
+`0x801B2650` and the landing dip `0x801B2654` the camera adds. The eye is 0x640
+(1600) above the feet; standing Y in `fdat02` is -12800.
+
+The pad word `0x801B265C` is active HIGH and is the standard PSX word with its
+two bytes swapped (Up 0x1000, Right 0x2000, Down 0x4000, Left 0x8000, Cross
+0x0040, ...); `0x801B265E` is the previous frame's copy. A mod hooks stage 4 to
+write the position each frame, and pre-hooks `func_8002F9BC`/`func_8002F5C0` to
+scale `0x801B2664`/`0x801B2668` for a speed multiplier.
+
+### Collision
+
+The master test is `func_80033F38(x, y, z, radius, height, flags)`, which
+returns a bitmask, 0 when the body fits. `flags` bit 0x01 is the map and walls
+(`func_80033D08`), 0x10 and 0x40 the creatures (`func_8004D644`, `func_8004D838`),
+0x20 the objects (`func_80045AC8`) and 0x80 a map/event query (`func_80028E48`).
+The player calls it with radius 0x320, height 0x6A4 and flags 0x31; creature and
+object AI call the same routines from about thirty sites, so none of them may be
+disabled. The map side is the tile lookup `func_800324F0` and the
+cylinder-vs-map test `func_8003260C`; `func_80033B8C` chooses the lower half
+(mode 1) or the upper (mode 2) and writes its floor `-(h << 7)` to `0x801E6474`.
+The map confirms it: the standing tile's upper height byte 0x64 gives -12800,
+the standing Y.
+
+Three routines commit a player move, all called only by stage 4:
+`func_8002E3F8(angle, distance)` tests the horizontal step and writes X and Z,
+latching the surface half id `0x801B2644` from `0x801E646E`; `func_8002ED60`
+writes Y (gravity, landing and floor clamp); and `func_8002F320` applies the
+root-motion delta `0x801B266C/6E/70` and writes X, Y and Z. The explicit floor
+snap on area or event entry is `func_8002B760`. A mod hooks stage 4 and
+overwrites the committed position rather than touching the shared queries.
+
+### Damage and death
+
+`func_8002A6F4(sourcePos, amount, flags)` is the take-damage routine. It returns
+at once while the action byte `0x801B25E5` is 0x11 (dead) or the amount is 0;
+otherwise it subtracts from HP `0x801B24FC`, clamps at 0, computes the hurt
+fraction `(amount << 12) / maxHP`, writes the camera-shake/hurt countdown
+`0x801B2658` (0xDAC) and the intensity `0x801B265A`, pushes the player with the
+knockback velocity `0x801B2630/2632/2634`, and on HP 0 calls the death latch.
+
+The HP adders are `func_8002A6A0` (signed, no max clamp, calls the latch at ≤ 0:
+the poison and starvation tick from stage 4), `func_80030BE0` (signed, clamps to
+[0, maxHP]: the equipment regeneration +1 and drain -1) and `func_80030C6C` (the
+MP twin). The heals run through `func_8001B254(type)`.
+
+`func_80030A6C(posPtr)` is the death latch and the only writer of the dead state:
+if the action byte is not already 0x11 it sets it to 0x11, plays sound 0x6E,
+copies 8 bytes of `posPtr` into `0x801B266C` and clears the death timer
+`0x801B261E` and the slide `0x801B2674`. The state-17 handler in stage 4 then
+forces HP to 0 every frame. A mod blocks `func_80030A6C` and zeroes the negative
+amounts into `func_8002A6F4`, `func_8002A6A0` and `func_80030BE0`.
+
+### The character's statistics
+
+Two status screens read this block. Page 1 `func_800227EC` draws EXP, level,
+HP and MP, the six adjusted stats and GOLD, and chooses the condition name from
+`0x801B255C` (POISON), `0x801B255E` (CURSE), `0x801B2562` (DARK), `0x801B2566`
+(SLOW) and `0x801B2568` (PARALYZE), checked in that order; page 2 `func_80023300`
+draws the eight OFFENSE and nine DEFENSE ratings. Their labels are the item
+font's glyph-index alphabet, A = 0x00 .. Z = 0x19 (CONDITION at `0x8007F3B0` is
+`02 0e 0d 03 08 13 08 0e 0d`). That and `func_8002AB18`, which arms each
+condition, settle the condition fields above.
+
+`func_80029500` is the recompute every equip, level-up, load and condition
+change calls. It copies the six base stats `0x801B2516..2520` into the adjusted
+`0x801B2524..252E`, halves them while the curse flag `0x801B255E` is set, zeroes
+the 17 ratings `0x801B2538..255A`, and sums in the equipped weapon
+(`0x801B25AF`, record `0x801D37A4`, stride 0x44) and the accessory records
+(`func_800293E4`). Anything written straight to `0x801B2524..255A` lasts only
+until the next call. A mod hooks the recompute and overwrites the derived words.
+
+`func_8002A310(gain)` is EXP gain and level-up. It adds to EXP `0x801B24E4`,
+caps it at 0xF423F, and while EXP ≥ `0x801B24E8` and the level is below 0xFF
+increments the level `0x801B24F0` and reads the 12-byte table at `0x8009F114`
+(index level - 1, 99 entries; `+0` max HP, `+2` max MP, `+4` the stat-0 growth,
+`+8` EXP next). Entry 0 is max HP 50, max MP 30, stat 0 +20, EXP next 50; level
+99 is max HP and MP 999, EXP next 1,000,000. The save (`func_8005F7BC` packs,
+`func_8005FFD0` unpacks) carries EXP, EXP next, the checkpoint, the level, the
+vitals, gold, the growth counters and base stats, the 15 condition words
+`0x801B255C..2578`, the equipment ids, and the world position and angles, but
+not the adjusted stats or the 17 ratings, which are rebuilt on load.
+
+### Inventory and equipment
+
+Inventory is a flat byte-per-id count array at `0x800C85E8` (ids 0..149, cap 99),
+with a second 150-byte array at `0x800C867E` that the add path overflows into;
+both are saved. `func_8005D898(id)` adds one, `func_8005D7F8(id)` removes one and
+`func_8005D7BC(id)` reports held; `func_8005EA64` is the new-game init. Names are
+24-byte records at `0x8007F620`, id `i` at `+ i*0x18`, in the font encoding of
+the labels (0x00..0x19 = A..Z, 0x7F space, 0xFF terminator). Weapons 0..33 use
+the table at `0x801D37A4` (stride 0x44); armor and accessories 34..94 use
+`0x801E6078` (stride 0x20: a category byte, a model byte and nine u16 bonuses).
+The seven equipment slots `0x801B25D4..25DA` (helm, armor, gauntlets, boots,
+shield, ring, ring) are set by `func_8002BB84(id, slot)` and the weapon
+`0x801B25AF` by `func_8002BDC0(id)`; both call the recompute and cache the record
+pointers at `0x801B25B8..25D0`. A mod adds through `func_8005D898` (or writes the
+count directly to exceed the cap) and equips through the two setters.
+
+### Magic
+
+Spells are the 0x18-byte records at `0x801B77EC` (`+0` the known count, `+1` the
+effect id, `+0x16` the MP cost); a new game zeroes records 0..0x5E. The selected
+spells are `0x801B25AB` (charging), `0x801B25AC` and `0x801B25AD` (committed), and
+the record of a cast in flight is pointed to by `0x801B2590`. `func_8002D130(id,
+release, multiplier)` is the cast: it refuses when MP `0x801B2500` is below the
+record's `+0x16` cost, points `0x801B2590` at the record and, on the release
+pass, subtracts the cost; `func_8002DEEC(id)` is the id-driven alternate and
+`func_8002FE1C` is the pad dispatcher. The charge gauge is `0x801B2502`
+(0..5000) with the cooldown `0x801B2506`.
+
+Regeneration runs in stage 4: `func_80030CBC(rec)` and `func_80030D68(rec)` call
+`func_80030BE0(±1)` and `func_80030C6C(±1)` when the play-tick counter
+`0x801B2580` divides the equipment record's interval fields; the flat "quarter of
+max MP" arm is in `func_8002AB18`. A mod restores MP at the end of stage 4, or
+forces it before the cost is subtracted; it should not freeze `0x801B2500`, since
+the item heals and the full restores share it.
 
 ## Saves and the start menu
 
