@@ -48,3 +48,23 @@ A game's `config/verdite.json` today:
 
 `inspect_disc.py` and `extract_file.py` need none of it, so they run in a game
 that has no config yet.
+
+## C#
+
+`src/` holds C# the games share. It is **source, not a library**: each game
+compiles `tools/verdite-core/src/**/*.cs` into its own assembly beside its
+`patches/`, so RecompOne's `HookManager` detours, reflection over the game's
+types and a launcher's one Roslyn pass all see it as they see `patches/`.
+Everything is in the namespace `Verdite.Core`, which each game imports with a
+global using, so its callers name these types as they did their own copies.
+
+The game says who it is once, first thing in its `Program.cs`, with
+`Verdite.Core.Game.Configure(tag: "KF2")`; that gives the log prefix (`[KF2]`),
+the env prefix (`KF2_`) and the lowercase id (`kf2`). Anything else core needs
+from the game, it is handed at install time by the game's own code, never read
+from a file.
+
+| file | what |
+|---|---|
+| `Game.cs` | the game's tag, its log and env prefixes and its id |
+| `HookAttach.cs` | attach on overlay loads until the pass succeeds, and read back what `HookManager` actually committed |
