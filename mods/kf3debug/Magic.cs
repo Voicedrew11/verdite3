@@ -149,6 +149,18 @@ internal static class Magic
     /// stride as well as at 0xFF. An id outside the book decodes to the empty
     /// string.
     /// </summary>
+    /// <summary>
+    /// A record the game does not use: its name is `00 FF`, the letter A and a
+    /// terminator, the same placeholder the item table uses. Never learned, so
+    /// the magic menu is not given a blank entry.
+    /// </summary>
+    internal static bool IsUnused(IMemory m, int i)
+    {
+        if ((uint)i >= Count) return true;
+        uint rec = ItemNameTable + (uint)(FirstSpellItemId + i) * NameStride;
+        return m.ReadU8(rec) == 0x00 && m.ReadU8(rec + 1) == 0xFF;
+    }
+
     internal static string Name(IMemory m, int i)
     {
         if ((uint)i >= Count) return "";
@@ -263,7 +275,7 @@ internal static class Magic
 
             if (req.Learn)
             {
-                if (known) { unchanged++; continue; }
+                if (known || IsUnused(m, req.Id)) { unchanged++; continue; }
                 m.WriteU8(rec + KnownOffset, 1);
                 learned++;
             }

@@ -134,10 +134,9 @@ internal static class Noclip
     internal static float Speed = 7000f;
     internal static float FastMultiplier = 4f;
 
-    // Held boost, for a UI switch. The reference triggered its fast multiplier
-    // from a Hotkeys.FlyFast() keyboard hook; this port has no such helper (see
-    // Digital), so a pad's R3 is read as the momentary boost and this flag lets a
-    // caller latch it on.
+    // Held boost, for a UI switch. Keyboard flight now comes from Hotkeys
+    // (Hotkeys.FlyFast), and a pad's R3 stays as the momentary boost; this flag
+    // lets a caller latch it on as well.
     internal static bool Fast;
 
     // Wall clock between two flight frames. Clamped, because the gap across an
@@ -352,7 +351,7 @@ internal static class Noclip
         double tvx = 0, tvy = 0, tvz = 0;
         if (forward != 0f || strafe != 0f || vertical != 0f)
         {
-            double rate = Speed * (Fast || Held(Controller.R3) ? FastMultiplier : 1f);
+            double rate = Speed * (Fast || Hotkeys.FlyFast() || Held(Controller.R3) ? FastMultiplier : 1f);
 
             // The game's own heading vector, from func_8002E3F8, with the
             // camera's pitch folded into forward: looking down and pushing
@@ -605,16 +604,17 @@ internal static class Noclip
     /// <summary>
     /// Vertical flight, +1 up and -1 down.
     ///
-    /// The reference read dedicated keyboard keys through its Hotkeys helper
-    /// (Hotkeys.FlyVertical), which is not part of this port. This game's look
-    /// buttons are the natural stand-in: R2 is look up and L2 is look down (they
-    /// drive the pitch velocity 0x801B264E; docs/INPUT.md), and the port's shipped
-    /// keyboard layout leaves L2/R2 unbound, so a pad reaches them and a keyboard
-    /// can bind them without colliding with the mouse's pitch.
+    /// Keyboard flight is the hotkeys' <see cref="Hotkeys.FlyVertical"/>, as in
+    /// the reference (the keys are there because this game's layout binds Space
+    /// to attack -- see Hotkeys). The pad's own R2/L2 are kept: R2 is look up and
+    /// L2 is look down (they drive the pitch velocity 0x801B264E; docs/INPUT.md),
+    /// and the port's shipped keyboard layout leaves L2/R2 unbound, so a pad
+    /// reaches them and a keyboard can bind them without colliding with the
+    /// mouse's pitch.
     /// </summary>
     static float Vertical()
     {
-        float v = 0f;
+        float v = Hotkeys.FlyVertical();
         if (Held(Controller.R2)) v += 1f;
         if (Held(Controller.L2)) v -= 1f;
         return v;

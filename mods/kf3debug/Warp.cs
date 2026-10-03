@@ -41,6 +41,13 @@ internal static class Warp
 
     internal static string Status = "";
 
+    /// <summary>
+    /// Switch noclip on when an area warp without a bookmark arrives. Measured
+    /// 2026-10-03: of seven warps, the first step cost 16 HP in fdat32 and killed
+    /// in fdat62, since the carried X/Z sits over another area's drops.
+    /// </summary>
+    internal static bool FlyAfterWarp = true;
+
     struct Bookmark
     {
         public bool Set;
@@ -58,7 +65,7 @@ internal static class Warp
     static int _warpArea = -1;      // area to load, -1 when none
     static bool _warpRequested;     // func_80017C78 has been called for _warpArea
     static bool _warpLoaded;        // FAD4 returned to 0; stage 4 does the placement
-    static Bookmark _warpTarget;    // where to land after the load; Set=false = default entrance
+    static Bookmark _warpTarget;    // where to land after the load; Set=false = the floor where the player stands
 
     static bool _movePending;       // a within-area move is queued
     static bool _moveAngles;        // also restore the angles (bookmark) or keep them (teleport)
@@ -186,7 +193,7 @@ internal static class Warp
     // ---- area warp ----
 
     /// <summary>
-    /// Queue an area warp to the area's default entrance.
+    /// Queue an area warp, landing on the floor where the player stands.
     ///
     /// The load itself is func_80017C78, the game's own warp primitive: the
     /// exits (kind 0xE0/0xEB objects in stage 3), save respawn and the menu load
@@ -220,7 +227,7 @@ internal static class Warp
         _warpTarget = default;
         _warpRequested = false;
         _warpLoaded = false;
-        Status = $"warping to {AreaName(area)} (default entrance)...";
+        Status = $"warping to {AreaName(area)}...";
         Console.WriteLine($"[kf3debug] queued warp to {AreaName(area)}");
         return true;
     }
@@ -294,9 +301,28 @@ internal static class Warp
             }
             else
             {
-                // No destination: the area's own spawn placement stands. Say so
-                // rather than claiming a position.
-                Status = $"warped to {AreaName(area)} (default entrance)";
+                // No destination. An area change keeps the player's X/Z (the
+                // entrance bytes 0x7F mean "no offset"; a door shifts the world
+                // instead), so without this the player hangs at the old height
+                // and the first step is a fall that can kill. func_8002B760 is
+                // the game's own placement on entry -- doors, respawn and the
+                // session start call it: the floor under X/Z, the fall state and
+                // the action state cleared. Measured 2026-10-03: without it, a
+                // warp from fdat02 left Y at -44800 and the first step dropped
+                // it to -19600.
+                bool moved = MoveOntoFloorTile(m);
+                var saved = c.Snapshot();
+                Recompiled.KingsField3_game.func_8002B760(c, m);
+                c.Restore(saved);
+                GameState.StopMotion(m);
+                var (x, y, z) = GameState.Position(m);
+                Status = $"warped to {AreaName(area)}, " + (moved ? "moved to the nearest floor tile" : "dropped to the floor")
+                       + $" at {Format(x, y, z)}";
+                if (FlyAfterWarp && !Noclip.Enabled)
+                {
+                    Noclip.Enabled = true;
+                    Status += "; flying (noclip on)";
+                }
             }
             Console.WriteLine($"[kf3debug] {Status}");
             return;
@@ -309,6 +335,48 @@ internal static class Warp
         _movePending = false;
         Status = $"moved to {Format(_moveX, _moveY, _moveZ)}";
         Console.WriteLine($"[kf3debug] {Status}");
+    }
+
+    // The map: 80x80 tiles of 10 bytes, 2048 units a tile; +0 the lower half's
+    // mesh and +5 the upper's, 240 or more not drawn. See "The map" in docs/GAME_INTERNALS.md.
+    const uint MapTiles = 0x801D4464;
+    const int MapSize = 80, TileStride = 10, TileShift = 11, NoMesh = 240;
+
+    /// <summary>
+    /// Move the player's X/Z to the centre of the nearest tile with a floor, if
+    /// the tile they stand on has none. Areas do not share a coordinate frame,
+    /// so the X/Z carried over from the last area can be over nothing at all:
+    /// measured 2026-10-03, fdat05 back to fdat02 left the player on tile
+    /// (69, 42), both halves without a mesh; the floor query answered -44800
+    /// there and the first step was a fatal fall. Rings outward a tile at a time.
+    /// </summary>
+    static bool MoveOntoFloorTile(IMemory m)
+    {
+        var (x, _, z) = GameState.Position(m);
+        int tx = x >> TileShift, tz = z >> TileShift;
+        if (HasFloor(m, tx, tz)) return false;
+
+        for (int r = 1; r < MapSize; r++)
+            for (int dz = -r; dz <= r; dz++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    if (Math.Abs(dx) != r && Math.Abs(dz) != r) continue;
+                    if (!HasFloor(m, tx + dx, tz + dz)) continue;
+                    int cx = ((tx + dx) << TileShift) + (1 << (TileShift - 1));
+                    int cz = ((tz + dz) << TileShift) + (1 << (TileShift - 1));
+                    GameState.SetPosition(m, cx, GameState.ReadS32(m, GameState.PosY), cz);
+                    return true;
+                }
+        return false;
+    }
+
+    static bool HasFloor(IMemory m, int tx, int tz)
+    {
+        if ((uint)tx >= MapSize || (uint)tz >= MapSize) return false;
+        // Either half: fdat02 has no lower-half mesh at all (measured: 0 of 6400
+        // tiles, against 4637 upper), so a floor is wherever either is drawn.
+        uint tile = MapTiles + (uint)((tz * MapSize + tx) * TileStride);
+        return m.ReadU8(tile) < NoMesh || m.ReadU8(tile + 5) < NoMesh;
     }
 
     /// <summary>
@@ -325,7 +393,7 @@ internal static class Warp
     /// The 0xE0 door handler instead passes the destination's own aux/BGM bytes
     /// (object+0x3A..0x3E, e.g. 04 04 04 0D 0F for fdat14). Those select per-area
     /// FDAT data this mod does not know for an arbitrary area, so it uses the
-    /// game's own "go to area N" form and lands at the default entrance.
+    /// game's own "go to area N" form; it does not place the player.
     /// </summary>
     static void RequestAreaChange(CpuContext c, IMemory m, int area)
     {
