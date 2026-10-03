@@ -16,43 +16,50 @@ There is no stored edge word: newly-pressed is computed inline as
 Select bits out of `0x265C` during scene and area transitions.
 
 The game tests `pad & u16[table[i]]` against a **14-entry u16 table at
-`0x80081868`**. Its defaults:
+`0x80081868`**. The face entries depend on the save: `func_8001F4C0`, the
+control-config screen, rewrites the table from preset indices at `0x801B25E2`
+(face) and `0x801B25E3` (direction), and **a New Game sets the face preset to 3**
+(`func_8002B64C`, line 30723 of `generated/game.cs`). The table in `.data`, which
+is what RAM holds before a save loads, is preset 0, and the first reading of it
+was taken for the game's defaults. The face presets only ever swap the pairs
+{attack, magic} and {menu, examine}:
 
-| mask address | default | button | action |
-|---|---|---|---|
-| `0x80081868` | `0x1000` | Up | walk forward |
-| `0x8008186A` | `0x4000` | Down | walk back |
-| `0x8008186C` | `0x8000` | Left | turn left |
-| `0x8008186E` | `0x2000` | Right | turn right |
-| `0x80081870` | `0x0010` | Triangle | magic |
-| `0x80081872` | `0x0040` | Cross | the in-game menu |
-| `0x80081874` | `0x0080` | Square | attack |
-| `0x80081876` | `0x0020` | Circle | examine / interact |
-| `0x80081878` | `0x0004` | L1 | strafe left |
-| `0x8008187A` | `0x0001` | L2 | look one way |
-| `0x8008187C` | `0x0008` | R1 | strafe right |
-| `0x8008187E` | `0x0002` | R2 | look the other way |
-| `0x80081880` | `0x0100` | Select | the map; **inferred** |
-| `0x80081882` | `0x0800` | Start | the card / options menu |
+| mask address | entry | action | preset 3 (a New Game) | preset 0 (`.data`) |
+|---|---|---|---|---|
+| `0x80081868` | 0 | walk forward | Up `0x1000` | Up |
+| `0x8008186A` | 1 | walk back | Down `0x4000` | Down |
+| `0x8008186C` | 2 | turn left | Left `0x8000` | Left |
+| `0x8008186E` | 3 | turn right | Right `0x2000` | Right |
+| `0x80081870` | 4 | attack | Square `0x0080` | Triangle `0x0010` |
+| `0x80081872` | 5 | the in-game menu | Circle `0x0020` | Cross `0x0040` |
+| `0x80081874` | 6 | magic | Triangle `0x0010` | Square `0x0080` |
+| `0x80081876` | 7 | examine, talk, open | Cross `0x0040` | Circle `0x0020` |
+| `0x80081878` | 8 | strafe left | L1 `0x0004` | L1 |
+| `0x8008187A` | 9 | look one way | L2 `0x0001` | L2 |
+| `0x8008187C` | 10 | strafe right | R1 `0x0008` | R1 |
+| `0x8008187E` | 11 | look the other way | R2 `0x0002` | R2 |
+| `0x80081880` | 12 | the map, **inferred** | Select `0x0100` | Select |
+| `0x80081882` | 13 | the card / options menu | Start `0x0800` | Start |
 
-**`func_8001F4C0`, the control-config screen, rewrites the table** from preset
-indices at `0x801B25E2` (face layout) and `0x801B25E3` (direction layout). The
-direction presets rewrite the eight direction entries; the face presets only ever
-swap **Triangle to Square** and **Cross to Circle**, i.e. the pairs {attack,
-magic} and {menu, examine}.
+**Settled in play, not by reading** (2026-10-03, slot 1, preset 3, the `press`
+and `peek` verbs): Square (entry 4) sets `0x801B25B3` and runs the swing clock
+`0x801B25A4` (`0x0300`..`0x0F00`, then -1); Triangle (entry 6) does nothing
+visible with no spell readied; Circle (entry 5) opens the in-game menu (the pad
+word freezes while the modal menu runs). A read of the code had entries 4 and 6
+the other way round: a new entry-4 press in `func_8002FE1C` calls
+`func_8002C040(0)`, which sets `0x801B25B3` (taken for a cast latch), and
+`func_8002D2A0` tests entry 6 near its swing-clock writes (line 33537). The swing
+starts from entry 4. Entry 7, examine, is `func_800305D8` calling
+`func_8005E2D0`, which measures the distance to the objects in front. A save on
+this machine dumps as preset 3 (`KF3_ANALOG_PROBE=1` prints the live table), and
+in play F, then bound to Circle, opened the menu.
 
-**The verbs were first guessed the wrong way round** (attack on Triangle, magic
-on Square), from those config strings, and the first keyboard layout and mouse
-defaults put attack on Triangle. Read from the code since (2026-10-03, line
-numbers in `generated/game.cs`): the attack routine `func_8002D2A0` starts and
-steps the swing clock `0x801B25A4` on **Square** (entry 6, line 33537) and only
-uses Triangle (entry 4) to skip that block; a new Triangle press in
-`func_8002FE1C` calls `func_8002C040(0)`, which sets the cast-ready latch
-`0x801B25B3` (**magic**, by that and by the pairing); a new **Circle** press in
-`func_800305D8` calls `func_8005E2D0`, which measures the distance to the objects
-in front (**examine, talk, open**); a new **Cross** press there opens the in-game
-menu (`func_8001A774`). Play agrees: Square swings, Triangle does not, Cross opens
-the menu. Layout version 2 corrects the keys and migrates version 1 once.
+**The keyboard layout and the mouse defaults are preset 3's** (layout version 3).
+It is Verdite2's: Space attack, Q magic, F examine, Tab the menu. Versions 1 and
+2 had the menu and examine crossed (from reading preset 0), version 2 attack and
+magic too; both are migrated once. A player who picks
+another preset in the game's own screen moves the pad's verbs and not the keys'.
+
 Select is **inferred** to be the map screen — its handler `func_80019F58(3)` is
 an empty stub in this build and the body begins at `func_80019F60`.
 
@@ -116,7 +123,7 @@ slow hand still turns.
 
 The mouse's buttons press pad buttons through `PadReadEvent`, attached only while
 the pointer is captured: **left Square (attack), right Triangle (magic), middle
-Circle (examine)** by default. The game's own config decides the verb, so
+Cross (examine)** by default. The game's own config decides the verb, so
 remapping in-game moves the mouse with it. **Escape** captures and releases by
 default (`KF3_MOUSE_KEY`); a popup opening takes the pointer back.
 

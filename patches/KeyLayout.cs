@@ -40,7 +40,7 @@ public static class KeyLayout
     /// <summary>Which version of the layout the config has been migrated to.</summary>
     public const string AppliedKey = "kf3.keys.layout";
 
-    const int Version = 2;
+    const int Version = 3;
 
     /// <summary>
     /// Layouts this port has shipped before and has since changed its mind about.
@@ -53,13 +53,20 @@ public static class KeyLayout
     /// </summary>
     static readonly KeyBindings[] Superseded =
     [
-        // Version 1 (2026-10-02): attack and magic the wrong way round, from the
-        // guessed verbs; Square swings and Triangle casts.
+        // Version 1 (2026-10-02): the menu and examine crossed, F opening the menu.
         new()
         {
             Up = "W", Down = "S", L1 = "A", R1 = "D",
             Left = "Left", Right = "Right", L2 = "", R2 = "",
             Triangle = "Space", Circle = "F", Square = "Q", Cross = "Tab",
+            Start = "Enter", Select = "ShiftRight", L3 = "", R3 = "",
+        },
+        // Version 2 (2026-10-03): the menu and examine still crossed.
+        new()
+        {
+            Up = "W", Down = "S", L1 = "A", R1 = "D",
+            Left = "Left", Right = "Right", L2 = "", R2 = "",
+            Square = "Space", Circle = "F", Triangle = "Q", Cross = "Tab",
             Start = "Enter", Select = "ShiftRight", L3 = "", R3 = "",
         },
     ];
@@ -69,8 +76,8 @@ public static class KeyLayout
     /// which *key* presses each one; what the button then does is the game's own
     /// control configuration, exactly as it is for a pad.
     /// </summary>
-    // The actions are this game's defaults, from the action-mask table at
-    // 0x80081868: see "The pad and the action-mask table" in docs/INPUT.md.
+    // The actions are a New Game's, the game's face preset 3 (func_8002B64C):
+    // see "The pad and the action-mask table" in docs/INPUT.md.
     public static KeyBindings Layout() => new()
     {
         // Move. The strafes are on the shoulder buttons in this game, which is
@@ -91,9 +98,9 @@ public static class KeyLayout
 
         // Act: attack, examine, magic, the menu, the card and options menu, the map.
         Square = "Space",
-        Circle = "F",
+        Cross = "F",
         Triangle = "Q",
-        Cross = "Tab",
+        Circle = "Tab",
         Start = "Enter",
         Select = "ShiftRight",
 

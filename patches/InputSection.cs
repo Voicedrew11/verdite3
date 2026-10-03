@@ -189,7 +189,7 @@ public sealed class InputSection : ISettingsSection
     /// <summary>The qualification the action column needs, said once under the
     /// table rather than sixteen times in it. See <see cref="BindingTable"/>.</summary>
     static void ActionNote() =>
-        Note("That middle column is what the buttons do by default. King's Field has a control " +
+        Note("That middle column is what the buttons do in a New Game. King's Field has a control " +
              "configuration screen of its own: it swaps attack with magic and the menu with examine, " +
              "and its direction presets rewrite the movement buttons.");
 

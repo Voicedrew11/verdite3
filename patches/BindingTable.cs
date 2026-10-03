@@ -55,8 +55,8 @@ static class BindingTable
                      Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad,
                      string Action)[] _rows =
     [
-        ("Cross",    b => b.Cross,    (b,v) => b.Cross = v,    p => p.Cross,    (p,v) => p.Cross = v,    "the in-game menu"),
-        ("Circle",   b => b.Circle,   (b,v) => b.Circle = v,   p => p.Circle,   (p,v) => p.Circle = v,   "examine, open, talk"),
+        ("Cross",    b => b.Cross,    (b,v) => b.Cross = v,    p => p.Cross,    (p,v) => p.Cross = v,    "examine, open, talk"),
+        ("Circle",   b => b.Circle,   (b,v) => b.Circle = v,   p => p.Circle,   (p,v) => p.Circle = v,   "the in-game menu"),
         ("Square",   b => b.Square,   (b,v) => b.Square = v,   p => p.Square,   (p,v) => p.Square = v,   "attack"),
         ("Triangle", b => b.Triangle, (b,v) => b.Triangle = v, p => p.Triangle, (p,v) => p.Triangle = v, "magic"),
         ("L1",       b => b.L1,       (b,v) => b.L1 = v,       p => p.L1,       (p,v) => p.L1 = v,       "strafe left"),
