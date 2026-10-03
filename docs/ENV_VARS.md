@@ -60,6 +60,8 @@ kept.
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |
 | `KF3_NEARPATH` | `1`: the near path (`func_8003AB04`, `func_800366A8`, libgte's division) in C#; `verify` compares it | recompiled |
 | `KF3_MODELWALK` | the model walk `func_80040AE4` (creatures, objects, effects, billboards) in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
+| `KF3_WIDESCREEN_CULL` | the tile-visibility cone widened to the aspect: `0` leaves the stock 4:3 cone, a number pins the widening factor instead of the aspect's (1 at 4:3) | follows aspect |
+| `KF3_WIDESCREEN_CULL_PROBE` | `1`: every 2 s the factor, the last stock and widened half-angles, tiles lit, tiles added, and the oracle's mismatches (stock classifier against the game's own grid; must be 0); `2` also prints the last grid as ASCII | off |
 | `KF3_MOPOSE` | the MO pose blender `func_800431E8` in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
 | `KF3_KEYS` | `fps`: the port's WASD keyboard layout (the default for a fresh install); `stock`: RecompOne's own bindings | fps |
 | `KF3_MOUSE` | `0`: hand the mouse back; look and the mouse buttons are off | on |

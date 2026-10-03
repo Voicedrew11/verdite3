@@ -118,6 +118,9 @@ Kf3.TextureScroll.Install();
 // SpriteAnim so its pre/post pair on the same routine is registered first.
 Kf3.ModelWalk.Configure(Environment.GetEnvironmentVariable("KF3_MODELWALK"));
 Kf3.ModelWalk.Install();
+Kf3.CullCone.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL"),
+                       Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL_PROBE"));
+Kf3.CullCone.Install();
 // The near path (func_8003AB04, func_800366A8 and libgte's division) in C#;
 // KF3_NEARPATH=verify compares it. See "Unit 4" in docs/PICTURE.md.
 Kf3.NearPath.Configure(Environment.GetEnvironmentVariable("KF3_NEARPATH"));

@@ -80,3 +80,54 @@ per cell:
 Because every cell is classified, **Verdite2's dropped-row failure cannot happen
 here**: a cell off the grid is never a boundary another row depends on.
 
+### Widening it: the half-angle opened, the radius kept
+
+`patches/CullCone.cs`. A pre hook on both floods, where the stock grid is complete
+and nothing has been cleared yet, recomputes the classifier in C# from guest
+memory (the game's own `rsin` and `func_80076DA0` run on a context of their own,
+below the live stack) and runs it again with the half-angle opened to
+`atan(Factor · tan S5)`, `Factor = (320 + 2·margin) / 320`, only while
+`S5 < 1024`. The draw radius stays the stock one. **A cell is only added**: one
+the stock grid left at 0 that the wider wedge marks gets `0x1E` or `0x1A`, and the
+epilogue's crosses (the eye's, always lit; the one behind it, cleared unless
+`0x801B25E5` is `0x11`) are never touched. The flood then shadows added cells
+like any other. At 4:3 the factor is 1 and the hook returns at once.
+`KF3_WIDESCREEN_CULL=0` is the comparison, `=<factor>` pins one.
+
+**The oracle is the game's own grid.** `KF3_WIDESCREEN_CULL_PROBE=1` runs the C#
+classifier at the stock angle every frame and counts the cells where it differs
+from what `func_80034BF4` wrote. The first transcription (an opencode agent's)
+read 1,500-52,000 a window; two bugs, found by reading it against the MIPS: the
+row step's `S1` was missing its `- A3`, and the epilogue's second cross was not
+excluded. After: **0 mismatches in every window**, at 16:9 level and at 21:9
+looking up and down (stock `S5` 440 to 839, so both arms of the radius). `=2`
+prints the grid as a map once a window.
+
+Measured, slot 1, `fdat02`, 144 fps:
+
+| aspect | `S5` → widened | tiles lit before | added a frame |
+|---|---|---|---|
+| 16:9 level | 440 → 534 | 156-170 | 27-38 |
+| 21:9 level | 440 → 620 | 162 | 64 |
+| 21:9 looking up or down | 620-839 → 772-916 | 196-250 | 12-48 |
+
+Pacing held at 144.0 fps and 15.0 ticks/s. **Not judged by eye**: whether the
+margins still fill in and empty at the edges as you turn.
+
+## No view-space clipper
+
+Verdite2's second cull is a clipper set to twice the screen (`ViewClip.cs`).
+This game links no clipper (`Clip3FTP`/`Clip4FTP` are absent; `docs/GAME_INTERNALS.md`,
+"The map"): the bulk assembler sends a face whole, and the near path subdivides.
+The projection is unchanged by the margin, so nothing here gets larger on screen.
+Nothing to port.
+
+## The primitive buffer
+
+Verdite2's ran out at a wide aspect (`0x19000` bytes a buffer) and was moved above
+2 MB. Here the buffer is `0x1A000` bytes (106,496), and the near assembler is
+taken only with `0x2800` bytes left, so running low would first show as near
+halves drawn by the bulk assembler, unsubdivided. `KF3_PRIMBUF_PROBE=1`, `fdat02`,
+turning and walking: **peak 57% at 4:3, 66% at 16:9 with the cone widened, 31%
+at 21:9 looking up and down; 0 frames ran out and 0 near halves starved in every
+window.** Not moved. One area only: worth re-asking in a busier one.
