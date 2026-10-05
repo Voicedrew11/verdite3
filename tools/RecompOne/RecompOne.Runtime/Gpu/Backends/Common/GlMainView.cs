@@ -31,7 +31,7 @@ public sealed partial class GlCore
         _uwDither = _gl.GetUniformLocation(_progWorld, "uWorldDither");
         _uwCueFromZ = _gl.GetUniformLocation(_progWorld, "uCueFromZ");
         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
-        _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly");
+        _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
@@ -59,7 +59,7 @@ public sealed partial class GlCore
     bool _wMips;
     // The view depth the normal pass's last water slice reached.
     float _wDone;
-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell;
+    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1;
     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
     // The world normal program is set up for this pass's frame (DrawWorldNormals).
@@ -279,12 +279,41 @@ public sealed partial class GlCore
         _gl.DepthMask(false);
         if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
+        ProbeTolerance(0, () => DrawRange(0, null));
         int drawn = DrawRange(0, null);
         if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, 0f);
         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
         _gl.DepthMask(true);
         RetainedScene.MainMapPrepasses++;
         return drawn;
+    }
+
+    /// <summary>The tolerance probe (<see cref="RetainedScene.ToleranceProbe"/>), in a
+    /// colour pass's state, before it draws: <paramref name="draw"/> again with colour
+    /// off, its samples counted with the tolerance whole and capped at each of
+    /// <see cref="RetainedScene.ToleranceCaps"/>. Writes nothing.</summary>
+    void ProbeTolerance(int pass, Action draw)
+    {
+        if (!RetainedScene.ToleranceProbe || _uwDepthCap < 0) return;
+        _gl.ColorMask(false, false, false, false);
+        long Count(float cap)
+        {
+            _gl.Uniform1(_uwDepthCap, cap / 65536f);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            draw();
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long all = Count(1e9f);
+        RetainedScene.ToleranceSamples[pass] += all;
+        var caps = RetainedScene.ToleranceCaps;
+        for (int k = 0; k < caps.Length; k++)
+            RetainedScene.ToleranceBehind[pass * caps.Length + k] += all - Count(caps[k]);
+        _gl.Uniform1(_uwDepthCap, 1e9f / 65536f);
+        _gl.ColorMask(true, true, true, true);
     }
 
     // 0086. The main view's models are drawing, and mark the stencil where they land.
@@ -392,6 +421,8 @@ public sealed partial class GlCore
         if (_uwTrueColor >= 0) _gl.Uniform1(_uwTrueColor, GteDepth.TrueColor ? 1f : 0f);
         if (_uwPlainZ >= 0) _gl.Uniform1(_uwPlainZ, GteDepth.PlainDepth);
         if (_uwMirror >= 0) _gl.Uniform1(_uwMirror, 0);
+        if (_uwDepthCapZ >= 0)
+            _gl.Uniform1(_uwDepthCapZ, RetainedScene.DepthCapPixels > 0f ? RetainedScene.DepthCapPixels / Math.Max(1f, f.View.H) : 0f);
         if (_uwMaskOn >= 0) _gl.Uniform1(_uwMaskOn, 0);
         if (_uwAtmosSkip >= 0) _gl.Uniform1(_uwAtmosSkip, 0);
         // The frame's own settings, as its packets take them: the GTE's whole pixels
@@ -499,6 +530,7 @@ public sealed partial class GlCore
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, 0f);
         if (_uwSwellOn >= 0) _gl.Uniform1(_uwSwellOn, 0);
         if (_uwClipOn >= 0) _gl.Uniform1(_uwClipOn, 0);
+        if (_uwDepthCapZ >= 0) _gl.Uniform1(_uwDepthCapZ, 0f);
         EndWorldLights();
     }
 
@@ -1178,6 +1210,7 @@ public sealed partial class GlCore
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
         }
+        if (bias) ProbeTolerance(1, () => DrawModelRuns(f));
         MarkModels(true);
         foreach (var g in f.Groups)
         {

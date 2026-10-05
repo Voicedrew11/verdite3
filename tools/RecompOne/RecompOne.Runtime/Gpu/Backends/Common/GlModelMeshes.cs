@@ -390,6 +390,16 @@ public sealed partial class GlCore
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
         }
+        if (bias)
+            ProbeTolerance(2, () =>
+            {
+                foreach (var m in list)
+                {
+                    if (m.MeshGen != _meshGen) continue;
+                    SendInstance(m, true);
+                    _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
+                }
+            });
         MarkModels(true);
         foreach (var m in list)
         {

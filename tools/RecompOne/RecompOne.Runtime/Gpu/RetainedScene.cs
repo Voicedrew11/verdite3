@@ -1082,6 +1082,24 @@ public static class RetainedScene
     public static readonly float[] MapSlacks = [8, 32, 128, 512, 0xF0 * 4];
     public static readonly long[] ModelUnderSlack = new long[5];
 
+    /// <summary>The tolerance probe: before each colour pass of the main view's map and
+    /// models, the samples the tolerant test passes, and of those the ones it passes
+    /// only because the tolerance exceeded each of <see cref="ToleranceCaps"/> -- colour
+    /// drawn over a nearer surface by more than that many view-depth units. Occlusion
+    /// queries (a stall each); off by default; cumulative.</summary>
+    public static bool ToleranceProbe;
+    public static readonly float[] ToleranceCaps = [0.25f, 1, 4, 16, 64, 512];
+    /// <summary>Per pass: 0 the map, 1 the frame's posed models, 2 the instances.</summary>
+    public static readonly long[] ToleranceSamples = new long[3];
+    /// <summary>Pass * <see cref="ToleranceCaps"/>.Length + cap.</summary>
+    public static readonly long[] ToleranceBehind = new long[18];
+
+    /// <summary>The main view's ceiling on 0051's slope term, in the game's pixels: a
+    /// fragment of the map or a model is pulled towards the camera by at most the
+    /// constant bias plus the world width of this many pixels at its own depth
+    /// (z / H each). 0, the default, leaves the term unbounded.</summary>
+    public static float DepthCapPixels;
+
     /// <summary>The planes the current frame mirrors in, nearest-first by the
     /// port's own ranking; at most <see cref="MaxPlanes"/>.</summary>
     public static void SetPlanes(ReadOnlySpan<float> worldY)

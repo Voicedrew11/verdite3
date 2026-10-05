@@ -1942,6 +1942,11 @@ internal static class GlShaders
         uniform int   uOpaqueDepth;
         uniform float uDepthBias;
         uniform float uDepthSlope;
+        // The tolerance probe's ceiling on the tolerance (RetainedScene.ToleranceProbe).
+        uniform float uDepthCap = 1.0e9;
+        // RetainedScene.DepthCapPixels over H: the main view's ceiling on the slope term,
+        // per unit of depth. 0 is none.
+        uniform float uDepthCapZ;
         uniform int   uScale;
         uniform vec2  uPosBias;
         uniform float uAniso;
@@ -2406,6 +2411,13 @@ internal static class GlShaders
             // punch-through discard cannot occlude whatever is behind the hole.
             // 0051. The tolerance is on the test only; GlCore draws the true depth first.
             float dz = uDepthBias + uDepthSlope * max(abs(dFdx(vDepth)), abs(dFdy(vDepth)));
+            // The slope term grows without bound on a face seen edge-on, where half a
+            // pixel spans the face's whole depth: a model's silhouette then drew over a
+            // surface hundreds of units in front of it. A coplanar partner's offset is a
+            // unit or two of world, which at depth z moves the depth by at most a few
+            // game pixels' width there (z / H each), so the term stops at that.
+            if (uDepthCapZ > 0.0) dz = min(dz, uDepthBias + vDepth * uDepthCapZ);
+            dz = min(dz, uDepthCap);
             gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
             if (uFarPlane != 0) gl_FragDepth = 1.0;
             if (uClipOn != 0 && vDepth > 0.0) {

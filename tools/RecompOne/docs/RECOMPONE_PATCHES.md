@@ -1619,6 +1619,22 @@ Four files in the directory have no entry below:
   captures are untouched. **No recompile.** Measured in Verdite3's `GPU_RENDERER.md`
   ("Models under later packets").
 
+- `0087-retained-depth-ceiling.patch` — `0051`'s tolerance is the constant bias plus
+  half the fragment's own depth change across a pixel, and on a face seen nearly
+  edge-on that slope term spans hundreds of units: a model's silhouette drew over a
+  surface that far in front of it. `PrimFs` gains `uDepthCapZ`: the slope term stops
+  at the bias plus `vDepth * uDepthCapZ`. The main view sets it to
+  `RetainedScene.DepthCapPixels / H` (`BeginWorldMain`) and clears it with the rest
+  of its uniforms, so a capped term is the world width of that many game pixels at
+  the fragment's depth. **0, the default, is the program before**; packets
+  (`_progPrim`) never set it. `RetainedScene.ToleranceProbe` adds occlusion queries
+  (a stall each) before the colour pass of the main view's map, posed models and
+  instances (`ProbeTolerance`, through `PrimFs`'s `uDepthCap`, which only it
+  lowers): the samples passing (`ToleranceSamples`) and those passing only because
+  the tolerance exceeded each of `ToleranceCaps` (`ToleranceBehind`). **No
+  recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Seeing through doors, and
+  floor over models again").
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual
