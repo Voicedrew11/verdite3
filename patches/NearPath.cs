@@ -59,6 +59,22 @@ public static partial class NearPath
         _sz[rec] = new NearSz { W = w, Z = sz == 0u ? 0f : sz };
     }
 
+    /// <summary>A face's own corners, as the near assembler filled them before the
+    /// division: the screen word at +0x10 and the SZ at +0x14, from the vertex cache.
+    /// Only the division's RTPTs were kept before, so every sub-polygon that touched an
+    /// original corner (all of an undivided face's, a quarter of a divided one's) had
+    /// no record and drew in painter's order, over the retained models.</summary>
+    static void NoteCorners(PSMemory mem, uint list, int n)
+    {
+        if (!DepthRecording) return;
+        for (uint k = 0; k < n; k++)
+        {
+            uint rec = mem.ReadU32(list + k * 4u);
+            // The SZ is a halfword: the models' path sign-extends it into the word.
+            NoteSz(rec, mem.ReadU32(rec + 0x10u), mem.ReadU32(rec + 0x14u) & 0xFFFFu);
+        }
+    }
+
     /// <summary>A record's corner depth, if the kept SZ still matches the screen word
     /// the record holds; otherwise no depth.</summary>
     static float CornerZ(PSMemory mem, uint rec)

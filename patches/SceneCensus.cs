@@ -43,6 +43,8 @@ public static class SceneCensus
         public Dictionary<byte, long> Codes { get; } = new();
         public Dictionary<uint, long> Flags { get; } = new();
         public Dictionary<int, long> Slots { get; } = new();
+        // Polygons (0x20-0x3F) with no packet depth record sealed for their command word.
+        public long Unrecorded { get; set; }
     }
     readonly record struct Entry(int Id, uint Caller, uint Cursor, uint PrimaryCursor, Row Row);
     readonly record struct PacketRange(uint Lo, uint Hi, Row Row);
@@ -165,6 +167,7 @@ public static class SceneCensus
                 row.Bytes += (words + 1) * 4;
                 byte code = (byte)(m.ReadU32(p + 4) >> 24);
                 row.Codes[code] = row.Codes.GetValueOrDefault(code) + 1;
+                if (code is >= 0x20 and < 0x40 && GtePacketDepth.Slot(p).Cmd != m.ReadU32(p + 4)) row.Unrecorded++;
                 row.Slots[slot] = row.Slots.GetValueOrDefault(slot) + 1;
             }
             uint next = tag & 0xFFFFFF;

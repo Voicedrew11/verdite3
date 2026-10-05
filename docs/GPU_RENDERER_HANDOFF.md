@@ -1,6 +1,31 @@
 # Retained GPU renderer: next-session handoff
 
-## Status (2026-10-05, second session)
+## Status (2026-10-05, third session)
+
+The user then reported part of an NPC seen through a door they stood beside, and
+floor still drawn in front of statues, beds and creatures. Measured cause: half the
+near map's packets had no depth record, so they drew in painter's order over the
+retained models and wrote the far plane. Under Retained GPU the near map halves and
+the `0x40` near models are now retained (GPU near clip, true depth); there is no
+near fallback left. The depth tolerance's slope term is bounded in the main view
+(runtime `0087`). See "Seeing through doors, and floor over models again" in
+`GPU_RENDERER.md`.
+
+## Next slice
+
+1. The user checks by eye, under Retained GPU: no NPC through a door or wall
+   beside them; no floor over creatures, statues or beds; and the near floor and
+   walls look as they did (the near path's subdivided colour and fog are replaced
+   by the retained shader's). If a model's base still looks cut by the floor, the
+   measured candidate is a base genuinely below the floor's plane (area 1 most);
+   see "Models just behind the floor" for the rule that was tried and removed.
+2. Performance: no valid per-stage timing exists yet (see "Baseline"). Measure
+   Retained GPU against packets at fixed views with the GPU frame timers before
+   optimising.
+3. Front-table submits (`front-table-policy-pending`) and the orthographic branch
+   are the retained world's remaining fallbacks.
+
+## Earlier status (2026-10-05, second session)
 
 The user reports the floor gaps below are gone. They then reported floor drawn over
 creatures and objects ("floor tiles behind a plant enemy show above it",
@@ -8,23 +33,6 @@ creatures and objects ("floor tiles behind a plant enemy show above it",
 retained models at slot 1 won their pixels through the depth tolerance. Fixed by
 runtime `0086` (model stencil mask). See "Models under later packets" in
 `GPU_RENDERER.md` for the mechanism, the 28-area tour and the cost.
-
-**Uncommitted**: the bulk-map correction below, `0086` (shared subtree:
-`tools/RecompOne`, its own commit, then push to the fork), the `gpu` shell command,
-the switches, `scripts/model_mask_tour.py` and these documents.
-
-## Next slice
-
-1. The user checks by eye that creatures and objects on near floor no longer have
-   floor over them. If some still do, the remaining candidate measured so far is
-   the retained map in front of a model by more than the tolerance (up to about
-   0.1% of model samples within 960 units). Under the packets, the table's 0xF0-slot
-   tile bias drew the model over that floor. Run `scripts/model_mask_tour.py` first.
-2. Performance: no valid per-stage timing exists yet (see "Baseline"). Measure
-   Retained GPU against packets at fixed views with the GPU frame timers before
-   optimising. Under the mask, at the worst tour view: 617 fps uncapped.
-3. Then persistent near subdivision (below). It would also remove the packets
-   `0086` guards against.
 
 ## Earlier slice: map-half ownership at one missing-floor view (superseded)
 

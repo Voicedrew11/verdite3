@@ -119,6 +119,13 @@ prefix from the game.
 - `KF3_GPU_MASK_PROBE=1`: count, with occlusion queries (a stall per batch), packet
   samples over model pixels that are behind the model, and model samples the map
   hides by 8-960 units; read with the shell's `gpu` command or the census file.
+- `KF3_GPU_TOLERANCE_PROBE=1`: count, with occlusion queries before each colour pass
+  of the retained map and models, the samples that pass only because the depth
+  tolerance exceeded 0.25/1/4/16/64/512 units; the shell's `gpu` command
+  (`toleranceSamples`, `toleranceBehind`). Runtime `0087`.
+- `KF3_GPU_DEPTH_CAP=N`: the retained main view's ceiling on the tolerance's slope
+  term, in game pixels' width at the fragment's depth; `0` leaves it unbounded, to
+  compare. Default 1.
 
 See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolved.
 

@@ -428,3 +428,90 @@ near floor no longer have floor drawn over them, while turning and walking up to
 them. Verdite2 keeps its behaviour, since `RetainedScene.ModelMask` is off unless
 the game sets it, but its depth attachment is now depth-stencil; no Verdite2 run
 was made.
+
+## Seeing through doors, and floor over models again (2026-10-05)
+
+The user reports, with **Retained GPU** and the C# native reference (the only
+configuration to be supported): standing next to a door, part of an NPC shows
+through it; and floor tiles in front of statues, beds and creatures, which `0086`
+was meant to have fixed, still happen.
+
+### The near geometry drew in painter's order
+
+Measured with the scene census, which now counts each emitter's polygons that have
+no depth record (`Unrecorded`), in fdat17 at the autostart position, walking:
+**385,261 of 789,180 near map packets (49%) had no record**. With AO on, an
+unrecorded packet is `zMode 3`: no depth test, and the far plane written where it
+draws. So the near floor and walls (the faces nearest the eye, a door beside you)
+painted over the retained models drawn at slot 1 whatever their depth, and erased
+the depth behind them, so anything tested after them showed through. `0086`'s mask
+only reaches packets that have a record.
+
+Cause: the near path recorded a corner's `SZ` only from the division's own `RTPT`s.
+A face's original corners come from the vertex cache, with their screen word at
+record `+0x10` and `SZ` at `+0x14`; they were never noted, so every sub-polygon
+touching one had no record. `NearPath.NoteCorners`, at each of the four division
+entries, notes them. Unrecorded near packets fell to **22,382 of 484,692 (4.6%)**.
+Every one left had a corner whose `SZ` was 0: at or behind the eye, where the GTE's
+screen position is saturated and no depth can be interpolated across the packet.
+
+Under Retained GPU those packets are no longer drawn. A near half is the same
+static mesh the backend already holds, so `RetainedMap.Submit` notes it like a
+bulk half; the GPU clips it at its near plane (`MainNear`, 16) with true depth. A
+model under the submit's `0x40` flag (the models' near path) is a retained
+`Tile` instance (`modelTileKept`: facing on the screen while every corner
+projects, otherwise its plane against the eye, and the GPU's near clip). Census
+afterwards: **no** `near-subdivision-pending` fallback, no near packet; the packets
+left are the HUD's models, a screen tint and a few unattributed menu packets.
+`NoteCorners` stays for the packet renderer's Z-buffer.
+
+Differences from the near path, by construction: the game dropped a divided piece
+whose corners were all nearer than H/2; the GPU draws down to 16 units. Midpoint
+colour and fog come from the retained shader (per pixel with fog from depth), not
+from the division's corners. Neither is judged by eye.
+
+### The tolerance on faces seen edge-on
+
+`0051`'s tolerance is 1 unit plus half the fragment's own depth change across a
+pixel. On a face seen nearly edge-on (a creature's silhouette, a wall at the edge
+of a doorway), half a pixel spans hundreds of units, and the face drew over
+surfaces that far in front of it. The tolerance probe (`KF3_GPU_TOLERANCE_PROBE=1`,
+runtime `0087`) counts, before each colour pass of the map and the models, the
+samples that pass only because the tolerance exceeded 0.25/1/4/16/64/512 units.
+Tour of areas 0, 5 and 7 (three things each, 900 and 2000 units, four headings):
+map samples more than 512 units behind 1,874-4,142 per area, instance samples more
+than 64 units behind 326-1,282.
+
+`0087` bounds the slope term in the retained main view at the world width of
+`RetainedScene.DepthCapPixels` game pixels at the fragment's depth (z / H each);
+the game sets 1 (`KF3_GPU_DEPTH_CAP`, 0 unbounded). A coplanar partner's offset is a
+unit or two of world, so this keeps the ownership of seams and models flush with the
+floor. Same tour: **nothing more than 512 units behind anywhere, instances more than
+64 behind: 0**. Model samples hidden by the map within 8 units (the floor contact
+the tolerance exists for) are unchanged, 9.1e-5 of model samples before and after.
+
+All 28 areas on the final build (`model_mask_tour.py`'s views with the tolerance
+probe and the scene census; three things an area, 648 views; area 21 has none):
+375,539 main draws, **0 missed, no fallback reason at all**. The only unrecorded
+polygons are the HUD's models, the screen tints (836) and 551 unattributed menu
+packets, none of them world geometry. Map samples passing only by more than
+64 units: 4,292 of 2.3e11, none by more than 512; instance samples by more than
+16 units: 61,361 of 3.5e10, none by more than 64. Source probe 879 assertions;
+the composed shaders link on the Radeon with every cue, pose and light case exact.
+Uncapped at the autostart view in fdat17, probes off: HEAD 654-683 fps, this build
+780-794 fps; the near packets cost more than the retained halves that replace them.
+No Verdite2 run: `0087` changes nothing until a game sets `DepthCapPixels` or the
+probe. **Not judged by eye.**
+
+### Models just behind the floor: measured, left alone
+
+The table linked a map tile 0xF0 slots deeper than its mean, so a model's base
+sunk into the floor drew whole. The question was whether the Z-buffer cutting such
+bases is what the user sees. A trial shader rule drew a hidden model fragment over
+an upward-facing map surface whose plane it lay less than a set distance below.
+Six areas (0, 1, 7, 9, 10, 17; six things; 48 views each), with every floor-facing
+surface made transparent to models against none: the share of model samples hidden
+by the map within 128 units was unchanged in areas 0, 7 and 9 (it is walls and
+door frames), fell from 2.8e-3 to 1.3e-3 in area 1, and was under 4e-6 in 10 and
+17. Bases in the floor are not the effect reported, and the rule would also show
+models through the top of a low step, so it was taken out.

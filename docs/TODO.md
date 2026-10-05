@@ -18,9 +18,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 ## Next
 
 - **Complete retained GPU rendering** is the active implementation objective
-  (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report), and
-  floor drawn over creatures by later near packets is fixed and measured (`0086`),
-  **awaiting the user's check by eye**; then performance, then near ownership.
+  (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
+  near map and near models are now retained, so no near packet draws in painter's
+  order over the models, and the depth tolerance is bounded on edge-on faces
+  (`0087`): measured, **awaiting the user's check by eye** (NPCs through doors,
+  floor over creatures and objects); then performance.
   See [the handoff](GPU_RENDERER_HANDOFF.md). Selected inner native
   comparisons and all 28 loaded-area fixtures are measured; complete
   near/front/exceptional contexts, lighting/features, mutation and visual

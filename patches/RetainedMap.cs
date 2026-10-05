@@ -128,16 +128,17 @@ public static class RetainedMap
         { GpuWorld.Fallback(0x8003BB04, caller, "map-source-colour"); return false; }
         if (near)
         {
-            // Opt-in source descriptor extraction; never suppresses the near route.
+            // Opt-in source descriptor extraction: a probe, which draws nothing.
             if (RetainedNear.Enabled)
             {
                 uint table = m.ReadU32(TablePointer), header = table + 12 + kind * 28;
                 var mesh = RetainedAssets.Get(m, table, header, RetainedAssets.Family.Lit, out _);
                 if (mesh != null) RetainedNear.Probe(m, mesh, half);
             }
-            GpuWorld.Fallback(0x8003BB04, caller, "near-subdivision-pending");
-            return false;
         }
+        // A near half is the same static mesh: the GPU clips it at the eye, where the
+        // near path's libgte division left corners at or behind the eye without a depth
+        // (their packets drew in painter's order over the models).
         int tile = (int)(index / 10); RetainedScene.NoteHalf(tile % 80, tile / 80, (int)(index % 10 / 5));
         GpuWorld.Retained++;
         return GpuWorld.Drawing;

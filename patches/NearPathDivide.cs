@@ -22,6 +22,7 @@ public static partial class NearPath
     {
         NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Tri);
         { var _v = c.A1; c.A3 = c.A1 + 0x60u; }
+        NoteCorners((PSMemory)m, c.A3 + 0x48u, 3);
         c.A2 = 0x00000000u;
         DivTriBody(c, m);
     }
@@ -334,6 +335,7 @@ public static partial class NearPath
     {
         NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Quad);
         { var _v = c.A1; c.A3 = c.A1 + 0x78u; }
+        NoteCorners((PSMemory)m, c.A3 + 0x78u, 4);
         c.A2 = 0x00000000u;
         DivQuadBody(c, m);
     }
@@ -740,6 +742,7 @@ public static partial class NearPath
     {
         NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Tri2);
         { var _v = c.A1; c.A3 = c.A1 + 0x60u; }
+        NoteCorners((PSMemory)m, c.A3 + 0x48u, 3);
         c.A2 = 0x00000000u;
         DivTri2Body(c, m);
     }
@@ -1094,6 +1097,7 @@ public static partial class NearPath
     {
         NearScreen.Widen((PSMemory)m, c.A1, NearScreen.Kind.Quad2);
         { var _v = c.A1; c.A3 = c.A1 + 0x78u; }
+        NoteCorners((PSMemory)m, c.A3 + 0x78u, 4);
         c.A2 = 0x00000000u;
         DivQuad2Body(c, m);
     }

@@ -230,7 +230,9 @@ public static class AgentServer
                  ",\"maskSamples\":" + RetainedScene.MaskSamples + ",\"maskBehind\":" + RetainedScene.MaskBehind +
                  ",\"maskAhead\":" + RetainedScene.MaskAhead + ",\"modelSamples\":" + RetainedScene.ModelSamples +
                  ",\"modelUnderMap\":" + RetainedScene.ModelUnderMap +
-                 ",\"modelUnderSlack\":[" + string.Join(',', RetainedScene.ModelUnderSlack) + "]}",
+                 ",\"modelUnderSlack\":[" + string.Join(',', RetainedScene.ModelUnderSlack) + "]" +
+                 ",\"toleranceSamples\":[" + string.Join(',', RetainedScene.ToleranceSamples) + "]" +
+                 ",\"toleranceBehind\":[" + string.Join(',', RetainedScene.ToleranceBehind) + "]}",
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

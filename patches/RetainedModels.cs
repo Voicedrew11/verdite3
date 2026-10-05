@@ -13,8 +13,7 @@ public static class RetainedModels
         if (!GpuWorld.Capture) return false;
         GpuWorld.Submissions++;
         string? reason = GpuWorld.Domain is "hud" or "preview" ? "packet-owned-presentation"
-            : !perspective ? "orthographic-policy-pending"
-            : (flags & 0x40) != 0 ? "near-subdivision-pending" : null;
+            : !perspective ? "orthographic-policy-pending" : null;
         if (reason != null) { GpuWorld.Fallback(routine, caller, reason); MoPose.Materialize(m); return false; }
         uint table = m.ReadU32(Pad + 0x10), header = table + 12 + (sub & 0xFFFF) * 28;
         var mesh = RetainedAssets.Get(m, table, header, sky ? RetainedAssets.Family.Sky : RetainedAssets.Family.Lit, out reason!);
@@ -26,7 +25,12 @@ public static class RetainedModels
         int pose = MoPose.Pending ? MoPose.Store(m, count, out weight) : RetainedAssets.StoreRigid(m, vertices, (int)count);
         bool morph = MoPose.Pending && pose != 0;
         if (pose == 0) { GpuWorld.Fallback(routine, caller, "pose-not-expressible"); MoPose.Materialize(m); return false; }
-        bool arm = GpuWorld.Domain == "arm", forced = (flags & 4) != 0;
+        // The submitter tests 0x40 first: such a model goes to the near path, whose
+        // libgte division keeps a face reaching past the eye. A Tile instance is that
+        // face clipped at the GPU's near plane, its facing taken against the eye, and
+        // its depth the true one, where the near packets' corners at or behind the eye
+        // had no depth and drew in painter's order over everything.
+        bool arm = GpuWorld.Domain == "arm", near = (flags & 0x40) != 0, forced = !near && (flags & 4) != 0;
         var instance = new RetainedScene.ModelInstance
         {
             MeshStart = mesh.Start, MeshCount = forced ? 0 : mesh.Opaque, MeshAll = mesh.Total,
@@ -34,7 +38,7 @@ public static class RetainedModels
             Dqa = m.ReadU32(0x801AEC7C), Dqb = m.ReadU32(0x801AEC80), Curve = sky ? 0 : LinearDepthCue.Curve,
             Far = sky ? 1e30f : 8192 - bias, Near = sky ? -1e30f : -bias,
             Rgbc = m.ReadU32(Pad + 0x64) & 0xFFFFFF, Sky = sky, ViewSpace = arm,
-            TwinMode = forced ? (int)(flags & 3) + 1 : 0,
+            TwinMode = forced ? (int)(flags & 3) + 1 : 0, Tile = near && !sky && !arm,
         };
         ReadMatrix(ref instance);
         Place(ref instance, RetainedScene.Find(RetainedScene.Serial)!.View);

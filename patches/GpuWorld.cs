@@ -48,6 +48,10 @@ public static class GpuWorld
         _surfaceProbe = Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1";
         RetainedScene.ModelMask = Environment.GetEnvironmentVariable("KF3_GPU_MODEL_MASK") != "0";
         RetainedScene.ModelMaskProbe = Environment.GetEnvironmentVariable("KF3_GPU_MASK_PROBE") == "1";
+        RetainedScene.ToleranceProbe = Environment.GetEnvironmentVariable("KF3_GPU_TOLERANCE_PROBE") == "1";
+        // The slope term's ceiling, in game pixels; KF3_GPU_DEPTH_CAP=0 leaves it unbounded.
+        RetainedScene.DepthCapPixels = float.TryParse(Environment.GetEnvironmentVariable("KF3_GPU_DEPTH_CAP"),
+            System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cap) && cap >= 0f ? cap : 1f;
         Event.AddListener<OverlayLoadedEvent>(_ =>
         {
             _frame = false; RetainedScene.MainSerial = 0;

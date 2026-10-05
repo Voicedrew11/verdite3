@@ -44,15 +44,16 @@ perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with t
 near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone`, based on `2013e51` (the vblank
-event delivered once), with retained-runtime checkpoint
-`4c3375f6` pushed to the fork on `checkpoint/retained-depth-probes`, and
+event delivered once), with retained-runtime checkpoints
+on the fork's `checkpoint/retained-depth-probes`, and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
 `docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
 
 **Retained GPU renderer in development** (2026-10-05): opt-in native scene and
 persistent mesh/pose submission; all-area inner native comparisons, near-face
-descriptor fixtures, shader probes and measured retained-depth coverage.
-Near/front and exceptional contexts remain open. No visual acceptance or full
+descriptor fixtures, shader probes and measured retained-depth coverage. The near
+map and near models are retained (no near fallback); front-table and exceptional
+contexts remain open. No visual acceptance or full
 GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
 ## The documents

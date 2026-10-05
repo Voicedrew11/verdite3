@@ -296,6 +296,13 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   drawn first), the arm, the overlays' sprites, and the blended and front-table
   variants and the models' near submit wherever they draw. Model depth is two
   bits coarser than the map's. **Not judged by eye.**
+- **Corrected 2026-10-05**: "all found" was true of the records written, but the
+  near map wrote one for only about half its packets. Its original corners come
+  from the vertex cache (screen word at record `+0x10`, `SZ` at `+0x14`) and were
+  never noted, so a sub-polygon touching one had no record and kept painter's
+  order. `NearPath.NoteCorners` notes them at each division entry: unrecorded near
+  map packets fell from 49% to 4.6%, every one left having a corner at or behind
+  the eye (`SZ` 0). See "Seeing through doors" in `docs/GPU_RENDERER.md`.
 
 ### Unit 5: widescreen
 
