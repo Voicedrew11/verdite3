@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Verdite3
+GenericName=King's Field II
+Comment=A PC port of King's Field II (SLUS-00255). Requires your own disc image.
+Exec=Verdite3 %f
+Icon=verdite3
+Terminal=false
+Categories=Game;AdventureGame;
+Keywords=kings field;fromsoftware;playstation;

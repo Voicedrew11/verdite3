@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The shipped executable: Verdite Core's launcher (tools/verdite-core/launcher)
+      under this port's names, with Program.cs handing it the one record it needs.
+      Everything else - the payload, the version stamp, the build options that must
+      match KingsField3Recomp.csproj - is in Launcher.targets, shared with
+      Verdite2. It builds without the disc. See docs/PACKAGING.md.
+    -->
+    <PropertyGroup>
+        <AssemblyName>Verdite3</AssemblyName>
+        <RootNamespace>Verdite3.Launcher</RootNamespace>
+        <VerditeAppId>verdite3</VerditeAppId>
+        <VerditeEnvPrefix>VERDITE3_</VerditeEnvPrefix>
+
+        <!-- Windows reads the icon out of the executable itself, so it is set here. -->
+        <ApplicationIcon>../packaging/shared/verdite3.ico</ApplicationIcon>
+    </PropertyGroup>
+
+    <Import Project="../tools/verdite-core/launcher/Launcher.targets" />
+
+</Project>

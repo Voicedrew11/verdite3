@@ -42,6 +42,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/PICTURE.md` | 24-bit colour, perspective, sub-pixel, the Z-buffer: the next work |
 | `docs/WIDESCREEN.md` | the margin, the tints, the cull cone, the primitive buffer |
 | `docs/MODS.md` | the runtime-loaded mods: the debug tools |
+| `docs/PACKAGING.md` | the shipped launcher, the release, the window icon off the disc |
 | `docs/ENV_VARS.md` | every `KF3_*` switch, in one list |
 | `docs/TODO.md` | next steps and open questions |
 | `tools/RecompOne/docs/RECOMPONE_PATCHES.md` | every change the fork makes to RecompOne |
@@ -50,8 +51,11 @@ Findings go in the right document, not in commit messages and not in this file.
 
 ## Build and run
 
-Nothing here builds without the disc (gitignored, user-supplied, at
-`disc/KingsField3.cue`).
+The game does not build without the disc (gitignored, user-supplied, at
+`disc/KingsField3.cue`). The shipped launcher, `Verdite3.Launcher/`, does, and
+must keep doing so: it carries the inputs and builds the game on the player's
+machine. It is Verdite Core's launcher under this port's names; see
+`docs/PACKAGING.md`.
 
 ```bash
 bash scripts/setup_tools.sh        # build the recompiler (tools/RecompOne)
@@ -65,7 +69,7 @@ dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
 
 The assembly is `KingsField3`, the environment-variable prefix is `KF3_`, and the
 MCP project is `KingsField3Mcp`. `tools/RecompOne` is a **subtree** of the fork
-`Voicedrew11/verdite-recompone`, pinned at `2013e51`; `tools/verdite-core` is a
+`Voicedrew11/verdite-recompone`, pinned at `2e766da`; `tools/verdite-core` is a
 subtree of the shared, game-agnostic `Voicedrew11/verdite-core`. `setup_tools.sh`
 moves them (`--pull-fork`/`--push-fork`, `--pull-core`/`--push-core`). Their sources
 are tracked here, so a fresh clone already has them and nothing needs fetching.

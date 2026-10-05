@@ -1,0 +1,58 @@
+# Every push: prove the shipped project still builds with no disc present.
+#
+# That is the one property the whole release story rests on, and it is easy to
+# break by accident -- a using directive in the launcher that reaches into
+# generated/, or a source file dropped into Verdite3.Launcher/ that the default
+# glob then compiles. Neither shows up locally, where generated/ exists.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  no-disc-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # RecompOne is a git subtree of the fork; this builds it, and clones nothing.
+      - run: bash scripts/setup_tools.sh
+
+      # The version is one number in one file and five things read it. This
+      # catches the two ways that stops being true: a malformed VERSION (which
+      # would name every artifact something a tag can never match) and a literal
+      # <Version> creeping back into the csproj beside the file it reads.
+      - name: Assert one source of the version
+        run: |
+          v="$(tr -d '[:space:]' < VERSION)"
+          echo "VERSION=$v"
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "VERSION is not MAJOR.MINOR.PATCH"; exit 1; }
+          grep -q '<Version>[0-9]' Verdite3.Launcher/Verdite3.Launcher.csproj \
+            && { echo "the csproj declares a literal version; VERSION is the source"; exit 1; } || true
+
+      - name: Build the launcher with no disc
+        run: dotnet build Verdite3.Launcher/Verdite3.Launcher.csproj -c Release
+
+      # That the number reaches the assembly, which is what the packaging names
+      # its files after and what the launcher prints at startup.
+      - name: Assert the build carries it
+        run: |
+          v="$(tr -d '[:space:]' < VERSION)"
+          dll=Verdite3.Launcher/bin/Release/net10.0/Verdite3.dll
+          got=$(strings "$dll" | grep -oE "^$v\+[0-9a-f]{9}$" | head -1)
+          echo "informational version: ${got:-<none>}"
+          test -n "$got" || { echo "the assembly does not carry $v plus a commit"; exit 1; }
+
+      # The Windows package's root exe is this stub, not the self-contained
+      # apphost. Catch a broken stub on every push rather than on the release
+      # job that actually publishes the zip.
+      - name: Build the Windows stub
+        run: dotnet build tools/verdite-core/packaging/windows/Stub/Verdite.Stub.csproj -c Release -p:StubName=Verdite3 "-p:StubIcon=$PWD/packaging/shared/verdite3.ico"
+
+      # KingsField3Recomp.csproj is deliberately NOT built here: it compiles
+      # generated/ and so cannot build without the disc, by design.

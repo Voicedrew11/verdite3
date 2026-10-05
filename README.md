@@ -10,10 +10,10 @@ game.)
 You must supply your own dump of `SLUS-00255`. No disc data is included, and
 none ever will be.
 
-**Status: bootstrapping. Nothing has been recompiled yet.** The repository holds
-the license, the conventions, and `tools/RecompOne`, a subtree of the shared fork
-`Voicedrew11/verdite-recompone`. The disc image is not here; the bring-up order
-is in `docs/TODO.md`.
+**Status: boots, plays, saves and loads; a release can be built.** The state of
+each piece is in `NOTES.md`. `tools/RecompOne` is a subtree of the shared fork
+`Voicedrew11/verdite-recompone`, and `tools/verdite-core` of the code shared with
+Verdite2.
 
 ## No prebuilt binary
 
@@ -22,7 +22,9 @@ FromSoftware's own code, so the assembly that plays the game has to be built on
 the machine of somebody who owns the disc. A prebuilt binary would also bake
 absolute disc addresses from one mastering, so it could silently fail to load
 data on a differently mastered dump. The project ships its inputs and builds the
-game at first run instead.
+game at first run instead: `Verdite3` asks for your image, builds the game from it
+once (about fifteen seconds), and starts straight away after that. See
+`docs/PACKAGING.md`.
 
 ## Upstream
 

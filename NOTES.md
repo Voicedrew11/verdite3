@@ -46,10 +46,15 @@ drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
-of the shared fork `Voicedrew11/verdite-recompone`, based on `2013e51` (the vblank
-event delivered once), with retained-runtime checkpoints
-on the fork's `checkpoint/retained-depth-probes`, and
-`tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
+of the shared fork `Voicedrew11/verdite-recompone` at `2e766da` (this repo's
+retained-scene work, `0085`-`0089`, pushed; Verdite2 pins the same commit), with
+retained-runtime checkpoints on the fork's `checkpoint/retained-depth-probes`,
+and `tools/verdite-core` of Verdite Core at `91f4a4a`, which Verdite2 pins too.
+**A release can be built** (2026-10-05): `Verdite3.Launcher/` is Verdite Core's
+launcher under this port's names, building the game from the player's disc at
+first run and checking GitHub for a newer release; the AppImage measured from an
+empty data folder, and the window wears the fourth save slot's card icon off the
+disc (`docs/PACKAGING.md`). The acceptance test is in
 `docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
 
 **Retained GPU renderer in development** (2026-10-05): the default scene
@@ -81,6 +86,7 @@ No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`
   the primitive buffer and the world behind menus and messages, ported from Verdite2.
 - [docs/MODS.md](docs/MODS.md) — the mods under `mods/`: the debug tools (noclip,
   invincibility, the character, item and spell editors, area warp).
+- [docs/PACKAGING.md](docs/PACKAGING.md) — the shipped launcher, the release, the card icon off the disc.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 

@@ -1,0 +1,130 @@
+# Build the redistributable for Windows and Linux.
+#
+# The whole reason this can exist is that Verdite3.Launcher builds WITHOUT the
+# disc: it ships the inputs to a build (config/, and the port's own C#) and makes
+# the game on the player's machine from the image they own. So CI never needs,
+# never has and never handles game data.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # RecompOne is a git subtree of the fork -- its sources are tracked in this
+      # repository, so nothing is cloned or patched here and there is no network
+      # dependency on upstream. This only builds the recompiler.
+      - name: Build the RecompOne subtree
+        shell: bash
+        run: bash scripts/setup_tools.sh
+
+      # The property the release depends on, asserted rather than assumed: if the
+      # launcher ever gains a dependency on generated/, this is where it is caught,
+      # and not after somebody has downloaded it.
+      - name: Assert the launcher needs no disc
+        shell: bash
+        run: |
+          test ! -e generated || { echo "generated/ exists in CI; it must not"; exit 1; }
+          test -z "$(ls -A disc 2>/dev/null | grep -v README.md || true)" || { echo "disc data in CI"; exit 1; }
+
+      # The tag names the release and VERSION names the artifacts inside it, and
+      # nothing but this makes them the same number. Without it a v0.2.0 tag on a
+      # tree that still says 0.1.0 publishes 0.1.0 files under a 0.2.0 release --
+      # silently, and only visible after somebody has downloaded it.
+      - name: Assert the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          tag="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$version tag=$GITHUB_REF_NAME"
+          test "$version" = "$tag" || { echo "tag $GITHUB_REF_NAME does not match VERSION $version"; exit 1; }
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "VERSION is not MAJOR.MINOR.PATCH"; exit 1; }
+
+      # The commit stamped into the assembly, so a downloaded build can say which
+      # one it is. The checkout is a detached HEAD at the tag, so the sha the
+      # csproj's own `git rev-parse` would find is the right one anyway; this is
+      # here so the value is identical on both legs and does not depend on git
+      # being reachable from inside MSBuild on a Windows runner.
+      - name: Stamp the build
+        shell: bash
+        run: echo "VERDITE3_BUILD=$(git rev-parse --short=9 HEAD)" >> "$GITHUB_ENV"
+
+      - name: Package (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2
+          bash packaging/linux/build-appimage.sh
+
+      - name: Package (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          # Inno Setup is preinstalled on windows-latest; add it to PATH so the
+          # script builds the installer rather than only the zip.
+          $iscc = "C:\Program Files (x86)\Inno Setup 6"
+          if (Test-Path $iscc) { echo $iscc >> $env:GITHUB_PATH }
+          ./packaging/windows/build-windows.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verdite3-${{ matrix.name }}
+          path: |
+            dist/*.AppImage
+            dist/*.zip
+            dist/*setup.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: true
+          name: Verdite3 ${{ github.ref_name }}
+          # Appended under the text below: the commits since the previous tag,
+          # which is what makes a tag worth cutting rather than a number worth
+          # remembering.
+          generate_release_notes: true
+          body: |
+            **Verdite3 ships no game data.** You need your own dump of King's
+            Field II (NTSC-U, `SLUS-00255`) as a `.chd`, or as a `.cue` / `.bin`
+            pair.
+
+            On first launch Verdite3 asks for that image and builds the game from
+            it, which takes about fifteen seconds and happens once. Later launches
+            start straight away.
+
+            Note that the US *King's Field* (`SLUS-00158`) is a different game,
+            Verdite2's, and will be refused.

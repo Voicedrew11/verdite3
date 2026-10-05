@@ -103,6 +103,19 @@ The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_VRAMCHECK`); they work here under those names until the fork takes the
 prefix from the game.
 
+## Packaging and the window icon
+
+See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
+(`Verdite3`), not the game's; the developer build never reads them.
+
+| switch | what | default |
+|---|---|---|
+| `KF3_ICON` | the window icon: `orb` (or `png`) the shipped mark, `off` (or `none`) no icon, `0`/`1`/`2` a frame of the fourth save slot's card icon | frame 2 |
+| `KF3_ICON_INSTALL` | `0`: write nothing into `~/.local/share/icons` or `applications` (the copy a Wayland compositor reads) | on, Linux only |
+| `VERDITE3_DATA` | the launcher's data directory: saves, settings, the built game | `~/.local/share/verdite3`, `%LOCALAPPDATA%\Verdite3` |
+| `VERDITE3_UPDATE_CHECK` | `0`: never ask GitHub for a newer release; `force`: ask past the once-a-day limit | on, daily |
+| `VERDITE3_BUILD` | the commit a launcher build says it is, for a build made outside a git checkout | the checkout's `HEAD` |
+
 ## Native scene and retained renderer development
 
 - `KF3_NATIVE_SCENE=0|1|verify`: literal native map/model/sky/arm submission and

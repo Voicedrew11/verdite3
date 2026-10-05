@@ -14,6 +14,7 @@
           See "Build and run" in docs/DEVELOPMENT.md.
         -->
         <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+        <ApplicationIcon>packaging/shared/verdite3.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,11 +25,14 @@
       generated/ and patches/ are picked up by the default globs (an explicit
       Compile Include is NETSDK1022). Everything below is nested here but is not
       this assembly's source: compiling it gives CS0579 from its obj/ files.
+      Verdite3.Launcher/ is the shipped executable, the opposite kind of project:
+      it builds without the disc and compiles this project's sources at first run
+      (docs/PACKAGING.md).
     -->
     <ItemGroup>
-        <Compile Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
-        <EmbeddedResource Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
-        <None Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**" />
+        <Compile Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**;Verdite3.Launcher/**;packaging/**" />
+        <EmbeddedResource Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**;Verdite3.Launcher/**;packaging/**" />
+        <None Remove="tools/**;mods/**;mcp/**;dist/**;scratch/**;Verdite3.Launcher/**;packaging/**" />
     </ItemGroup>
 
     <!-- Verdite Core's C# compiles into this assembly as source (the remove above keeps RecompOne's own sources out). -->
