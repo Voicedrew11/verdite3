@@ -24,10 +24,10 @@ The game tests `pad & u16[table[i]]` against a **14-entry u16 table at
 | `0x8008186A` | `0x4000` | Down | walk back |
 | `0x8008186C` | `0x8000` | Left | turn left |
 | `0x8008186E` | `0x2000` | Right | turn right |
-| `0x80081870` | `0x0010` | Triangle | attack **inferred** |
-| `0x80081872` | `0x0040` | Cross | the in-game menu |
-| `0x80081874` | `0x0080` | Square | magic **inferred** |
-| `0x80081876` | `0x0020` | Circle | examine / interact **inferred** |
+| `0x80081870` | `0x0010` | Triangle | attack **inferred**; Square in play |
+| `0x80081872` | `0x0040` | Cross | the in-game menu; Circle in play |
+| `0x80081874` | `0x0080` | Square | magic **inferred**; Triangle in play |
+| `0x80081876` | `0x0020` | Circle | examine / interact **inferred**; Cross in play |
 | `0x80081878` | `0x0004` | L1 | strafe left |
 | `0x8008187A` | `0x0001` | L2 | look one way |
 | `0x8008187C` | `0x0008` | R1 | strafe right |
@@ -41,6 +41,14 @@ direction presets rewrite the eight direction entries; the face presets only eve
 swap **Triangle to Square** and **Cross to Circle**, i.e. the pairs {attack,
 magic} and {menu, examine}. The attack/magic/examine names above are therefore
 **inferred** from those config strings; the buttons and code paths are read.
+**The game does not play on these defaults.** Read live 2026-10-05 from a New
+Game in `fdat02`: the face preset byte `0x801B25E2` is `3`, and the table holds
+Square at `0x80081870`, Circle at `0x80081872`, Triangle at `0x80081874` and
+Cross at `0x80081876`. A Circle press through the command channel opened the
+menu (`loop` went false). That is Verdite2's arrangement, and the keyboard and
+mouse defaults follow it; layout version 1 followed the column above and put
+the menu on F.
+
 Select is **inferred** to be the map screen — its handler `func_80019F58(3)` is
 an empty stub in this build and the body begins at `func_80019F60`.
 
@@ -79,8 +87,8 @@ yaw in one tick lands the heading in the same tick.
 ## The keyboard layout
 
 The port's layout (`KF3_KEYS=fps`, the default for a fresh install): **W/S** walk,
-**A/D** strafe, the **arrows** walk and turn, **Space** attack, **F** examine,
-**Q** magic, **Tab** the in-game menu, **Enter** Start, **Right Shift** Select.
+**A/D** strafe, the **arrows** walk and turn, **Space** attack (Square), **F** examine
+and confirm (Cross), **Q** magic (Triangle), **Tab** the in-game menu (Circle), **Enter** Start, **Right Shift** Select.
 **L2 and R2 are left unbound**, because pitch is the mouse's and only the mouse's.
 
 It is the port's *default*, not an override: `Configure` runs before
@@ -103,8 +111,8 @@ the game's decay when the hand stops. Fractions are carried tick to tick, so a
 slow hand still turns.
 
 The mouse's buttons press pad buttons through `PadReadEvent`, attached only while
-the pointer is captured: **left Triangle (attack), right Square (magic), middle
-Circle (examine)** by default. The game's own config decides the verb, so
+the pointer is captured: **left Square (attack), right Triangle (magic), middle
+Cross (examine)** by default. The game's own config decides the verb, so
 remapping in-game moves the mouse with it. **Escape** captures and releases by
 default (`KF3_MOUSE_KEY`); a popup opening takes the pointer back.
 

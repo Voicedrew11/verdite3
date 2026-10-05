@@ -34,9 +34,9 @@ public static class MouseLook
         PitchLimit: 0x2BC,              // func_8002F5C0's limit, 0x2BC and 0xD44 at 12 bits
         YawAddress: 0x801B2612,         // u16, the base yaw the look routine accumulates
         PitchAddress: 0x801B2610,       // u16, the base pitch, a 12-bit angle
-        DefaultLeftButton: 4,           // Triangle: attack
-        DefaultRightButton: 3,          // Square: magic
-        DefaultMiddleButton: 2,         // Circle: examine, open, talk
+        DefaultLeftButton: 3,           // Square: attack
+        DefaultRightButton: 4,          // Triangle: magic
+        DefaultMiddleButton: 1,         // Cross: examine, open, talk
         TextEditing: () => ImGui.GetCurrentContext() != nint.Zero && ImGui.GetIO().WantTextInput,
         Frames: () => FramePacing.Frames,
         LogicHz: () => FramePacing.LogicHz);
