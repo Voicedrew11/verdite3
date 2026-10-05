@@ -32,8 +32,7 @@ public static partial class NativeScene
     public static void Install()
     {
         _mode = Environment.GetEnvironmentVariable("KF3_NATIVE_SCENE")?.Trim().ToLowerInvariant() switch
-        { "1" or "on" => 1, "verify" => 2, _ => 0 };
-        if (Environment.GetEnvironmentVariable("KF3_NATIVE_SCENE") == null && GpuWorld.Mode != 0) _mode = 1;
+        { "0" or "off" => 0, "verify" => 2, _ => 1 };
         if (Environment.GetEnvironmentVariable("KF3_NATIVE_SCENE_VERIFY_FUNCS") is { Length: > 0 } list)
             _verifyFunctions = list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => Convert.ToUInt32(s.Replace("0x", "", StringComparison.OrdinalIgnoreCase), 16) | 0x80000000u).ToHashSet();

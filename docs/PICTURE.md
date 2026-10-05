@@ -10,7 +10,7 @@ was culled on whole pixels") and are the background for everything below.
 
 ## Status
 
-**All four units built and measured, none judged** (2026-10-02). Every switch is off, in Settings ▸ Testing ▸ Picture; the near path is recompiled until a model close to the eye has run under verify. The runtime half of all four features is already in
+**All four units built and measured, none judged** (2026-10-02). Every switch is off, in Settings ▸ Testing ▸ Picture; the near path was recompiled until a model close to the eye had run under verify, and is C# by default since 2026-10-05, with every other routine (Testing ▸ Routines in C#). The runtime half of all four features is already in
 the fork this repository shares with Verdite2 (`tools/RecompOne`), switched off.
 What is missing is Verdite3's half: the switches, the probes, the controls, and
 for the Z-buffer, the depth.
@@ -261,7 +261,7 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   `func_80075104`, `func_80075618`, `func_80075AB4`, `func_800760B4`, **copied
   literally from the recompiled C#**, registers kept in `CpuContext`, calls among
   the ten made direct. `KF3_NEARPATH=0|1|verify` (and `_MAP`, `_MODELS`);
-  Testing ▸ Routines ▸ *Near path*. Recompiled by default.
+  Testing ▸ Routines ▸ *Near path*. C# by default since 2026-10-05 (recompiled before, outside the retained renderer); `KF3_NEARPATH=0` compares.
 - **A reconstruction did not converge**: the agent's first version, rebuilt from
   a reading with shared builders, mismatched on 30-43% of calls through two rounds
   of fixes (it emitted subdivided faces the routine culls: the packet cursor ended

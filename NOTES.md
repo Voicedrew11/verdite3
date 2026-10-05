@@ -41,7 +41,7 @@ Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and m
 `KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
-near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); the world
+near path in C# (`docs/PICTURE.md`; all measured, none judged, all off; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world
 drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); every

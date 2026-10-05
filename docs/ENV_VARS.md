@@ -65,7 +65,7 @@ kept.
 | `KF3_ZBUFFER` | `1`: per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | off (not judged) |
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |
-| `KF3_NEARPATH` | `1`: the near path (`func_8003AB04`, `func_800366A8`, libgte's division) in C#; `verify` compares it | recompiled |
+| `KF3_NEARPATH` | the near path (`func_8003AB04`, `func_800366A8`, libgte's division) in C#: `1` (or unset), `0` recompiled, `verify` compares it | on |
 | `KF3_MODELWALK` | the model walk `func_80040AE4` (creatures, objects, effects, billboards) in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
 | `KF3_WIDESCREEN_CULL` | the tile-visibility cone widened to the aspect: `0` leaves the stock 4:3 cone, a number pins the widening factor instead of the aspect's (1 at 4:3) | follows aspect |
 | `KF3_WIDESCREEN_CULL_PROBE` | `1`: every 2 s the factor, the last stock and widened half-angles, tiles lit, tiles added, and the oracle's mismatches (stock classifier against the game's own grid; must be 0); `2` also prints the last grid as ASCII | off |
@@ -104,7 +104,8 @@ prefix from the game.
 ## Native scene and retained renderer development
 
 - `KF3_NATIVE_SCENE=0|1|verify`: literal native map/model/sky/arm submission and
-  forced/front/sky assemblers; off unless requested or GPU mode selects it.
+  forced/front/sky assemblers in C#; on by default (Testing ▸ Native scene
+  reference), `0` recompiled.
 - `KF3_NATIVE_SCENE_VERIFY_FUNCS=hex,...`: compare only selected function
   addresses, allowing inner assemblers to be checked separately from outer calls.
 - `KF3_GPU_WORLD=shadow|1`: persistent source extraction beside packets, or
