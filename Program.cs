@@ -182,6 +182,13 @@ Kf3.Widescreen.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN"),
                          Environment.GetEnvironmentVariable("KF3_WIDESCREEN_PROBE"),
                          Environment.GetEnvironmentVariable("KF3_WIDESCREEN_EFFECTS"));
 Kf3.Widescreen.Install();
+// The world drawn live behind menus and full-screen messages (signs, dialogue)
+// instead of the frozen 320-wide copy; KF3_MENUWORLD=0 compares. See "Menus and
+// messages draw the world live" in docs/WIDESCREEN.md.
+Kf3.MenuWorld.Configure(Environment.GetEnvironmentVariable("KF3_MENUWORLD"),
+                        Environment.GetEnvironmentVariable("KF3_MENUWORLD_PROBE"),
+                        Environment.GetEnvironmentVariable("KF3_MENUWORLD_TEST"));
+Kf3.MenuWorld.Install();
 var pp = Environment.GetEnvironmentVariable("KF3_PRESENT_PROBE");
 if (pp == "1" || pp == "2") RecompOne.Runtime.Hle.GpuHle.PresentProbe = true;
 

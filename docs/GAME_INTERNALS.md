@@ -491,6 +491,19 @@ directory decides. **Measured**: card A with five saves, Start pressed through
 OPEN.EXE: the title preselected Continue and `0x800102FA` read 1 in GAME.EXE;
 with `KF3_TITLECONTINUE=0`, 0 (a New Game).
 
+## Menus and full-screen messages
+
+Every menu runs on one framework, Verdite2's shape: the enter `func_80027198`
+(shrinks the primitive buffers to `0x7400` each and stores the displayed frame),
+the frame head `func_80026FE4`, the presenter `func_800270F8` (which pastes the
+stored frame every frame) and the leave `func_80027310`. A sign or a line of
+dialogue is `func_800441D4(file, entry)`, a 4-bit TIM over a `MoveImage` copy of
+the frame, faded by `func_80043BB8(brightness, step)`; dismissing one writes the
+examine bit into the pad word. The addresses, the layout and the fade's return
+values are written up in "Menus and messages draw the world live" in
+[WIDESCREEN.md](WIDESCREEN.md), where `patches/MenuWorld.cs` replaces the paste
+and the fade.
+
 ## Death and auto reload
 
 The death clock `0x801B261E` (zeroed by the latch, +1 a tick in the state-17

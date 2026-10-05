@@ -20,6 +20,7 @@ wins over the kept `kf3.widescreen.aspect`.
 | the tile cone widened | `CullCone.cs` | a different build; see below |
 | the view-space clipper | `ViewClip.cs`, a no-op below 8:3 | **no clipper in this game**; the near path's libgte division has a screen test, widened with the aspect (`NearScreen.cs`) |
 | the primitive buffer | ran out; moved to 4 MB (`PrimBuffer.cs`) | measured, see below |
+| the world behind menus and messages | `MenuWorld.cs`, on | ported, on; the pass lives in the frozen frame's store, not a moved buffer; see the last section |
 
 ## The margin, the latches and the tints
 
@@ -186,3 +187,145 @@ halves drawn by the bulk assembler, unsubdivided. `KF3_PRIMBUF_PROBE=1`, `fdat02
 turning and walking: **peak 57% at 4:3, 66% at 16:9 with the cone widened, 31%
 at 21:9 looking up and down; 0 frames ran out and 0 near halves starved in every
 window.** Not moved. One area only: worth re-asking in a busier one.
+
+## Menus and messages draw the world live
+
+Verdite2's `MenuWorld` ("Menus draw the world live" and "Messages draw the world
+live" in its `docs/PATCHES_AND_MODS.md`), ported 2026-10-05 as
+`patches/MenuWorld.cs`. **On by default**, as in Verdite2; `KF3_MENUWORLD=0` or
+Settings ▸ Testing ▸ Picture ▸ "The world live behind menus and messages" is the
+comparison. Mechanism measured, **picture not judged**.
+
+### What the game does
+
+The same two shapes as Verdite2, on different addresses.
+
+**Every menu** (the in-game menu, the shops, the save screens; eight callers)
+runs on one framework:
+
+| routine | what |
+|---|---|
+| `func_80027198` | enter: saves both primitive descriptors (`0x80199158`, `0x80199164`) to `0x8009C404`/`0x8009C410`, shrinks them to `0x7400` bytes each from `start`, turns off `dfe` and `isbg` on both draw environments (`0x801A91BC + 0x5C k`, `+0x17`/`+0x18`), and `StoreImage`s the displayed frame (the RECT at `gp+0x178` = `0x8009C38C`, 320×240) to `start + 0xE800`, kept at `gp+0x174` = `0x8009C388` |
+| `func_80026FE4` | frame head: flips `0x801AEAE8`, points `0x80199170` and the OT pointer `0x801A9174` at that buffer's, `ClearOTagR(ot, 0x2000)`; it does not clear the 8-entry front table `*0x801A91B8` |
+| `func_800270F8` | presenter: `DrawSync`, `VSync`, `PutDispEnv`, `PutDrawEnv`, **`LoadImage` of the stored frame**, `DrawOTag(ot + 0x7FFC)` |
+| `func_80027310` | leave: puts the descriptors back and `dfe`/`isbg` on |
+
+The world's buffers are `0x1A000` bytes each, so the shrunk menu buffers and the
+`0x25800`-byte store fill exactly the `0x34000` the world's two did.
+
+**A full-screen message** (a sign, a line of dialogue), `func_800441D4(file,
+entry)`, called from the script interpreter `func_8005C308`, the item-use
+dispatcher `func_8005CBE0` and the action interpreter `func_8005E2D0` (for
+example `(6, 0x131)`):
+
+1. `ClearImage` of the RECT at `0x8009C2D8`, the message's 4-bit TIM loaded
+   through `func_8001A154` into `*0x80199154` and uploaded by `func_80043B38`
+   (texture page `(0x3C0, 0x100)`, CLUT `(0x60, 0x1E0)`);
+2. the buffers shrunk as a menu's, and the RECT at `0x8009C2D0` = `gp+0xBC`,
+   **(320, 0) 320×240, world texture space**, saved to `start + 0xE800`
+   (`0x80199168`, the shrunk desc1's end);
+3. `MoveImage` of the drawn frame to (320, 0);
+4. the fade `func_80043BB8(0, 12)`, then, if it ran out, a wait spinning on
+   `PadRead(1)` with no draw and no `VSync`, then `func_80043BB8(0x50 or the
+   press's brightness, -12)`;
+5. `LoadImage` of the saved texture space back, and the buffers put back.
+
+`func_80043BB8(brightness, step)` steps once a frame: the frame head
+`func_80035630`, two `POLY_FT4`s of the message picture into OT entry 0 at the
+brightness (additive at (0x20, 0x20), subtractive one pixel down and right, so the
+subtractive one draws first), the moved frame in two halves at `0x80 - b/2`,
+`DrawSync`, stage 15's swap `func_80035700`. It stops when the brightness leaves
+1..0x77 (returning -1, or -2 once every button was up) or on a press after all
+were up (returning the brightness). **A press writes the examine bit** (the mask
+at `0x80081876`) into the pad word `0x801B265C`: set if the press was examine,
+cleared otherwise; the ran-out path does the same with its last read and leaves
+the word alone if nothing was held. The caller's wait does the same.
+
+The menu's paste is 320 wide with no depth, so nothing reaches the margin. The
+message's wait draws nothing at all, so the wide target goes idle and the present
+falls back to the 1x VRAM frame a few seconds in.
+
+### The patch
+
+- **The menu's presenter is replaced.** Stage 15's drawing half
+  (`Stage15.DrawScene`: the camera block from the stored view, the cull grid, the
+  arm, the HUD models, both overlay calls, the map, the model walk and the six
+  quads) runs into an ordering table, front table and descriptor of its own, the
+  front table spliced in after entry `0x1FFE` as the swap does, the table's end
+  linked to the head of the menu's, and one `DrawOTag` walks both, with the
+  world's `isbg` put back around `PutDrawEnv`. Not called: the texture scroll, the
+  bottom message box's stepper, the frame head, the sound slots, the HUD state,
+  the swap and the frame gate.
+- **Where the pass goes.** The menu's pass lives in the frozen frame's store,
+  which nothing reads once the paste is gone: a descriptor, the `0x8000`-byte
+  table, the front table, then 120,784 bytes of primitives, more than the world's
+  own buffer. Verdite2 used `PrimBuffer`'s relocated second buffer; this game has
+  2 MB and no relocation. A session is decided at the enter, which checks the
+  shrunk layout and the store's size, and ended at the leave, on the main loop's
+  next stage 15 call or on an overlay load.
+- **The message's fade is replaced**, loop and return value to the letter, the
+  examine bit included, with the world pass in place of the moved frame. The
+  store holds the saved texture space, so the pass borrows it: the saved texels go
+  back into VRAM first (the walls sample (320, 0); nothing drawn samples the
+  copy), the bytes are kept aside for the fade and copied back before it returns,
+  for the game's own restore at close. A fade-in that runs out waits for the
+  button itself, still drawing, and returns the `0x50` the caller's wait sets.
+  What is left of the dim is Verdite2's: no quads for the copy, a black
+  `POLY_F4` at 50% across the margin once the brightness is `0x36`, and the
+  game's two text quads.
+- **The world as it was last drawn.** A post on stage 15 keeps the GTE, the
+  scratchpad, the fog words `0x801AEC7C`/`80`, the draw environments' clear and
+  the camera the frame was drawn from (`Stage15.ViewOverride`, the carried one);
+  a pre keeps the tick fraction. A pass puts those in and its own back after.
+  **`FramePacing.Frozen`** holds the smoothers: a menu's frames are frame
+  boundaries too and move `Ticks`, so without it the billboard cels stepped and
+  the creatures' pairs rolled. While it is set no walk is a tick's first, no
+  iteration ticked, and the tick fraction is the last frame's. A pre on
+  `func_8001576C` keeps the model walk's ambient sources silent during a pass.
+- **The pass is a scene to the retained renderer.** `GpuWorld` begins a retained
+  frame from a post on the frame head, but only inside stage 15, and a pass calls
+  neither. So under Testing ▸ Scene renderer ▸ Retained GPU the world behind a
+  menu or a sign fell back to the packet path, a different renderer from play's.
+  With the Z-buffer on, that path draws the near faces in table order among
+  depth-tested ones, so the user saw slivers of the wall in front of a sign
+  (2026-10-05). The pass now enters the scene (`GpuWorld.SceneIn`/`SceneOut`) and
+  begins the retained frame where the frame head would have, after the cull grid
+  (`Stage15.DrawScene`'s `atFrameHead`).
+
+### Measured
+
+16:9, `KF3_FPS=144`, slot 1 (`fdat17`, area 5):
+
+- **A message**, `KF3_MENUWORLD_TEST=6:305` with Triangle at 17 s: 418 frames held
+  live until the press, 60 passes/s, `[present] wide 120-180, vram fallback 0` in
+  every window, then the 7-frame fade-out and close; peak 32,976 of 120,784 bytes,
+  no overflow. With `KF3_MENUWORLD=0` the game's wait reads `wide 6, vram fallback
+  117` in its last window: the drop to 4:3.
+- **The in-game menu** (`func_8001A774`), opened and closed with Circle: 60
+  passes/s, every present wide, peak 31,760 bytes, then 144 fps in the main loop
+  again. **Primitives reaching the margin while it is open: 34.6% live, 0.0% with
+  the paste.** Cross (examine) in that save opens a script-driven menu instead,
+  `func_8002008C` from the script interpreter: 40.4% against 0.0%. The start
+  menu at boot (`func_8001FA60`) keeps the paste, since no world has been drawn.
+- **Nothing moved during four seconds of that script-driven menu**: the billboard clock
+  `0x80182964` and its cels, the camera block, the view matrix and the scratchpad
+  read the same (shell `peek`).
+- **A pass draws the last frame's packets exactly.** `KF3_MENUWORLD_PROBE=2` keeps
+  the last main-loop frame's packets at the swap and compares the first three
+  passes against them: 827 of 827 identical once the padding is masked (the high
+  halves of a textured polygon's third and fourth texture words, which hold
+  whatever the buffer held), and the vertex map's and the depth records' hit rates
+  read the same in play and behind a sign (97.5% against 97.2%, 86% both).
+- **Under the retained renderer** (`KF3_GPU_WORLD=1`): before the fix, 0 packet
+  depths a second in play and 44,000 behind a sign, the packet path. After it, 0
+  behind a sign and behind the in-game menu, the retained map drawn on every pass
+  (2,421 retained frames drawn, 0 missed), the pass's own packets down to 0-1,216
+  bytes. The packet renderer is unchanged (32,976 bytes a pass, 41,000 depths a
+  second).
+- Also run without pacing: the same, no exceptions.
+
+**To judge by eye**: that the world behind a menu and a message is the frame
+before it opened (nothing jumps, nothing moves, the margin filled), the 50% dim
+and the message's lettering over it, and the fade. **Not checked**: a shop, the
+save screens and a real sign or NPC reached in play rather than through the
+test switch. `KF3_MENUWORLD_PROBE=1` names each menu's caller as it opens.

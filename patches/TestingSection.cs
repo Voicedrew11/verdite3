@@ -64,6 +64,7 @@ public sealed class TestingSection : ISettingsSection
         new("kf3.needle_hold", "KF3_STAGE15_NEEDLE", () => Stage15.NeedleHeld, v => Stage15.NeedleHeld = v),
         new("kf3.msgbox_hold", "KF3_MSGBOX", () => MessageBoxHold.Enabled, v => MessageBoxHold.Enabled = v),
         new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v),
+        new("kf3.menuworld", "KF3_MENUWORLD", () => MenuWorld.Enabled, v => MenuWorld.Enabled = v),
         new("kf3.perspective", "KF3_PERSPECTIVE", () => Perspective.Enabled, v => Perspective.Enabled = v),
         new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v),
         new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v),
@@ -279,6 +280,8 @@ public sealed class TestingSection : ISettingsSection
             Rt.SaveView();
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("kf3testing.widescreen.tip"));
+        Toggle("The world live behind menus and messages", K("kf3.menuworld"),
+            "Draws the world behind a menu, a sign or a line of dialogue instead of the game's 320-wide still of it, so it fills the margin. Takes effect on the next menu.");
 
         Toggle("Perspective-correct textures", K("kf3.perspective"),
             "Textures follow each corner's depth instead of warping across a polygon.");

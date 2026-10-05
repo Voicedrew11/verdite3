@@ -640,9 +640,10 @@ public static class ModelWalk
         uint s1 = Billboards, s0 = s1 + 5u, s2 = s1 + 8u, s3 = 0x1000u;
         int s7 = 127;
         // SpriteAnim's hold, made here when the walk is C#: a walk that is not the
-        // tick's first neither steps the cels nor bumps the clock.
-        bool step = _mode != Mode.On || !SpriteAnim.Enabled || !FramePacing.Enabled
-                    || FramePacing.FirstWalkOfTick(ref _billboardTick);
+        // tick's first neither steps the cels nor bumps the clock; nor does a frozen
+        // pass (MenuWorld).
+        bool step = !FramePacing.Frozen && (_mode != Mode.On || !SpriteAnim.Enabled || !FramePacing.Enabled
+                    || FramePacing.FirstWalkOfTick(ref _billboardTick));
         mem.WriteU16(Pad + 0x118u, 0);
         mem.WriteU16(Pad + 0x116u, 0);
         mem.WriteU16(Pad + 0x114u, 0);

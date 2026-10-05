@@ -290,8 +290,10 @@ skipped a post.
 **What it covers**, read from the recompiled code: the in-game menu presenter `func_800270F8` (two
 presents per loop iteration), the cursor auto-repeat `func_800279D8` (up to 8x
 `VSync(0)` while a direction is held), the highlight and window-slide counters
-`func_80026FE4`, the area-transition loading screen `func_8003DAEC`, the area-load
-bar `func_80043BB8` (both presenting through the frame swap `func_80035700`), the
+`func_80026FE4`, the area-transition loading screen `func_8003DAEC`, the
+full-screen message's fade `func_80043BB8` (both presenting through the frame swap
+`func_80035700`; the fade was misread here as an area-load bar, see "Menus and
+messages draw the world live" in `docs/WIDESCREEN.md`), the
 movie presenter and its loop, the two-vblank wait `func_80019538`, and the
 `VSync(2)`/`VSync(4)` waits.
 

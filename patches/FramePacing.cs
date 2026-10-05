@@ -94,7 +94,19 @@ public static class FramePacing
     public static bool TickedThisFrame => !Enabled || _tickThisFrame;
 
     /// <summary>Whether the main-loop iteration now running ran its stages.</summary>
-    public static bool IterationTicked => !Enabled || _iterationTicks;
+    public static bool IterationTicked => !Frozen && (!Enabled || _iterationTicks);
+
+    /// <summary>
+    /// The world is being drawn again as it stood at its last frame (MenuWorld's pass
+    /// behind a menu or a message), not advanced: no walk is a tick's first, no
+    /// iteration ticked, and <see cref="TickFraction"/> is <see cref="FrozenFraction"/>,
+    /// so every smoother draws what it drew last. A menu's own frames are boundaries
+    /// too and move <see cref="Ticks"/>, which is why the flag is needed.
+    /// </summary>
+    public static bool Frozen { get; set; }
+
+    /// <summary>The tick fraction a frozen pass draws at: the last frame's.</summary>
+    public static double FrozenFraction { get; set; } = 1.0;
 
     /// <summary>Frame boundaries reached: an identity, not a rate.</summary>
     public static long Frames => _frames;
@@ -105,6 +117,7 @@ public static class FramePacing
     {
         get
         {
+            if (Frozen) return FrozenFraction;
             if (!Enabled || _lastBoundaryMs < 0.0) return 1.0;
             if (_clock.Elapsed.TotalMilliseconds - _lastBoundaryMs > BoundaryDeadMs) return 1.0;
             return Math.Clamp(_logicCredit, 0.0, 1.0);
@@ -115,9 +128,11 @@ public static class FramePacing
     public static long Ticks { get; private set; }
 
     /// <summary>True for the first walk of the current tick, so a per-frame walk
-    /// can be held to the world's rate; always true when pacing is off.</summary>
+    /// can be held to the world's rate; always true when pacing is off, and false
+    /// while <see cref="Frozen"/>.</summary>
     public static bool FirstWalkOfTick(ref long seen)
     {
+        if (Frozen) return false;
         if (!Enabled) return true;
         if (seen != Ticks) { seen = Ticks; return true; }
         return false;

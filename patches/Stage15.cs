@@ -280,6 +280,43 @@ public static class Stage15
         c.SP = sp + 0x38u;
     }
 
+    /// <summary>Whether every callee is bound, so <see cref="DrawScene"/> can draw.</summary>
+    public static bool CanDraw => Bind();
+
+    /// <summary>
+    /// The routine's drawing half -- the view from the stored camera, the cull grid,
+    /// and every call that adds to the ordering tables -- into whatever table, front
+    /// table and primitive descriptor are current. Nothing that advances the world,
+    /// steps the HUD state, flips a buffer, marks or services a sound slot or
+    /// presents. The list <see cref="MenuWorld"/> draws behind a menu. False when a
+    /// callee is not mapped. <paramref name="atFrameHead"/> runs where the frame head
+    /// would have, after the cull grid (the retained scene begins its frame there).
+    /// </summary>
+    public static bool DrawScene(CpuContext c, PSMemory mem, Action? atFrameHead = null)
+    {
+        if (!Bind()) return false;
+        c.A0 = 0u;
+        c.A1 = 0u;
+        Call(c, mem, Site.View);
+        Call(c, mem, Site.CullGrid);
+        atFrameHead?.Invoke();
+        ModelSmoothing.EnterArm();
+        Call(c, mem, Site.Arm);
+        ModelSmoothing.Leave();
+        Call(c, mem, Site.HudModels);
+        Call(c, mem, Site.Overlays);
+        Call(c, mem, Site.Overlays2);
+        Call(c, mem, Site.Tiles);
+        Call(c, mem, Site.Models);
+        Call(c, mem, Site.Quad0);
+        Call(c, mem, Site.Quad1);
+        Call(c, mem, Site.Quad2);
+        Call(c, mem, Site.Quad3);
+        Call(c, mem, Site.Quad4);
+        Call(c, mem, Site.Quad5);
+        return true;
+    }
+
     static void Call(CpuContext c, PSMemory mem, Site site)
     {
         c.RA = Calls[(int)site].Return;

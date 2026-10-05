@@ -41,7 +41,10 @@ Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and m
 `KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
-near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); every
+near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); the world
+drawn live behind menus and full-screen messages instead of the frozen 320-wide
+copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
+`docs/WIDESCREEN.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone`, based on `2013e51` (the vblank
 event delivered once), with retained-runtime checkpoints
@@ -70,8 +73,8 @@ GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
   smoothers, all built and judged.
 - [docs/PICTURE.md](docs/PICTURE.md) — 24-bit colour, perspective, sub-pixel and the
   Z-buffer: the plan and its work, built and awaiting judgement.
-- [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone
-  and the primitive buffer, ported from Verdite2.
+- [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone,
+  the primitive buffer and the world behind menus and messages, ported from Verdite2.
 - [docs/MODS.md](docs/MODS.md) — the mods under `mods/`: the debug tools (noclip,
   invincibility, the character, item and spell editors, area warp).
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.

@@ -112,8 +112,10 @@ public static class SpriteAnim
     /// post; on the tick's first walk the game steps them itself.</summary>
     public static void Before(CpuContext c, IMemory m)
     {
-        // The C# walk holds the cels itself.
-        if (ModelWalk.InCSharp || !Enabled || !FramePacing.Enabled) { _held = false; return; }
+        // The C# walk holds the cels itself. A frozen pass (MenuWorld) holds them
+        // whatever the switches say: it draws the world as it stood.
+        if (ModelWalk.InCSharp || ((!Enabled || !FramePacing.Enabled) && !FramePacing.Frozen))
+        { _held = false; return; }
         _walks++;
         if (FramePacing.FirstWalkOfTick(ref _seen))
         {
