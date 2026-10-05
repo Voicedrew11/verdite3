@@ -320,7 +320,7 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   black `0x2C` packets recorded at a constant 31804 where the map reads about
   25,900, and corners clamped at the GTE's screen limits (±1024).
 
-### The HUD's transform: measured, not judged
+### The HUD's transform: measured, and the compass judged
 
 Verdite2's `PolyAssemblerHud.cs`, its method only: the compass snapped to whole
 pixels as it turned, because the HUD's transform is an orthographic `MVMVA` the
@@ -371,7 +371,8 @@ Measured in `fdat17` (slot 1), turning both ways (`KF3_AUTOPAD=10:Left:6000,17:R
   never logged as `packet-owned-presentation`.
 - **Frame rate**: `KF3_FPS=144 KF3_FPS_PROBE=1`, turning, 144.0 fps at 15.0
   ticks/s with sub-pixel on and off (an odd 14.9 or 143-145 both ways).
-- **Not judged by eye**: whether the compass now turns smoothly.
+- **Judged by eye** (the user, 2026-10-05): the compass looks good with
+  `KF3_SUBPIXEL=1`. Sub-pixel as a whole is still not judged and stays off.
 
 ### Unit 5: widescreen
 
