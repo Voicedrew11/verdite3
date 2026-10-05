@@ -324,3 +324,107 @@ Shared runtime checkpoint: game-repo commit `04a9c9b` contains only
 `checkpoint/retained-depth-probes`. No upstream issue or PR was created.
 Game adapter/probe/docs changes are committed separately from the shared runtime.
 The user's pre-existing pacing/settings edits are preserved in their own commit.
+
+## Reported visual regression (2026-10-05)
+
+The user supplied an image showing large black gaps between textured floor
+sections and reports that it specifically occurs with **Retained GPU** and
+**C# native scene reference** enabled. This is now a reported visual correctness
+failure; successful submission/depth counters do not establish complete visible
+geometry. The cause and exact area/view/settings have not been established.
+The black background in the image has not independently been confirmed as a
+sky defect. No renderer changes were attempted after the report: the user asked
+to leave investigation for the next session.
+
+Prioritize reproducing and fixing this regression before extending retained
+near/front ownership. See [the next-session handoff](GPU_RENDERER_HANDOFF.md)
+for the current checkpoint, source entry points, verification and next slice.
+
+## Bounded bulk-map decoding correction (2026-10-05)
+
+Source inspection found a retained extraction defect in bulk map GT3 (`34/36`).
+`80039D50` reads its vertex references at body `+0xE/+0x10/+0x12`, while lit
+models and the near map route read `+0xE/+0x12/+0x16`. Its normals remain at
+`+0xC/+0x10/+0x14`: the second bulk vertex really uses the second normal's
+reference. `RetainedMap` previously requested the lit-model layout, changing
+the retained triangle before suppressing the original bulk packet.
+
+Extraction now has a separate `MapBulk` cache family with independent vertex
+and normal strides and the reference GT4 skip. The opt-in near descriptor probe
+still requests the lit layout; near packets remain the fallback. The runtime
+subtree is unchanged.
+
+`tools/scene-probe/BulkMapFixtures.cs` compares retained corners with packets
+emitted by the actual recompiled bulk assembler, covering eight opaque/semi
+commands and four retained tile rotations each, UV/normal associations and
+separate model/near cache entries. Against the pre-change assembly it fails on
+`bulk 34/0: retained corner 1 differs from recompiled packet`.
+
+After the correction, the combined source probe passes **879 assertions**
+(340 new bulk assertions, plus the existing 539). The Release game build passes
+with existing generated/runtime warnings. The composed world/normal shaders
+link under **llvmpipe** in this sandbox; all 270 fog cases, 27 pose vertices and
+48 GTE light cases match. These are source/packet and isolated shader checks,
+not a live hardware draw or a floor-gap visual comparison. Evidence is under
+`/tmp/verdite3-bulk-map-before`, `/tmp/verdite3-bulk-map-after` and
+`/tmp/verdite3-bulk-map-build.log`; those temporary files are not required inputs.
+
+This defect is **not established as the reported floor-gap cause**. A fresh
+offline scan of the saved 28-area RAM corpus found only map `24/26/2C/2E`,
+with no bulk GT3 records. That scan establishes the contents of those snapshots,
+not exhaustive gameplay reachability. The original area/view/settings and
+per-half ownership investigation remain needed; no visual acceptance is claimed.
+
+## Models under later packets (2026-10-05)
+
+The user reports that the floor gaps above are gone (no fixed view was recorded,
+so this is their report rather than a measurement), and that floor behind a
+creature, such as a plant enemy, shows over it, with other kinds of models too.
+
+Mechanism, measured. The table walk draws the retained map and models at slot 1
+(`LibGpu.WalkOTag`), and then every packet left in the table. The only scene
+fallback in every area is near-subdivided map halves
+(`8003BB04:8003C294:near-subdivision-pending`), so those packets are the near
+floor and wall faces. A tested packet draws its colour against `0051`'s tolerance
+(1 unit plus half the depth's change across a pixel), which gives a coplanar
+overlap to the later table entry. Over a model's pixels it gave the pixel to a near
+map face up to the tolerance **behind** the model. A floor seen at a grazing angle
+has a large slope term. Under the packets, those faces were linked 0xF0 slots
+deeper than the model and drawn before it.
+
+Fix: shared runtime `0086` (`tools/RecompOne/docs/RECOMPONE_PATCHES.md`). The
+models mark the display target's stencil, and a tested packet drawn after them in
+that frame tests against the true depth over the mark. An opaque packet that wins
+there clears the mark. `KF3_GPU_MODEL_MASK=0` turns it off for comparison.
+
+The probe (`KF3_GPU_MASK_PROBE=1`, shell `gpu`) counts with occlusion queries
+before the decision, so its counts do not depend on the switch. A tour of all 28
+areas through the scene driver looked at the three live creatures/objects nearest
+each arrival, from 900 and 2000 units at four headings (648 views, render-only
+view override, physics held). Results:
+
+- Packet samples behind a model that the tolerance passed: **24,871,575** in 31
+  views, in areas 0, 1, 7, 9, 10 and 17. In the worst view (area 0, creature 25 at
+  `58792,-14336,124304`, camera 2000 units south, yaw 0), they covered about 13% of
+  the creature's samples (14.3M of 107M over 75 frames). The mask holds all of them
+  back, by construction: the same queries with the same depth state. On the final
+  build, at that view: 94.5M of 244M packet samples over model pixels were behind.
+- Map in front of a model by more than the tolerance, which under the table's
+  0xF0-slot tile bias the model would have covered: 3.5/20/87/160/1197 parts per
+  million of model samples within 8/32/128/512/960 units. Not changed. It is the
+  same in the packet Z-buffer path, which does not use the table slot for depth.
+- Blended packets in front of a model by less than the tolerance: zero.
+
+`scripts/model_mask_tour.py` repeats the tour. It reads the counters once the view
+has settled, whereas the run above also counted the frames of each move.
+
+Cost at the worst view, uncapped, without the probe: 617 fps with the mask, 628
+without (about 0.03 ms a frame, 23 masked batches a frame). The combined source
+probe still passes 879 assertions, and the composed shaders link on the Radeon
+with all cue/pose/light cases exact.
+
+Not judged by eye. **For the user to check:** creatures and objects standing on
+near floor no longer have floor drawn over them, while turning and walking up to
+them. Verdite2 keeps its behaviour, since `RetainedScene.ModelMask` is off unless
+the game sets it, but its depth attachment is now depth-stencil; no Verdite2 run
+was made.

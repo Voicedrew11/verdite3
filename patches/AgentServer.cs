@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using RecompOne.Runtime;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Hardware;
 
@@ -56,6 +57,7 @@ public static class AgentServer
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
+        "gpu - the retained renderer's cumulative draw and model-mask counters",
     ];
 
     public static void Configure(string? spec)
@@ -175,7 +177,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -219,6 +221,14 @@ public static class AgentServer
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "warp" => SceneDriver.Warp(cmd.Arg1),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
+        "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
+                 ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
+                 ",\"instances\":" + RetainedScene.InstancesDrawn + ",\"maskOn\":" + (RetainedScene.ModelMask ? "true" : "false") +
+                 ",\"maskFrames\":" + RetainedScene.MaskFrames + ",\"maskBatches\":" + RetainedScene.MaskBatches +
+                 ",\"maskSamples\":" + RetainedScene.MaskSamples + ",\"maskBehind\":" + RetainedScene.MaskBehind +
+                 ",\"maskAhead\":" + RetainedScene.MaskAhead + ",\"modelSamples\":" + RetainedScene.ModelSamples +
+                 ",\"modelUnderMap\":" + RetainedScene.ModelUnderMap +
+                 ",\"modelUnderSlack\":[" + string.Join(',', RetainedScene.ModelUnderSlack) + "]}",
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

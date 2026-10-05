@@ -46,6 +46,8 @@ public static class GpuWorld
         Mode = Environment.GetEnvironmentVariable("KF3_GPU_WORLD")?.ToLowerInvariant() switch
         { "shadow" or "capture" => 1, "1" or "on" => 2, _ => 0 };
         _surfaceProbe = Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1";
+        RetainedScene.ModelMask = Environment.GetEnvironmentVariable("KF3_GPU_MODEL_MASK") != "0";
+        RetainedScene.ModelMaskProbe = Environment.GetEnvironmentVariable("KF3_GPU_MASK_PROBE") == "1";
         Event.AddListener<OverlayLoadedEvent>(_ =>
         {
             _frame = false; RetainedScene.MainSerial = 0;
@@ -120,7 +122,9 @@ public static class GpuWorld
             $"meshes={RetainedAssets.MeshBuilds}/{RetainedAssets.MeshHits} rigid={RetainedAssets.RigidBuilds}/{RetainedAssets.RigidHits} " +
             $"poses={MoPose.PoseBuilds}/{MoPose.PoseHits} deferred/materialized={MoPose.Deferred}/{MoPose.Materialized} " +
             $"GPUdraws/missed={RetainedScene.MainDraws}/{RetainedScene.MainMissed} instances={RetainedScene.InstancesDrawn} " +
-            $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} blocker={Blocker ?? "none"}");
+            $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} " +
+            $"mask={(RetainedScene.ModelMask ? "on" : "off")} frames/batches={RetainedScene.MaskFrames}/{RetainedScene.MaskBatches} " +
+            $"samples/behind={RetainedScene.MaskSamples}/{RetainedScene.MaskBehind} blocker={Blocker ?? "none"}");
         if (Environment.GetEnvironmentVariable("KF3_GPU_CENSUS_FILE") is { Length: > 0 } path)
             File.WriteAllText(path, JsonSerializer.Serialize(new
             {
@@ -135,6 +139,11 @@ public static class GpuWorld
                     RetainedScene.MainWaterTriangles, RetainedScene.MainNormalTriangles,
                     RetainedScene.MainModelNormalTriangles, RetainedScene.SurfaceChecks,
                     RetainedScene.SurfaceDepthPixels, RetainedScene.SurfaceBehind, RetainedScene.SurfaceMissing,
+                    ModelMask = new
+                    {
+                        On = RetainedScene.ModelMask, RetainedScene.MaskFrames, RetainedScene.MaskBatches,
+                        RetainedScene.MaskSamples, RetainedScene.MaskBehind,
+                    },
                     DepthStages = new
                     {
                         RetainedScene.ProbeRuns, RetainedScene.ProbeSamples, RetainedScene.ProbeDepth,

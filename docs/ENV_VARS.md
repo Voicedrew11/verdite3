@@ -109,6 +109,12 @@ prefix from the game.
   and source projection census, including unknown packets.
 - `KF3_SCENE_DRIVER=1`: diagnostic game-thread shell `warp 0..27`, with actual
   area/overlay confirmation. Holds player physics after warp. Use copied state.
+- `KF3_GPU_MODEL_MASK=0`: under `KF3_GPU_WORLD=1`, let packets drawn after the
+  retained models keep the depth tolerance over the models' pixels (runtime `0086`),
+  to compare. On by default.
+- `KF3_GPU_MASK_PROBE=1`: count, with occlusion queries (a stall per batch), packet
+  samples over model pixels that are behind the model, and model samples the map
+  hides by 8-960 units; read with the shell's `gpu` command or the census file.
 
 See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolved.
 

@@ -61,6 +61,7 @@ GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
   including the geometry path (stage 15's calls, the map, the models).
 - [docs/INPUT.md](docs/INPUT.md) — pad, keyboard and mouse: the mask table, turn/look, the layouts.
 - [docs/GPU_RENDERER.md](docs/GPU_RENDERER.md) — retained scene implementation, measured coverage and open gates.
+- [docs/GPU_RENDERER_HANDOFF.md](docs/GPU_RENDERER_HANDOFF.md) — next slice: the user's check of the model-mask fix, then performance, then near/front ownership.
 - [docs/GEOMETRY.md](docs/GEOMETRY.md) — the polygon assemblers in C#: the plan and its work.
 - [docs/SMOOTHING.md](docs/SMOOTHING.md) — drawing between ticks: stage 15 in C#, the
   smoothers, all built and judged.
