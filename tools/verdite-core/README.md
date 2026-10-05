@@ -73,3 +73,84 @@ from a file.
 | `KeyLayoutApply.cs` | the port's keyboard layout as a default and a once-per-version migration that leaves a customised layout alone and corrects a superseded one; the game hands it its table, `Version`, `Superseded`, the line announcing it and where the applied version is kept |
 | `Kept.cs` | a setting's env var, then its saved key: the env var wins and is remembered as having won; `BoolsAsInts` for a game that keeps its switches as 0/1 |
 | `Mouse.cs` | mouse look and the mouse buttons: capture, the per-frame poll, the stale-motion rule, what a tick spends and what it turned by; the game hands it a `MouseGame` (units, step cap, pitch limit, base angle addresses, default buttons, its frame clock and text-editing test) and keeps the look hook and the settings page |
+| `WindowIcon.cs` | the game's memory-card icon as the window icon: `{Tag}_ICON` (`orb`, `off`, a frame), a 4bpp card icon decoded at any row stride, scaled by whole multiples to every size a desktop asks for and set at once; the game finds the icon on its disc |
+| `DesktopEntry.cs` | the Wayland half of the window icon: the same sizes into `$XDG_DATA_HOME/icons/hicolor` under the app id, and a desktop entry under the game's `Name`, `GenericName` and `Comment` only when no packager wrote one; `{Tag}_ICON_INSTALL=0` writes nothing |
+
+## The launcher
+
+`launcher/` is the shipped executable's code, shared: a port cannot ship its game
+(the recompiled code is a translation of the disc's), so it ships the inputs and
+the launcher builds the game on the player's machine on first run. It settles the
+data directory and chdirs into it, validates the disc, recompiles it in process,
+compiles the result with the port's sources in one Roslyn pass, caches the
+assembly under a key of what went into it, and hands over; it also checks GitHub
+for a newer release once a day and says so (it downloads nothing).
+
+It is **not** compiled into the game. A game's launcher project
+(`Verdite2.Launcher/Verdite2.Launcher.csproj`) sets its names and imports
+`launcher/Launcher.targets`, which compiles `launcher/**` into that executable and
+stages the payload beside it: `config/**/*.json`, `Program.cs`, `patches/**`, this
+repository's `src/**`, `mods/**`, `LICENSE` and `packaging/shared/<app id>.png`.
+Its one source file hands `Launcher.Run` a `LauncherGame`:
+
+| field | Verdite2 | Verdite3 |
+|---|---|---|
+| `Name`, `AppId` | `Verdite2`, `verdite2` | `Verdite3`, `verdite3` |
+| `GameTitle`, `Serial` | `King's Field`, `SLUS-00158` | `King's Field II`, `SLUS-00255` |
+| `WrongDiscs` | `SLUS-00255` and what to say | `SLUS-00158` and what to say |
+| `RecompilerConfig`, `GameAssembly` | `kf2.json`, `KingsField2` | `kf3.json`, `KingsField3` |
+| `UpdateRepository` | `Voicedrew11/verdite2` | `Voicedrew11/verdite3` |
+| `PlayAfter` | `open`/`game` the title, `end`/`fdat*` play | the same |
+
+Everything else is derived. The disc's files and their floors are read from the
+recompiler config (every overlay's `file`, each at least as long as its furthest
+`offset + skip + size`), so the disc check and the build key cannot drift from what
+the recompile reads. The boot file comes from the serial. The env prefix
+(`VERDITE2_`: `DATA`, `UPDATE_CHECK`, `BUILD`), the console tag (`[Verdite2]`),
+the data folder (`%LOCALAPPDATA%\Verdite2`, `~/.local/share/verdite2`) and the
+update setting's key (`Verdite2.UpdateCheck`) come from the name.
+
+**The build options in `Build/GameCompile.cs` must match the game's csproj**, which
+compiles the same sources on the developer path: a difference is a bug that
+exists only in the release. Both games' csprojs set what it assumes (unsafe,
+nullable, implicit usings plus `Verdite.Core`, QuickJit off in the runtimeconfig).
+
+### Telling the player about a new release
+
+`UpdateCheck` asks `api.github.com/repos/<UpdateRepository>/releases/latest`
+(which leaves out drafts and prereleases) on a worker after the window is up, at
+most once a day; `update.json` in the data directory keeps the answer and any
+skipped version, and a cached answer is still announced when the network is down.
+`UpdatePopup` opens once, outside play (`PlayAfter`) and never over another popup;
+`UpdateBadge` puts a gold button in the menu bar until the player hides it. *Check
+for updates at launch* is in Settings ▸ Interface; `<prefix>UPDATE_CHECK=0` turns
+it off and `=force` ignores the daily limit. Verdite2's `docs/PACKAGING.md` has the
+measurements.
+
+## Packaging
+
+`packaging/` builds the release from a game's checkout, with no disc:
+
+| file | what |
+|---|---|
+| `linux/build-appimage.sh` | `dist/<Name>-<VERSION>-x86_64.AppImage`: the self-contained publish, `AppRun`, the desktop entry and icon, the licences |
+| `windows/build-windows.ps1` | `dist/<Name>-<VERSION>-win-x64.zip` (the stub, `bin/`, `content/`, `licenses/`) and, with `iscc` on PATH, the installer |
+| `windows/verdite.iss` | the Inno Setup script; every name from the environment the PowerShell script sets |
+| `windows/Stub/` | the few-KB .NET Framework executable at the install root, built under the launcher's name, that starts `bin\<Name>.exe` |
+| `../scripts/release.sh` | bump `VERSION`, commit, tag `v<VERSION>`; never pushes |
+
+Each finds the game as the checkout it is vendored in (or `VERDITE_GAME_ROOT`) and
+reads the game's `packaging/package.env`:
+
+```sh
+NAME=Verdite2
+APP_ID=verdite2
+INNO_APP_ID=9F1F0C1E-6A3E-4C69-9C2A-9E5F2B8D4A11   # one per game, never reused
+```
+
+beside `packaging/shared/<app id>.desktop`, `.png` (256×256) and `.ico`, and the
+game's `VERSION`, `LICENSE` and `<Name>.Launcher/`. A game keeps one-line wrappers
+at `packaging/linux/build-appimage.sh`, `packaging/windows/build-windows.ps1` and
+`scripts/release.sh`, so its commands and CI do not name this path. The CI
+workflows stay in each game (GitHub reads them from there), and their release body
+is the game's.
