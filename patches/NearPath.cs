@@ -59,19 +59,38 @@ public static partial class NearPath
         _sz[rec] = new NearSz { W = w, Z = sz == 0u ? 0f : sz };
     }
 
+    /// <summary>The full SZ3 of each vertex the two vertex passes cached, by its screen
+    /// word: the cache itself keeps only the otz, <c>SZ3 &gt;&gt; 2</c>.</summary>
+    static readonly Dictionary<uint, uint> _cacheSz = new();
+    static uint _cacheSxy;
+
+    static void NoteCacheSz(uint sxy, uint sz3)
+    {
+        if (!DepthRecording) return;
+        _cacheSz[sxy] = sz3;
+    }
+
     /// <summary>A face's own corners, as the near assembler filled them before the
-    /// division: the screen word at +0x10 and the SZ at +0x14, from the vertex cache.
+    /// division: the screen word at +0x10 and the otz at +0x14, from the vertex cache.
     /// Only the division's RTPTs were kept before, so every sub-polygon that touched an
     /// original corner (all of an undivided face's, a quarter of a divided one's) had
-    /// no record and drew in painter's order, over the retained models.</summary>
+    /// no record and drew in painter's order, over the retained models.
+    ///
+    /// The otz is a quarter of the SZ the division's own corners carry, and a triangle
+    /// mixing the two had its W off by four at some corners: its texture and depth
+    /// were bent across it. The pass's full SZ3 is used while its otz agrees, else the
+    /// otz times four, as the models' records do.</summary>
     static void NoteCorners(PSMemory mem, uint list, int n)
     {
         if (!DepthRecording) return;
         for (uint k = 0; k < n; k++)
         {
             uint rec = mem.ReadU32(list + k * 4u);
-            // The SZ is a halfword: the models' path sign-extends it into the word.
-            NoteSz(rec, mem.ReadU32(rec + 0x10u), mem.ReadU32(rec + 0x14u) & 0xFFFFu);
+            uint sxy = mem.ReadU32(rec + 0x10u);
+            // The otz is a halfword: the models' path sign-extends it into the word.
+            uint otz = mem.ReadU32(rec + 0x14u) & 0xFFFFu;
+            uint sz = _cacheSz.TryGetValue(sxy, out uint full) && full >> 2 == otz ? full : otz << 2;
+            NoteSz(rec, sxy, sz);
         }
     }
 
@@ -181,8 +200,16 @@ public static partial class NearPath
         else RunModels(c, mem);
     }
 
-    static void RunMap(CpuContext c, PSMemory mem) { MapCalls++; if (DepthRecording) PolyAssembler.EnsureRange(); BodyMap(c, mem); }
-    static void RunModels(CpuContext c, PSMemory mem) { ModelCalls++; if (DepthRecording) PolyAssembler.EnsureRange(); BodyModels(c, mem); }
+    static void RunMap(CpuContext c, PSMemory mem) { MapCalls++; BeginRecording(); BodyMap(c, mem); }
+    static void RunModels(CpuContext c, PSMemory mem) { ModelCalls++; BeginRecording(); BodyModels(c, mem); }
+
+    /// <summary>Each call fills its own vertex cache before its faces read it.</summary>
+    static void BeginRecording()
+    {
+        if (!DepthRecording) return;
+        PolyAssembler.EnsureRange();
+        _cacheSz.Clear();
+    }
 
     const uint StackWindow = 0x2000;
     static readonly Differential _mapCheck = new("nearpath", "func_8003AB04", StackWindow);
@@ -245,11 +272,12 @@ public static partial class NearPath
         Gte.Rtps(12, false);
         { var _a = (c.S0 + 0x48u); c.A3 = mem.ReadU32(_a); }
         c.T4 = c.A3;
-        { var _a = c.T4; var _sw = Gte.Read(14); mem.WriteU32(_a, _sw); }
+        { var _a = c.T4; var _sw = Gte.Read(14); mem.WriteU32(_a, _sw); _cacheSxy = _sw; }
         { var _a = (c.S0 + 0x48u); c.V0 = mem.ReadU32(_a); }
         { var _v = c.V0; c.V0 = c.V0 + 0x4u; }
         c.T4 = c.V0;
         c.T5 = Gte.Read(19);
+        NoteCacheSz(_cacheSxy, c.T5);
         { var _v = c.T5; c.T5 = (uint)((int)c.T5 >> 2); }
         { var _a = c.T4; mem.WriteU32(_a, c.T5); }
         { var _a = (c.S0 + 0x68u); c.A1 = mem.ReadU32(_a); }
@@ -1581,11 +1609,12 @@ public static partial class NearPath
         Gte.Rtps(12, false);
         { var _a = (c.S0 + 0x48u); c.A3 = mem.ReadU32(_a); }
         c.T4 = c.A3;
-        { var _a = c.T4; var _sw = Gte.Read(14); mem.WriteU32(_a, _sw); }
+        { var _a = c.T4; var _sw = Gte.Read(14); mem.WriteU32(_a, _sw); _cacheSxy = _sw; }
         { var _a = (c.S0 + 0x48u); c.V0 = mem.ReadU32(_a); }
         { var _v = c.V0; c.V0 = c.V0 + 0x4u; }
         c.T4 = c.V0;
         c.T5 = Gte.Read(19);
+        NoteCacheSz(_cacheSxy, c.T5);
         { var _v = c.T5; c.T5 = (uint)((int)c.T5 >> 2); }
         { var _a = c.T4; mem.WriteU32(_a, c.T5); }
         { var _a = (c.S0 + 0x58u); c.A1 = mem.ReadU32(_a); }

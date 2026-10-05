@@ -303,6 +303,21 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   order. `NearPath.NoteCorners` notes them at each division entry: unrecorded near
   map packets fell from 49% to 4.6%, every one left having a corner at or behind
   the eye (`SZ` 0). See "Seeing through doors" in `docs/GPU_RENDERER.md`.
+- **Corrected again 2026-10-05**: record `+0x14` is the cache's otz, `SZ3 >> 2`
+  (both vertex passes shift it before the store), not the `SZ`. `NoteCorners`
+  took it as the `SZ`, so an original corner's depth was a quarter of a divided
+  corner's beside it, and once the near path became C# by default the Z-buffer
+  bent the near faces: the record's depth is the triangle's W, so their textures
+  and depths warped across them. Measured by comparing each record's corner with
+  the address map's depth for the same vertex, `fdat02`, walking: 24,000-75,000
+  corners per 2 s at exactly a quarter with the near path in C#, none with it
+  recompiled. The two vertex passes now keep each vertex's full `SZ3` by its
+  screen word (cleared per call), and `NoteCorners` takes it while its `>> 2`
+  equals the otz, else `otz << 2` as the model records do: no corner at a
+  quarter afterwards, polygons recorded unchanged (about 90%), verify 0, 144.0
+  fps. Left as they were, and present with the near path recompiled too: a set of
+  black `0x2C` packets recorded at a constant 31804 where the map reads about
+  25,900, and corners clamped at the GTE's screen limits (±1024).
 
 ### Unit 5: widescreen
 
