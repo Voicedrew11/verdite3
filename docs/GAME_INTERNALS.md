@@ -762,3 +762,12 @@ buffers a frame swaps and the vblank handler's counters:
   stage 15's HUD block steps its spring, the speed at `gp + 0xD8` (`0x8009C2EC`)
   and the yaw at `0x80081C3A`/`0x80081C5E`. Held to the tick by `Stage15` since
   2026-10-02.
+
+## Scene inventory refresh (2026-10-04)
+
+Current generated source contains 38 stage-15 call sites and 19 distinct callers
+including modal and area-module drawing. `8005C0D4` calls stage 15. The native
+scene census attributes family/domain/area/caller and preserves unknown packets.
+The present normal slot-1 save is area 5/fdat17; older fdat02 measurements describe
+a different save. See [GPU_RENDERER.md](GPU_RENDERER.md) for loaded-area corpus
+conditions, numerical checks and unresolved direct/indirect callers.

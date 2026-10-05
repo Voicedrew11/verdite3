@@ -93,3 +93,33 @@ The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,
 `KF2_VRAMCHECK`); they work here under those names until the fork takes the
 prefix from the game.
+
+## Native scene and retained renderer development
+
+- `KF3_NATIVE_SCENE=0|1|verify`: literal native map/model/sky/arm submission and
+  forced/front/sky assemblers; off unless requested or GPU mode selects it.
+- `KF3_NATIVE_SCENE_VERIFY_FUNCS=hex,...`: compare only selected function
+  addresses, allowing inner assemblers to be checked separately from outer calls.
+- `KF3_GPU_WORLD=shadow|1`: persistent source extraction beside packets, or
+  opt-in retained drawing with explicit attributed fallbacks. Requires native
+  submission, perspective/depth and a supported backend for substitution.
+- `KF3_GPU_CENSUS_FILE=path`: cumulative submissions/fallbacks, asset and actual
+  backend counters as JSON, rewritten periodically.
+- `KF3_SCENE_CENSUS=1`, `KF3_SCENE_CENSUS_FILE=path`: packet/domain/caller/area
+  and source projection census, including unknown packets.
+- `KF3_SCENE_DRIVER=1`: diagnostic game-thread shell `warp 0..27`, with actual
+  area/overlay confirmation. Holds player physics after warp. Use copied state.
+
+See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolved.
+
+- `KF3_PERPIXEL=1`: per-pixel retained lighting; unset uses saved choice, default off.
+- `KF3_FOG_DEPTH=0`: compare corner fog with fog from pixel depth (default on).
+- `KF3_AO=1`, `KF3_AO_QUALITY=low|medium|high`: shared SSAO and its resolution/
+  sample quality (off, medium by default).
+- `KF3_AO_NORMALS=0`: compare depth-reconstructed normals with geometry normals.
+- `KF3_ANISO=1..16`, `KF3_MIPMAPS=1`: decoded texture filtering and mip atlas.
+- `KF3_ENHANCEDIST=tiles`: enhanced shading/filtering range; 0 everywhere.
+- `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage.
+
+Video exposes the feature controls; Testing exposes session-only scene/reference
+choices. These are implemented controls, not visual acceptance.

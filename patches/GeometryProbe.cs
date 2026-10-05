@@ -54,6 +54,7 @@ public static class GeometryProbe
 
     // KF3_GEOPROBE=time: each call's inclusive wall time only, no table walks.
     static bool _timing;
+    static bool _queued;
     static long _frames, _windowStart = -1;
 
     public static void Install()
@@ -69,9 +70,11 @@ public static class GeometryProbe
         foreach (var s in (Environment.GetEnvironmentVariable("KF3_GEOPROBE_FUNCS") ?? "")
                      .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            uint a = Convert.ToUInt32(s.Replace("0x", ""), 16);
-            _byCallee[a] = _rows.Count;
             if (_extra.Count == 16) break;
+            uint a = Convert.ToUInt32(s.Replace("0x", "", StringComparison.OrdinalIgnoreCase), 16);
+            if ((a & 0xFF000000) == 0) a |= 0x80000000;
+            if (_byCallee.ContainsKey(a)) continue;
+            _byCallee[a] = _rows.Count;
             _extra.Add(a);
             _rows.Add(new Row { Label = $"   {a:X8}*" });
         }
@@ -88,8 +91,6 @@ public static class GeometryProbe
         {
             var t = SymbolRegistry.Resolve("game", null, a);
             if (t == null) { Console.Error.WriteLine($"[KF3] geoprobe: no game/0x{a:X8}"); return false; }
-            HookManager.AddPre(_self, t, pre);
-            HookManager.AddPost(_self, t, post);
             targets.Add(t);
         }
         // A function reached from anywhere is told apart by its own pair of methods.
@@ -97,11 +98,23 @@ public static class GeometryProbe
         {
             var t = SymbolRegistry.Resolve("game", null, _extra[k]);
             if (t == null) { Console.Error.WriteLine($"[KF3] geoprobe: no game/0x{_extra[k]:X8}"); return false; }
-            var slot = typeof(Slot<>).MakeGenericType(SlotMarkers[k]);
-            slot.GetField("Row")!.SetValue(null, _byCallee[_extra[k]]);
-            HookManager.AddPre(_self, t, slot.GetMethod("Pre")!);
-            HookManager.AddPost(_self, t, slot.GetMethod("Post")!);
             targets.Add(t);
+        }
+        if (!_queued)
+        {
+            for (int i = 0; i < Calls.Length; i++)
+            {
+                HookManager.AddPre(_self, targets[i], pre);
+                HookManager.AddPost(_self, targets[i], post);
+            }
+            for (int k = 0; k < _extra.Count; k++)
+            {
+                var slot = typeof(Slot<>).MakeGenericType(SlotMarkers[k]);
+                slot.GetField("Row")!.SetValue(null, _byCallee[_extra[k]]);
+                HookManager.AddPre(_self, targets[Calls.Length + k], slot.GetMethod("Pre")!);
+                HookManager.AddPost(_self, targets[Calls.Length + k], slot.GetMethod("Post")!);
+            }
+            _queued = true;
         }
         HookManager.Commit();
         int n = targets.Count(HookAttach.Installed);

@@ -337,3 +337,12 @@ is not, until it is checked.
   frame rate. Every C# routine here already falls back to the recompiled one while
   PGXP's CPU tracking is on.
 - Check every change with `KF3_FPS=144 KF3_FPS_PROBE=1`: 144.0 fps at 15.0 ticks/s.
+
+## Retained GPU path (2026-10-04)
+
+[GPU_RENDERER.md](GPU_RENDERER.md) tracks the final source mesh/pose/instance
+path, independent of packet depth capture. The shared depth-linear cue accepts
+this game's quarter-depth near/far formula; 270 actual Radeon shader cases pass
+exactly. Its 32000 cutoff, truncation and 7951 maximum belong to this cue; the
+existing reciprocal curves remain available for other games. Complete native
+light products, near subdivision and visual judgement remain open gates.

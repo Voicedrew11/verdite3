@@ -54,6 +54,7 @@ public static class AgentServer
         "dump <file> - write the 2 MB of guest RAM to a file",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
+        "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
     ];
 
     public static void Configure(string? spec)
@@ -173,7 +174,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -215,6 +216,7 @@ public static class AgentServer
         "dump" => DoDump(cmd.Arg1),
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
+        "warp" => SceneDriver.Warp(cmd.Arg1),
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

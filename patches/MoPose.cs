@@ -26,7 +26,7 @@ namespace Kf3;
 /// published, so a pose can be drawn between two world ticks. Null by default and never
 /// used in verify mode.
 /// </summary>
-public static class MoPose
+public static partial class MoPose
 {
     const uint Routine = 0x800431E8;
 
@@ -34,7 +34,7 @@ public static class MoPose
     public const uint BankTable = 0x801A92B0;
 
     /// <summary>The posed 8-byte vertices <c>func_80042EB0</c> decodes into.</summary>
-    public const uint Posed = 0x801B3468;
+    public const uint Posed = 0x801ACB98;
 
     /// <summary>Hands the clock a floored time and a fraction; true to carry.</summary>
     public delegate bool ClipCarryFn(IMemory m, uint bank, uint clip, int time,
@@ -128,6 +128,7 @@ public static class MoPose
 
     static void Replace(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
+        if (m is PSMemory previous) Materialize(previous);
         // PGXP's RAM shadow is kept by the recompiled stores, which C# stores skip.
         if (_mode == Mode.Off || RecompOne.Runtime.Pgxp.Pgxp.CpuTracking || m is not PSMemory mem)
         {
@@ -337,13 +338,24 @@ public static class MoPose
         // Always reached: copy the keyframe to the posed buffer and decode at the weight.
         L4347C: ;
         c.A2 = 0x801B0000u;
-        c.A2 = c.A2 - 0x3468u;                          // 0x801B3468
+        c.A2 = c.A2 - 0x3468u;                          // 0x801ACB98
         c.V0 = mem.ReadU32(sp + 0x18u);
         c.V1 = mem.ReadU16(sp + 0x1Cu);
         c.A1 = mem.ReadU32(c.V0 + 0xCu);
         c.A3 = 0xFFFFu;
         mem.WriteU16(c.V0 + 0x4u, (ushort)c.S6);
         mem.WriteU16(c.V0 + 0x6u, (ushort)c.V1);
+        if (carry && GpuWorld.DeferPose)
+        {
+            _key = c.A1;
+            _stream = c.S3 + mem.ReadU32(c.V0 + 8);
+            _weight = mem.ReadU32(sp + 0x20);
+            _count = c.A0 & 0xFFFF;
+            Pending = true; Deferred++;
+            mem.WriteU32(c.S7 + 0x4C, Posed);
+            mem.WriteU16(c.V0, 2);
+            goto L434F8;
+        }
         L4349C: ;
         Interrupts.Poll(c, mem);
         c.V0 = mem.ReadU32(c.A1);

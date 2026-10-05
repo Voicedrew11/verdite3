@@ -1,0 +1,142 @@
+using System.Reflection;
+using System.Text.Json;
+using RecompOne.Runtime;
+using RecompOne.Runtime.Context;
+using RecompOne.Runtime.Events;
+using RecompOne.Runtime.Memory;
+using RecompOne.Runtime.Modding;
+
+namespace Kf3;
+
+/// <summary>The game owns scene lifetime, domains and fallback decisions.</summary>
+public static class GpuWorld
+{
+    // 0 reference, 1 retain alongside reference, 2 retained drawing (opt-in).
+    public static int Mode { get; private set; }
+    public static int Setting
+    {
+        get => Mode;
+        set
+        {
+            Mode = Math.Clamp(value, 0, 2); _frame = false;
+            RetainedScene.MainSerial = RetainedScene.ArmSerial = 0;
+            RetainedScene.MainView = false;
+            if (Mode != 0 && NativeScene.Setting == 0) NativeScene.Setting = 1;
+        }
+    }
+    static int _scene, _hud, _preview, _arm;
+    static bool _attached, _frame;
+    static long _reportAt;
+    public static long Frames, Submissions, Retained, OrderVertices;
+    static readonly Dictionary<string, long> Reasons = new();
+    static readonly ModInfo Self = new() { Id = "kf3.gpu-world", Name = "Retained world renderer", Version = "1.0" };
+    public static string Domain => _preview > 0 ? "preview" : _hud > 0 ? "hud" : _arm > 0 ? "arm" : "world";
+    public static bool Capture => Mode != 0 && _frame && _scene > 0 && NativeScene.Enabled && !NativeScene.Verifying;
+    public static bool Drawing => Capture && Mode == 2 && Blocker == null;
+    public static bool DeferPose => Capture && (Mode == 1 || Drawing) && Domain != "hud" && Domain != "preview";
+    public static string? Blocker => !RetainedScene.Supported ? "backend-capability"
+        : !GteDepth.Enabled || !GteDepth.ZBuffer ? "perspective-or-depth-disabled"
+        : !NativeScene.Enabled ? "native-scene-disabled" : null;
+    public static void Install()
+    {
+        Mode = Environment.GetEnvironmentVariable("KF3_GPU_WORLD")?.ToLowerInvariant() switch
+        { "shadow" or "capture" => 1, "1" or "on" => 2, _ => 0 };
+        Event.AddListener<OverlayLoadedEvent>(_ =>
+        {
+            _frame = false; RetainedScene.MainSerial = 0;
+            RetainedScene.ClearMeshes(); RetainedMap.Invalidate();
+        });
+        HookAttach.OnOverlayLoad("GPU scene lifetime", () =>
+        {
+            SymbolRegistry.Build();
+            uint[] addresses = [0x800422B8, 0x8003C35C, 0x8004290C, 0x8003DF50, 0x80035630, 0x80035700];
+            var methods = addresses.Select(a => SymbolRegistry.Resolve("game", null, a)).ToArray();
+            if (methods.Any(m => m == null)) return false;
+            if (!_attached)
+            {
+                string[] before = [nameof(SceneIn), nameof(HudIn), nameof(PreviewIn), nameof(ArmIn)];
+                string[] after = [nameof(SceneOut), nameof(HudOut), nameof(PreviewOut), nameof(ArmOut)];
+                for (int i = 0; i < 4; i++)
+                {
+                    HookManager.AddPre(Self, methods[i]!, typeof(GpuWorld).GetMethod(before[i])!, order: int.MinValue + 1);
+                    HookManager.AddPost(Self, methods[i]!, typeof(GpuWorld).GetMethod(after[i])!, order: int.MaxValue - 1);
+                }
+                HookManager.AddPost(Self, methods[4]!, typeof(GpuWorld).GetMethod(nameof(Begin))!);
+                HookManager.AddPre(Self, methods[5]!, typeof(GpuWorld).GetMethod(nameof(Present))!);
+                _attached = true;
+            }
+            HookManager.Commit(); return methods.All(HookAttach.Installed);
+        });
+    }
+    public static void SceneIn(CpuContext c, IMemory m) => _scene++;
+    public static void SceneOut(CpuContext c, IMemory m) { _scene--; _frame = false; }
+    public static void HudIn(CpuContext c, IMemory m) => _hud++;
+    public static void HudOut(CpuContext c, IMemory m) => _hud--;
+    public static void PreviewIn(CpuContext c, IMemory m) => _preview++;
+    public static void PreviewOut(CpuContext c, IMemory m) => _preview--;
+    public static void ArmIn(CpuContext c, IMemory m) => _arm++;
+    public static void ArmOut(CpuContext c, IMemory m) => _arm--;
+    public static void Begin(CpuContext c, IMemory m)
+    {
+        _frame = false;
+        if (Mode == 0 || _scene == 0 || NativeScene.Verifying || m is not PSMemory mem) return;
+        RetainedMap.Update(mem);
+        RetainedScene.BeginFrame(ReadView(mem));
+        RetainedScene.MainView = Mode == 2 && Blocker == null;
+        RetainedScene.MainSerial = RetainedScene.MainView ? RetainedScene.Serial : 0;
+        _frame = true; Frames++;
+    }
+    public static RetainedScene.View ReadView(IMemory m)
+    {
+        uint p = CameraBlock.ViewMatrix; var cam = Camera.Read(m);
+        return new()
+        {
+            R00 = (short)m.ReadU16(p) / 4096f, R01 = (short)m.ReadU16(p + 2) / 4096f, R02 = (short)m.ReadU16(p + 4) / 4096f,
+            R10 = (short)m.ReadU16(p + 6) / 4096f, R11 = (short)m.ReadU16(p + 8) / 4096f, R12 = (short)m.ReadU16(p + 10) / 4096f,
+            R20 = (short)m.ReadU16(p + 12) / 4096f, R21 = (short)m.ReadU16(p + 14) / 4096f, R22 = (short)m.ReadU16(p + 16) / 4096f,
+            CamX = cam.X, CamY = cam.Y, CamZ = cam.Z,
+            Tx = (int)m.ReadU32(p + 20), Ty = (int)m.ReadU32(p + 24), Tz = (int)m.ReadU32(p + 28),
+            H = GteDepth.ProjH, Cx = GteDepth.ProjCx, Cy = GteDepth.ProjCy,
+        };
+    }
+    public static void Fallback(uint routine, uint caller, string reason)
+    {
+        string key = $"{AgentBeacon.Overlay}:{Domain}:{routine:X8}:{caller:X8}:{reason}";
+        Reasons.TryGetValue(key, out long n); Reasons[key] = n + 1;
+    }
+    public static void Present(CpuContext c, IMemory m)
+    {
+        if (!_frame || Environment.TickCount64 < _reportAt) return;
+        _reportAt = Environment.TickCount64 + 5000;
+        if (Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1") RetainedScene.SurfaceCheck = true;
+        Console.WriteLine($"[KF3] retained scene: mode={Mode} frames={Frames} submitted={Submissions} retained={Retained} " +
+            $"meshes={RetainedAssets.MeshBuilds}/{RetainedAssets.MeshHits} rigid={RetainedAssets.RigidBuilds}/{RetainedAssets.RigidHits} " +
+            $"poses={MoPose.PoseBuilds}/{MoPose.PoseHits} deferred/materialized={MoPose.Deferred}/{MoPose.Materialized} " +
+            $"GPUdraws/missed={RetainedScene.MainDraws}/{RetainedScene.MainMissed} instances={RetainedScene.InstancesDrawn} " +
+            $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} blocker={Blocker ?? "none"}");
+        if (Environment.GetEnvironmentVariable("KF3_GPU_CENSUS_FILE") is { Length: > 0 } path)
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                Mode, Frames, Submissions, Retained, OrderVertices, Reasons,
+                Gpu = new
+                {
+                    RetainedScene.MainDraws, RetainedScene.MainMissed, RetainedScene.MainTriangles,
+                    RetainedScene.InstancesDrawn, RetainedScene.MainModelTriangles,
+                    RetainedScene.InstanceCorners, RetainedScene.PoseTexelsUploaded, RetainedScene.RecordUploads,
+                    RetainedScene.BlendNoted, RetainedScene.BlendDrawn, RetainedScene.BlendNormalInstances,
+                    RetainedScene.SkyDrawn, RetainedScene.SkyFacesDrawn, RetainedScene.ArmDraws, RetainedScene.ArmMissed,
+                    RetainedScene.MainWaterTriangles, RetainedScene.MainNormalTriangles,
+                    RetainedScene.MainModelNormalTriangles, RetainedScene.SurfaceChecks,
+                    RetainedScene.SurfaceDepthPixels, RetainedScene.SurfaceBehind, RetainedScene.SurfaceMissing,
+                    GteDepth.AoPasses, GteDepth.AoNoTarget, AoGeometry.Passes,
+                    GteDepth.MipEntries, GteDepth.MipDecodes, GteDepth.MipFull, RetainedScene.MipTableUploads,
+                },
+                Assets = new
+                {
+                    RetainedAssets.MeshBuilds, RetainedAssets.MeshHits, RetainedAssets.RigidBuilds, RetainedAssets.RigidHits,
+                    MoPose.PoseBuilds, MoPose.PoseHits, MoPose.Deferred, MoPose.Materialized,
+                    RetainedMap.ChunkBuilds, RetainedMap.MapUpdates, RetainedMap.RecordUpdates,
+                },
+            }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+}

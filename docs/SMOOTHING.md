@@ -434,8 +434,9 @@ by a run): the **item pickup**
 own stack camera blocks), the **message/script interpreter** `func_8005C308`,
 the **item-use dispatcher** `func_8005CBE0`, the **area-module fades** (`fdat08`
 `func_801E8C3C` and the sibling fdat loops), and the one-shot redraw
-`func_80030568` (a single frame, so it has nothing to hold). `func_8005C0D4` was
-on an earlier list and does not call stage 15 at all.
+`func_80030568` (a single frame, so it has nothing to hold). `func_8005C0D4` also calls stage 15 in current generated source (inventory
+refreshed 2026-10-04); the previous exclusion was stale. Its loop/context needs
+separate exercise in the GPU coverage programme.
 
 **Left out of Verdite2's `LoopPacing`**, deliberately, it is much more than this
 port needs: its carry of a camera a loop pans itself (three angles at `a1` and a

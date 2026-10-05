@@ -300,3 +300,23 @@ presented at the runtime's ceiling, `2 x KF3_FPS` (288 a second at 144). The
 main loop is untouched (144.0 fps, 15.0 ticks/s, 0 held). The loads before the
 area held 25-39 a second. **Not judged by eye**: the cursor repeat (8 vblanks,
 133 ms), the highlight and window slide.
+
+## Retained scene verification (2026-10-04)
+
+Build the game, then snapshot its entire output into an isolated temporary
+runtime before launching. Copy cards/settings/interface configuration too; do
+not build over a running runtime's binaries. Tests below used
+`/tmp/verdite3-gpu-reference/`, 15 Hz ticks and bounded launches.
+
+`tools/scene-probe/SceneProbe.csproj` references the built game/runtime without
+rebuilding them. Its executable takes the game output directory and a temporary
+fixture directory. It checks source cache mutations and actual recompiled pose
+math, and exports the runtime's composed shaders. `scripts/shader_probe.py
+<fixture-directory>` links them in an offscreen EGL context and checks isolated
+fog/pose numeric outputs. It captures no game window.
+
+With one controlled shell-enabled game, `scripts/scene_corpus.py --output
+<temporary-directory> --headings 4` confirms actual area/overlay and gathers RAM
+fixtures for all 28 areas. `KF3_SCENE_DRIVER=1` is required. It labels held player
+physics and stops on the first failure rather than piling up queued commands.
+See `GPU_RENDERER.md` for observed results and their practical limits.

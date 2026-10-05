@@ -17,6 +17,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 
 ## Next
 
+- **Complete retained GPU rendering** is the active implementation objective
+  (`docs/GPU_RENDERER.md`). Native outer comparisons and all 28 loaded-area
+  fixtures are measured; inner references, near/front/exceptional contexts,
+  lighting/features, mutation and visual acceptance remain open.
+
 - **Twin-stick control and the Input pane** (2026-10-03, `docs/INPUT.md`):
   built and measured with a synthetic stick; **to judge on a real pad**: the
   pitch direction, the left stick's leak into turning, the feel, and whether the
@@ -43,8 +48,8 @@ recompiled and running, following Verdite2's method but applied to this disc.
   handoff). `func_80039D50` and `func_80035CA4` are C# and verified
   (`KF3_POLYASM`, 2026-10-02; "The first unit" in `docs/GEOMETRY.md`). The near
   path (`func_8003AB04`, `func_800366A8` and libgte's division) and the Z-buffer
-  are next on this path, now that smoothing is done, as units 3 and 4 of
-  **`docs/PICTURE.md`, the next work** (24-bit colour, perspective, sub-pixel and
+  are implemented and measured, awaiting visual judgement, as units 3 and 4 of
+  **`docs/PICTURE.md`** (24-bit colour, perspective, sub-pixel and
   the Z-buffer, planned 2026-10-02).
 - ~~**Carrying the view between ticks**~~ (chosen 2026-10-02, ahead of the near
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
@@ -64,8 +69,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
   learned spells in the magic menu, the equipment slot names, and area-warp
   landings. A warp to `fdat08` bounced straight back to `fdat02`; the warp lands
   by the nearest floor tile, not at a real entrance.
-- **`load` and `warp` for the command channel**: the loader is known; how the
-  in-game Load re-enters the area is not.
+- **`load` for the command channel**: how the in-game Load re-enters the area
+  remains open. Opt-in `KF3_SCENE_DRIVER=1` supplies a verified-area `warp` for
+  copied-state coverage; player physics is held after warp, so it is not gameplay
+  acceptance (`docs/GPU_RENDERER.md`).
 - `KF3_PRESENT_PROBE`: the fork reads `KF2_PRESENT_PROBE` from Verdite2's
   `Program.cs` wiring, which this `Program.cs` does not have.
 - **The fork reads seven `KF2_*` switches by name** (see `docs/ENV_VARS.md`).

@@ -277,3 +277,12 @@ behind everything into the front table, so the Z-buffer does not need its record
 3. **Extract the shared fill** into Verdite Core (the proposal in Verdite2's
    `docs/SHARING.md`), with `KF2_POLYASM=verify` and Verdite2's acceptance test
    as the proof that Verdite2 did not move.
+
+## Retained submission work (2026-10-04)
+
+The final renderer now submits persistent source meshes/poses before legacy
+projection loops. Literal native scene references supplement the existing bulk
+and near assemblers. Their all-area numerical results and remaining drawing
+families are recorded in [GPU_RENDERER.md](GPU_RENDERER.md). Near subdivision
+is still a counted packet fallback; an unsplit triangle is not treated as its
+verified replacement.

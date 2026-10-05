@@ -62,6 +62,8 @@ Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
 Kf3.StageProbe.Install();
 Kf3.GeometryProbe.Install();
+Kf3.SceneCensus.Install();
+Kf3.SceneDriver.Install();
 // The primitive buffer's per-frame use, a measurement only. See
 // "The primitive buffer" in docs/GAME_INTERNALS.md.
 Kf3.PrimBufferProbe.Configure(Environment.GetEnvironmentVariable("KF3_PRIMBUF_PROBE"));
@@ -118,6 +120,9 @@ Kf3.TextureScroll.Install();
 // SpriteAnim so its pre/post pair on the same routine is registered first.
 Kf3.ModelWalk.Configure(Environment.GetEnvironmentVariable("KF3_MODELWALK"));
 Kf3.ModelWalk.Install();
+Kf3.GpuWorld.Install();
+Kf3.NativeScene.Install();
+Kf3.SceneFeatures.Install();
 Kf3.CullCone.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL"),
                        Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL_PROBE"));
 Kf3.CullCone.Install();
