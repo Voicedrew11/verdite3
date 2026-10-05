@@ -55,6 +55,7 @@ public static class AgentServer
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
+        "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
     ];
 
     public static void Configure(string? spec)
@@ -174,7 +175,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -217,6 +218,7 @@ public static class AgentServer
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "warp" => SceneDriver.Warp(cmd.Arg1),
+        "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

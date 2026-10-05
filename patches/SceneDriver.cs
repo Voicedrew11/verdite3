@@ -10,7 +10,11 @@ namespace Kf3;
 public static class SceneDriver
 {
     const uint Pending = 0x8018FAD4, Map = 0x801D4464;
+    // The composed view yaw the front submit (8003F304) compares its bearing
+    // against; stage 4 recomposes it, so it only holds while physics is held.
+    const uint GuestYaw = 0x801B260A;
     static int _target = -1;
+    static int _yaw = -1;   // held guest yaw, -1 when the driver is not overriding it
     static bool _requested, _enabled, _holdingPlayer;
     static readonly ModInfo Self = new() { Id = "kf3.scene-driver", Name = "Scene verification driver", Version = "1.0" };
     public static void Install()
@@ -41,6 +45,27 @@ public static class SceneDriver
         _holdingPlayer = true;
         return $"{{\"ok\":true,\"cmd\":\"warp\",\"requestedArea\":{area},\"loaded\":false}}";
     }
+    /// <summary>
+    /// Hold the guest view yaw the front submit reads, so all-area headings can
+    /// reach the front assembler. Only meaningful while physics is held: stage 4
+    /// recomposes <c>0x801B260A</c> every tick otherwise. <paramref name="m"/> is
+    /// the shell's game-thread memory, written immediately and re-applied in
+    /// <see cref="BeforePlayer"/>; <c>off</c> clears the hold without undoing it.
+    /// </summary>
+    public static string Yaw(string arg, IMemory? m)
+    {
+        if (!_enabled) return AgentServer.Err("scene-yaw requires KF3_SCENE_DRIVER=1; use copied cards and settings");
+        // Off clears the hold only: the value last written stays in RAM.
+        if (arg.Equals("off", StringComparison.OrdinalIgnoreCase)) { _yaw = -1; return "{\"ok\":true,\"cmd\":\"scene-yaw\",\"guestYaw\":null}"; }
+        if (!int.TryParse(arg, out int yaw) || yaw < 0 || yaw > 4095) return AgentServer.Err("scene-yaw <0..4095|off>");
+        if (!_holdingPlayer) return AgentServer.Err("scene-yaw needs a warp first; stage 4 overwrites an unheld guest yaw");
+        if (m == null) return AgentServer.Err("not running");
+        // Write now, not only on the next tick: a following 'off' must not race
+        // the tick and leave the last tested heading in RAM.
+        _yaw = yaw;
+        m.WriteU16(GuestYaw, (ushort)yaw);
+        return $"{{\"ok\":true,\"cmd\":\"scene-yaw\",\"guestYaw\":{yaw}}}";
+    }
     public static void AfterObjects(CpuContext c, IMemory m)
     {
         if (_target < 0) return;
@@ -67,6 +92,9 @@ public static class SceneDriver
     }
     public static void BeforePlayer(CpuContext c, IMemory m)
     {
+        // Keep the held guest yaw in place every tick, before stage 10 and the
+        // draw. Written here (not the shell reply) so it lands on the game thread.
+        if (_holdingPlayer && _yaw >= 0) m.WriteU16(GuestYaw, (ushort)_yaw);
         if (_target < 0 || !_requested || m.ReadU16(Pending) != 0) return;
         int actual = m.ReadU8(AgentBeacon.Area);
         string expected = $"fdat{3 * _target + 2:D2}";

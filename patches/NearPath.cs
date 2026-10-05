@@ -13,7 +13,7 @@ namespace Kf3;
 /// one of libgte's four division routines (patches/NearPathDivide.cs). Registers
 /// stay in the CpuContext and every memory access keeps the generated order.
 ///
-///     KF3_NEARPATH=0|off   both recompiled (the default)
+///     KF3_NEARPATH=0|off   both recompiled (default outside retained GPU mode)
 ///     KF3_NEARPATH=1       both in C#
 ///     KF3_NEARPATH=verify  run both on every call and compare RAM, scratchpad,
 ///                          registers and GTE, a report every 2 s
@@ -102,11 +102,11 @@ public static partial class NearPath
 
     public static void Configure(string? mode)
     {
-        _mode = mode?.Trim().ToLowerInvariant() switch
+        _mode = (string.IsNullOrWhiteSpace(mode) ? null : mode.Trim().ToLowerInvariant()) switch
         {
             "verify" => Mode.Verify,
             "0" or "off" => Mode.Off,
-            null or "" => Mode.Off,
+            null or "" => GpuWorld.Mode == 2 ? Mode.On : Mode.Off,
             _ => Mode.On,
         };
         if (Environment.GetEnvironmentVariable("KF3_NEARPATH_MAP") is { } map) MapEnabled = map.Trim() != "0";

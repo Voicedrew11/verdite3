@@ -126,7 +126,13 @@ public static class RetainedMap
         if (kind >= 240 || Models[kind] == null) { GpuWorld.Fallback(0x8003BB04, caller, "map-mesh-unavailable"); return false; }
         if ((m.ReadU32(0x1F800054) & 0xFFFFFF) != 0x808080)
         { GpuWorld.Fallback(0x8003BB04, caller, "map-source-colour"); return false; }
-        if (near) { GpuWorld.Fallback(0x8003BB04, caller, "near-subdivision-pending"); return false; }
+        if (near)
+        {
+            // Opt-in source descriptor extraction; never suppresses the near route.
+            RetainedNear.Probe(m, Models[kind]!, half);
+            GpuWorld.Fallback(0x8003BB04, caller, "near-subdivision-pending");
+            return false;
+        }
         int tile = (int)(index / 10); RetainedScene.NoteHalf(tile % 80, tile / 80, (int)(index % 10 / 5));
         GpuWorld.Retained++;
         return GpuWorld.Drawing;

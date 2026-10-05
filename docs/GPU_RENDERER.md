@@ -122,7 +122,8 @@ Main and forced-blend instances publish per-face table keys with separately
 counted CPU order calculations. Sky and opaque arm instances use the backend's
 ordered passes. Near subdivision, front-table submits, orthographic branches and
 blended arms still produce **explicit attributed fallbacks**. Static map decoding
-keeps the bulk assembler's GT4 skip; that does not cover the near GT4 path.
+keeps the bulk assembler's GT4 skip; the near map path reference-skips GT4 as
+well; the near model assembler supports GT4.
 HUD and standalone previews remain packet-owned by caller domain.
 
 The shared depth-linear cue (curve 5) accepts this game's near/far records. It
@@ -251,3 +252,75 @@ and its probes/docs are a separate checkpoint. The pre-existing pacing/settings
 changes remain uncommitted; the renderer documentation append is staged on its
 own where those documents already had user changes. Temporary fixtures, cards,
 settings, generated code and test logs are not committed.
+
+## Continuation checkpoint (2026-10-05)
+
+Selected inner native comparisons were reviewed clean from the root checkout:
+`8003BB04` (half), `80037BEC` (forced blend), `80038844` (front) and `80039428`
+(sky), with `POLYASM`, `NEARPATH`, `MODELWALK` and `MOPOSE` off. The run covered
+all 28 areas at four **actual guest** headings through the driver's `--guest-yaw`,
+and the latest result is **478,515 full CPU/stack/order comparisons with zero
+mismatches**. The front assembler had only **one live call** in that run, so
+reachability is shown, not full coverage.
+
+New synthetic fixtures add 13 comparisons (8 front, 5 independent cell) and 152
+assertions: the full 2 MB image, scratchpad, GTE, CPU state, guest stack and
+callee order are exact and the accepted packet sizes/counts are asserted. The
+independent near-cell test rejects.
+
+The near descriptor probe (`KF3_GPU_NEAR_PROBE=1`, default off) is depth
+eligibility only: source corners, depth, mean, level, the direct OTZ key and the
+GT4 map skip. The combined source probe passes **539 assertions**, including
+88 near-descriptor assertions and checks that describing a face preserves RAM,
+scratchpad and GTE state. Bounded fixtures match recompiled packet counts and
+OT buckets; facing, screen-box and partial-subdivision culls are not modelled.
+
+The earlier near-GT4 sentence in this document is corrected: the near **map**
+path reference-skips GT4 just as bulk does, and only the near **model** path
+supports it.
+
+Depth cause identified: the recompiled near packets lack `GtePacketDepth`, and
+with AO on the unrecorded opaque mask stamps the far plane. An actual GPU run
+defaults to native near when the environment variable is unset or whitespace;
+explicit `KF3_NEARPATH=0`/`verify`, or disabled map/model near subfamilies,
+block retained drawing with `near-depth-disabled` and leave packets in charge.
+Packet and shadow boot defaults are unchanged.
+
+`KF3_GPU_SURFACE_PROBE` stages eligible retained frames only, independently of AO
+and SSR, reports absent/stale resources and FBO/serial-pair mismatches, and
+preserves the GL read state. In the same area 5, native near off gave zero depth-bearing samples across five surface checks;
+native near on gave 34,531 across eight checks. After the fix, AO off gave
+295,050 across five checks, with zero missing/behind samples; AO on gave 21,583
+across five checks, with 66 missing and four behind. These residual AO cases
+remain open. The two runs use different resolutions, so those numbers are not
+directly comparable. Main and final stages carry nonzero depth and distinct
+physical FBOs, with some serial mismatches reported explicitly, so they are not
+always the same frame.
+
+Still next: persistent source-space near subdivision mesh/pose, exact midpoint
+UV/colour/topology, and generic front/table barriers. The Release build passes;
+the actual composed Radeon shaders link, with all 270 cue cases, 27 pose vertices and 48 native GTE
+light cases exact. User visual acceptance remains unrecorded; no screenshots
+were used. The earlier ownership note describes the previous checkpoint.
+
+The final combined AO-off run in area 5 counted 2,756 main draws, zero misses,
+and 236,040 depth-bearing samples across four surface checks with zero
+missing/behind samples. After-main/final probes counted 128,292/177,030 depth
+samples; one early final target was absent. The source descriptor probe observed
+108,965 faces, of which 81,725 passed its depth gates; this is not a drawn-face
+count. Flat triangles/quads were exercised; gouraud/GT4 reachability was not.
+Explicit `KF3_NEARPATH=0` produced `near-depth-disabled`, zero retained draws
+and zero stage probes while packets continued.
+
+The changed shared runtime also passed a bounded Verdite2 new-game run: retained
+map/poses/sky/water/mirror and normal passes stayed active, with zero reported
+legacy world projections/3D packets, zero missed map walks/mirror captures, and
+165,484 depth-bearing surface samples with zero missing/behind samples in the
+last window. This establishes starting-area compatibility only.
+
+Shared runtime checkpoint: game-repo commit `04a9c9b` contains only
+`tools/RecompOne`; its exact matching subtree commit is
+`a339e6f715d6d83d7506fb55fdc040a61786b5c3`, pushed to the Verdite fork branch
+`checkpoint/retained-depth-probes`. No upstream issue or PR was created.
+Game adapter/probe/docs changes are committed separately from the shared runtime.
+The user's pre-existing pacing/settings edits are preserved in their own commit.

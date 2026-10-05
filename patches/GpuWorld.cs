@@ -21,11 +21,14 @@ public static class GpuWorld
             Mode = Math.Clamp(value, 0, 2); _frame = false;
             RetainedScene.MainSerial = RetainedScene.ArmSerial = 0;
             RetainedScene.MainView = false;
+            RetainedScene.DepthStageProbe = false;
             if (Mode != 0 && NativeScene.Setting == 0) NativeScene.Setting = 1;
+            if (Mode == 2 && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KF3_NEARPATH")))
+                NearPath.Setting = 1;
         }
     }
     static int _scene, _hud, _preview, _arm;
-    static bool _attached, _frame;
+    static bool _attached, _frame, _surfaceProbe;
     static long _reportAt;
     public static long Frames, Submissions, Retained, OrderVertices;
     static readonly Dictionary<string, long> Reasons = new();
@@ -36,14 +39,17 @@ public static class GpuWorld
     public static bool DeferPose => Capture && (Mode == 1 || Drawing) && Domain != "hud" && Domain != "preview";
     public static string? Blocker => !RetainedScene.Supported ? "backend-capability"
         : !GteDepth.Enabled || !GteDepth.ZBuffer ? "perspective-or-depth-disabled"
-        : !NativeScene.Enabled ? "native-scene-disabled" : null;
+        : !NativeScene.Enabled ? "native-scene-disabled"
+        : NearPath.Setting != 1 || !NearPath.MapEnabled || !NearPath.ModelsEnabled ? "near-depth-disabled" : null;
     public static void Install()
     {
         Mode = Environment.GetEnvironmentVariable("KF3_GPU_WORLD")?.ToLowerInvariant() switch
         { "shadow" or "capture" => 1, "1" or "on" => 2, _ => 0 };
+        _surfaceProbe = Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1";
         Event.AddListener<OverlayLoadedEvent>(_ =>
         {
             _frame = false; RetainedScene.MainSerial = 0;
+            RetainedScene.MainView = RetainedScene.DepthStageProbe = false;
             RetainedScene.ClearMeshes(); RetainedMap.Invalidate();
         });
         HookAttach.OnOverlayLoad("GPU scene lifetime", () =>
@@ -83,6 +89,7 @@ public static class GpuWorld
         RetainedMap.Update(mem);
         RetainedScene.BeginFrame(ReadView(mem));
         RetainedScene.MainView = Mode == 2 && Blocker == null;
+        RetainedScene.DepthStageProbe = _surfaceProbe && RetainedScene.MainView;
         RetainedScene.MainSerial = RetainedScene.MainView ? RetainedScene.Serial : 0;
         _frame = true; Frames++;
     }
@@ -128,6 +135,16 @@ public static class GpuWorld
                     RetainedScene.MainWaterTriangles, RetainedScene.MainNormalTriangles,
                     RetainedScene.MainModelNormalTriangles, RetainedScene.SurfaceChecks,
                     RetainedScene.SurfaceDepthPixels, RetainedScene.SurfaceBehind, RetainedScene.SurfaceMissing,
+                    DepthStages = new
+                    {
+                        RetainedScene.ProbeRuns, RetainedScene.ProbeSamples, RetainedScene.ProbeDepth,
+                        RetainedScene.ProbeTargetAbsent, RetainedScene.ProbeDepthAbsent,
+                        RetainedScene.ProbeSurfaceAbsent, RetainedScene.ProbeSurfaceStale, RetainedScene.ProbeSurfaceIds,
+                        RetainedScene.ProbeTargetFbo, RetainedScene.ProbeFrame, RetainedScene.ProbeTargetSerial,
+                        RetainedScene.ProbeTargetW, RetainedScene.ProbeTargetH,
+                        RetainedScene.ProbePairRuns, RetainedScene.ProbePairFboMatch, RetainedScene.ProbePairFboMismatch,
+                        RetainedScene.ProbePairSerialMatch, RetainedScene.ProbePairSerialMismatch,
+                    },
                     GteDepth.AoPasses, GteDepth.AoNoTarget, AoGeometry.Passes,
                     GteDepth.MipEntries, GteDepth.MipDecodes, GteDepth.MipFull, RetainedScene.MipTableUploads,
                 },
