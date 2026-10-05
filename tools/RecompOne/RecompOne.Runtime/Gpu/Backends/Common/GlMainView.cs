@@ -72,7 +72,7 @@ public sealed partial class GlCore
         RetainedScene.WaterPending = false;
         if (!RetainedScene.MainView || _progWorld == 0) return false;
         var f = RetainedScene.Find(RetainedScene.MainSerial);
-        if (f == null || RetainedScene.StaticCount[0] == 0) return false;
+        if (f == null) return false;
         Flush(FlushReason.Target);
         var rt = ClassifyDisplay();
         if (rt == null) return false;
@@ -1169,7 +1169,7 @@ public sealed partial class GlCore
         var f = RetainedScene.Find(geo.WorldSerial);
         _wnReady = false;
         _wnFrame = f;
-        if (_progWorldNrm != 0 && f != null && RetainedScene.StaticCount[0] > 0)
+        if (_progWorldNrm != 0 && f != null)
         {
             _wnReady = true;
             var v = f.View;

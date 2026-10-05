@@ -52,6 +52,8 @@ internal static class GlShaders
             vec4 s = texture(uSurface, tt);
             // Above 511 is a see-through 2D box's mark over the surface (SsrFs).
             int m = int(s.a + 0.5) & 511;
+            // UI ink is an intentional cover, never a crack between water texels.
+            if (m == 3) return vec2(0.0);
             if (m != 2) {
                 vec2 tx = 1.0 / uTexSize;
                 vec4 a0 = texture(uSurface, tt - vec2(tx.x, 0.0)), a1 = texture(uSurface, tt + vec2(tx.x, 0.0));
@@ -605,6 +607,13 @@ internal static class GlShaders
                     vec4 t = veilTexel(ivec2(floor(vUv)));
                     if (t.rgb == vec3(0.0) && t.a < 0.5) discard;
                     see = t.a >= 0.5;
+                    // Add/subtract text uses STP ink too. It covers water effects;
+                    // black STP texels remain holes in both modes.
+                    uint blend = (vTex >> 5u) & 3u;
+                    if (see && (blend == 1u || blend == 2u)) {
+                        if (t.rgb == vec3(0.0)) discard;
+                        see = false;
+                    }
                 }
                 if (see != (uVeilPass == 1)) discard;
                 oColor = vec4(0.0);
@@ -1233,6 +1242,8 @@ internal static class GlShaders
             vec4 s = texture(uSurface, tc(vUv));
             gShare = veilShare(s.a);
             int m = surfId(s.a);
+            // Preserve explicit UI coverage before scene crack repair.
+            if (m == 3) return;
             // A texel the water's triangles left uncovered between two that are
             // water is water: the tiles meet with hairline cracks, and the murk
             // made each one a line.
@@ -1654,19 +1665,21 @@ internal static class GlShaders
                 for (int i = 0; i < 4; i++) {
                     if (k[i] == 0) continue;
                     int w = recInt(rec[i], 48);
-                    if (w >= 32000) continue;
+                    if (recInt(rec[i], 51) != 5 && w >= 32000) continue;
                     float f = float(k[i]) / float(t);
                     qa += f * float(recInt(rec[i], 49));
                     qb += f * float(recInt(rec[i], 50));
-                    if (k[i] > most) { most = k[i]; bent = w < 0 ? 1.0 : 2.0; }
+                    if (k[i] > most) { most = k[i]; bent = recInt(rec[i], 51) == 5 ? 5.0 : w < 0 ? 1.0 : 2.0; }
                 }
                 cue = vec3(qa, qb, bent);
             }
         }
 
+        //@linearDepthCue
         float cueKeep(vec3 cue, float z) {
             int curve = int(cue.z + 0.5);
             if (uFogOn == 0 || curve == 0) return 1.0;
+            if (curve == 5) return clamp(1.0 - linearDepthCue(z, cue.xy) / 4096.0, 0.0, 1.0);
             float q = min(uCueH * 65536.0 / max(z, 1.0), 131071.0);
             float ir0 = clamp((cue.x * q + cue.y) / 4096.0, 0.0, 4096.0);
             float w = curve == 1 ? max(ir0 - 800.0, 0.0) * 2.0
@@ -1737,7 +1750,7 @@ internal static class GlShaders
             if (uFogOn != 0 && curve != 0 && uWorldPerPixel != 0) {
                 float q = min(uCueH * 65536.0 / max(z, 1.0), 131071.0);
                 vLit = color;
-                vFog = (cue.x * q + cue.y) / 4096.0;
+                vFog = curve == 5 ? linearDepthCue(z, cue.xy) : (cue.x * q + cue.y) / 4096.0;
                 vCue = cue.xy;
                 vLight = uint(curve) << 24;
             } else {
@@ -1773,7 +1786,7 @@ internal static class GlShaders
                 clutBase = ivec2((inClut & 0x3f) * 16, (inClut >> 6) & 0x1ff);
             }
         }
-        """.Replace("//@model", ModelGlsl);
+        """.Replace("//@model", ModelGlsl).Replace("//@linearDepthCue", LinearDepthCue.Glsl);
 
     public const string PrimVs = """
         #version 330 core
@@ -1873,7 +1886,7 @@ internal static class GlShaders
         }
         """;
 
-    public const string PrimFs = """
+    public static readonly string PrimFs = """
         #version 330 core
         noperspective in vec4 vColor;
         in vec2 vUV;
@@ -2279,7 +2292,9 @@ internal static class GlShaders
         }
 
         // The depth cue's weight, 0..4096, from the raw MAC0 through the curve.
+        //@linearDepthCue
         float fogRaw() {
+            if (((vLight >> 24) & 7u) == 5u) return linearDepthCue(vDepth * 65536.0, vCue);
             if (uCueFromZ <= 0.0 || vDepth <= 0.0) return vFog;
             float q = min(uCueFromZ / max(vDepth, 1.0 / 65536.0), 131071.0);
             return (vCue.x * q + vCue.y) / 4096.0;
@@ -2287,7 +2302,7 @@ internal static class GlShaders
 
         float cueWeight() {
             uint curve = (vLight >> 24) & 7u;
-            bool level = gCueScale < 1.0 && curve != 0u;
+            bool level = gCueScale < 1.0 && curve != 0u && curve != 5u;
             float fog = fogRaw();
             float raw = level ? levelCue(fog, curve) : fog;
             float ir0 = clamp(raw, 0.0, 4096.0);
@@ -2295,6 +2310,7 @@ internal static class GlShaders
                  : curve == 2u ? (ir0 < 2800.0 ? ir0 : 3.0 * ir0 - 5600.0)
                  : curve == 3u ? ir0 * 0.5
                  : curve == 4u ? (level ? (ir0 < 2800.0 ? ir0 : 3.0 * ir0 - 5600.0) : fog)
+                 : curve == 5u ? fog
                  : 0.0;
             // 0074. The authored curve over the game's.
             if (uAtmosOn != 0 && uAtmosShape != vec2(1.0) && w > 0.0)
@@ -2613,7 +2629,7 @@ internal static class GlShaders
             FragColor = vec4(quant5(c8), max(texel.a, uSetMask));
             BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;
         }
-        """;
+        """.Replace("//@linearDepthCue", LinearDepthCue.Glsl);
     
     public const string FullscreenVs120 = """
         #version 120

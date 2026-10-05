@@ -1585,6 +1585,29 @@ Four files in the directory have no entry below:
   needs a display target. The fifteenth diff in the patch file. See "A target made
   under the GPU world renderer never latched" in `docs/WIDESCREEN.md`.
 
+## Retained contract additions under verification (2026-10-04)
+
+The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual
+retained world and fragment programs. Its parameters are a near/far pair, with
+quarter-depth quantisation, truncating division, a 32000 cutoff and 7951 maximum.
+Quantised integer records use integer division to avoid driver reciprocal
+rounding at exact boundaries; fractional pairs remain supported. Existing cue
+curves retain their previous behaviour. Fog culling stays conservative for this
+curve. No game address or environment variable is introduced in the runtime.
+
+The main retained draw and its normal pass accept a frame with no opaque static
+map, so model-only frames can render. The port still owns scene validity.
+The numerical surface probe can request the surface attachment without enabling
+reflection features; normal/AO-only configurations can therefore measure it too.
+
+Applicable late fixes from the Verdite2 vendored copy preserve `NotRect` through
+surface classification/depth records and texture repair's dialogue ink holes.
+The existing `SurfaceMaterial.Classify` overload remains binary compatible.
+The bounded Verdite2 new-game check keeps retained map/poses/sky/water/mirror and
+normal passes active with zero reported legacy world projections/3D packets.
+These changes form an isolated shared-subtree checkpoint; no public push is
+authorized. Shader arithmetic is measured separately from visual acceptance.
+
 `0007`, `0008` and `patches/EndingHold.cs` are the shape to keep in mind
 generally: **anything the runtime refreshes only at `VSync` is invisible to a
 game that stops calling `VSync`**, and that failure mode is always silent.

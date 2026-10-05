@@ -111,7 +111,8 @@ public static class RetainedScene
                 if ((m >> r & 1ul) == 0) continue;
                 int at = r * RecordInts;
                 float dqa = Records[at + RecDqa], dqb = Records[at + RecDqb];
-                float q = Records[at + RecCurve] == 0 || dqa >= 0f ? 0f : Math.Max(0f, (3232f * 4096f - dqb) / dqa);
+                float q = Records[at + RecCurve] == 0 || Records[at + RecCurve] == LinearDepthCue.Curve || dqa >= 0f
+                    ? 0f : Math.Max(0f, (3232f * 4096f - dqb) / dqa);
                 if (q < best) { best = q; of = r; }
             }
             if (best >= ChunkFogQ[c]) continue;
@@ -398,7 +399,7 @@ public static class RetainedScene
     public static float BlackQuotient(in Vertex v)
     {
         int curve = (int)(v.Curve + 0.5f);
-        if (curve == 0 || v.Dqa >= 0f) return 0f;
+        if (curve == 0 || curve == LinearDepthCue.Curve || v.Dqa >= 0f) return 0f;
         float ir0 = curve == 1 ? 2848f : 3232f;
         return Math.Max(0f, (ir0 * 4096f - v.Dqb) / v.Dqa);
     }
@@ -408,6 +409,8 @@ public static class RetainedScene
     {
         int curve = (int)(v.Curve + 0.5f);
         if (curve == 0) return 1f;
+        if (curve == LinearDepthCue.Curve)
+            return Math.Clamp(1 - LinearDepthCue.Weight(z, v.Dqa, v.Dqb) / 4096, 0, 1);
         float q = Math.Min(h * 65536f / Math.Max(z, 1f), 131071f);
         float ir0 = Math.Clamp((v.Dqa * q + v.Dqb) / 4096f, 0f, 4096f);
         float w = curve == 1 ? Math.Max(ir0 - 800f, 0f) * 2f : ir0 < 2800f ? ir0 : 3f * ir0 - 5600f;

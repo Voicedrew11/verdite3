@@ -32,6 +32,9 @@ public static class GtePacketDepth
         public byte Material;
         // 0079. Built by the model submitter rather than the tile walk; the probe's only.
         public bool Model;
+        // The port knows the packet is none of the materials SurfaceMaterial.Rects
+        // stand for, whatever its texels: a creature drawn in the water's texture.
+        public bool NotRect;
     }
 
     /// <summary>The port's switch.</summary>

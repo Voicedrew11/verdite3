@@ -28,6 +28,8 @@ public struct HleVertex
     public bool Solid;
     // 0067. GtePacketDepth.Rec.Material: the port's word on what the surface is.
     public byte Material;
+    // GtePacketDepth.Rec.NotRect: no published rect names this surface.
+    public bool NotRect;
     // 0067. The GTE projected this vertex (the vertex map or PGXP answered for it
     // with a depth; a vertex the port placed on the screen carries a fraction and
     // no depth). A polygon with no projected corner is 2D: the HUD, text, a menu.

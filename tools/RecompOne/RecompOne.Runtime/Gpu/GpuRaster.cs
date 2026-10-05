@@ -32,6 +32,8 @@ public sealed partial class Gpu
         public uint TexRect; public bool HasTexRect;
         public bool Solid;
         public byte Material;
+        // GtePacketDepth.Rec.NotRect.
+        public bool NotRect;
         // 0067. The vertex map or PGXP answered: the GTE projected this vertex, so
         // the polygon is part of the 3D scene, whether or not it carries a depth.
         public bool Projected;
@@ -175,12 +177,12 @@ public sealed partial class Gpu
         // fraction above are left to the address map.
         if (!Detached && GtePacketDepth.Active)
         {
-            for (int i = 0; i < n; i++) v[i].HasZ = false;
+            for (int i = 0; i < n; i++) { v[i].HasZ = false; v[i].NotRect = false; }
             ref readonly var dr = ref GtePacketDepth.Find(_fifoSrc[0], _fifo[0], _fifo[vwAt[0]], _fifo[vwAt[n - 1]], out bool has);
             if (has && dr.Z0 > 0f && dr.Z1 > 0f && dr.Z2 > 0f && (n == 3 || dr.Z3 > 0f))
             {
                 v[0].W = dr.Z0; v[1].W = dr.Z1; v[2].W = dr.Z2; v[3].W = dr.Z3;
-                for (int i = 0; i < n; i++) { v[i].HasZ = true; v[i].Solid = dr.Solid; v[i].Material = dr.Material; }
+                for (int i = 0; i < n; i++) { v[i].HasZ = true; v[i].Solid = dr.Solid; v[i].Material = dr.Material; v[i].NotRect = dr.NotRect; }
             }
         }
 

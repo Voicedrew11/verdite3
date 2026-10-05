@@ -1037,7 +1037,7 @@ public sealed partial class GlCore : IGpuBackend
             {
                 m = zMode == 2 ? SurfaceMaterial.None : SurfaceMaterial.Opaque;
                 if (GteDepth.Reflections)
-                    m = SurfaceMaterial.Classify(a.Material, f.Textured && !f.UseImage, f.SemiTrans && zMode == 2,
+                    m = SurfaceMaterial.Classify(a.Material, a.NotRect, f.Textured && !f.UseImage, f.SemiTrans && zMode == 2,
                         f.BlendMode, f.TPage,
                         (int)Math.Min(a.U, Math.Min(b.U, c.U)), (int)Math.Min(a.V, Math.Min(b.V, c.V)),
                         (int)Math.Max(a.U, Math.Max(b.U, c.U)), (int)Math.Max(a.V, Math.Max(b.V, c.V)));
@@ -3200,7 +3200,9 @@ public sealed partial class GlCore : IGpuBackend
     unsafe void EnsureNormalTarget(GlDisplayRt rt, int scale)
     {
         int w = rt.Wide1x * scale, h = rt.H * scale;
-        bool surface = GteDepth.Reflections;
+        // A numerical surface probe also needs the material/depth attachment,
+        // even when no reflection feature consumes it in ordinary drawing.
+        bool surface = GteDepth.Reflections || RetainedScene.SurfaceCheck;
         if (rt.Normal != 0 && rt.NormalW == w && rt.NormalH == h && (rt.Surface != 0) == surface) return;
         if (rt.Normal == 0)
         {
