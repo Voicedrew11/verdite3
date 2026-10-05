@@ -413,6 +413,14 @@ falls back to the 1x VRAM frame a few seconds in.
   every window, then the 7-frame fade-out and close; peak 32,976 of 120,784 bytes,
   no overflow. With `KF3_MENUWORLD=0` the game's wait reads `wide 6, vram fallback
   117` in its last window: the drop to 4:3.
+- **The fade's speed** (2026-10-05, reported as "too quick, maybe at the frame
+  rate"): it is not. Each step ends in the swap's `VSync(0)`, one vblank as on a
+  console. Timed by the probe at 800+ fps: in 10 steps in 180 ms and out 7 in 113
+  ms with pacing on (`VBlankPacing` holds the `VSync`), 140 and 113 ms with pacing
+  off. `KF3_MESSAGE_FADE`/Gameplay ▸ Message fade length draws each step for more
+  vblanks: x2 measured 347 and 230 ms. A longer fade-out lets the button come up
+  during it, so it returns -2 where x1 returned -1, the game's own rule. **x1, the
+  default, is the game's speed; whether longer looks better is the user's.**
 - **The in-game menu** (`func_8001A774`), opened and closed with Circle: 60
   passes/s, every present wide, peak 31,760 bytes, then 144 fps in the main loop
   again. **Primitives reaching the margin while it is open: 34.6% live, 0.0% with

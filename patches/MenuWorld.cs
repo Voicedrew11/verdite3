@@ -86,6 +86,15 @@ public static class MenuWorld
     const uint MinArena = 0x10000;
 
     public static bool Enabled { get; set; } = true;
+
+    /// <summary>How many vblanks each step of a message's fade is shown for: 1 is the
+    /// game's own (one step a <c>VSync(0)</c>, ten steps in, seven out), more holds each
+    /// brightness that many times longer. The wait for the button is not touched.
+    /// <c>KF3_MESSAGE_FADE</c>, else Gameplay's <see cref="FadeKey"/>.</summary>
+    public static int FadeVBlanks { get; private set; } = 1;
+    public const string FadeKey = "kf3.messagefade";
+    public const int MaxFadeVBlanks = 4;
+    public static void SetFadeVBlanks(int vblanks) => FadeVBlanks = Math.Clamp(vblanks, 1, MaxFadeVBlanks);
     static bool _probe, _diff;
 
     static bool _hooked, _queued, _worldSeen, _session;
@@ -469,6 +478,9 @@ public static class MenuWorld
         uint pad = c.FP;   // the game's step reads the pad into fp; the first test sees the caller's
         uint result;
         bool ranOut = false, waited = false;
+        int fadeFrames = 0;
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        double fadeMs = 0;
         _messages++;
 
         // The saved texels back where the MoveImage put the frame, then the save's
@@ -485,11 +497,13 @@ public static class MenuWorld
         {
             while (true)
             {
-                Step(c, mem, b, save, end);
-                frames++;
+                // Each extra draw ends in the swap's VSync(0): one more vblank at this brightness.
+                for (int hold = 0; hold < FadeVBlanks; hold++) { Step(c, mem, b, save, end); frames++; }
                 b += step;
                 if ((uint)(b - 1) >= 0x77u)
                 {
+                    fadeFrames = frames;
+                    fadeMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
                     Examine(mem, pad, ranOut: true);
                     result = (uint)state;
                     ranOut = true;
@@ -498,6 +512,8 @@ public static class MenuWorld
                 pad = Pad(c, mem);
                 if (state == -1) { if (pad == 0) state = -2; continue; }
                 if (pad == 0) continue;
+                fadeFrames = frames;
+                fadeMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
                 Examine(mem, pad, ranOut: false);
                 result = (uint)b;
                 break;
@@ -528,7 +544,8 @@ public static class MenuWorld
         }
 
         if (_probe)
-            Console.WriteLine($"[KF3] menu world: message fade {step:+0;-0} over the live world, {frames} frame(s)" +
+            Console.WriteLine($"[KF3] menu world: message fade {step:+0;-0} over the live world, {fadeFrames} step(s) in {fadeMs:0} ms, " +
+                              $"{frames} frame(s) in all" +
                               (waited ? ", held for the button" : "") + $", returns {(int)result}");
         c.Restore(saved);
         c.V0 = result;

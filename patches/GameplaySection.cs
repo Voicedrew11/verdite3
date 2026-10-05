@@ -54,6 +54,8 @@ public sealed class GameplaySection : ISettingsSection
         Event.AddListener<RuntimeReadyEvent>(_ =>
         {
             Localization.Merge(Names);
+            MenuWorld.SetFadeVBlanks(int.TryParse(Environment.GetEnvironmentVariable("KF3_MESSAGE_FADE"), out int fade)
+                ? fade : Rt.View.GetInt(MenuWorld.FadeKey, 1));
             SettingsRegistry.Register(new GameplaySection());
         });
     }
@@ -85,6 +87,22 @@ public sealed class GameplaySection : ISettingsSection
         ImGui.EndDisabled();
 
         DrawAutoReload();
+        DrawMessageFade();
+    }
+
+    /// <summary>How long a sign's or a message's fade takes (MenuWorld.FadeVBlanks).</summary>
+    static void DrawMessageFade()
+    {
+        int vblanks = MenuWorld.FadeVBlanks;
+        ImGui.SetNextItemWidth(260);
+        if (ImGui.SliderInt("Message fade length", ref vblanks, 1, MenuWorld.MaxFadeVBlanks, vblanks == 1 ? "x1 (original)" : "x%d"))
+        {
+            MenuWorld.SetFadeVBlanks(vblanks);
+            Rt.View.SetInt(MenuWorld.FadeKey, MenuWorld.FadeVBlanks);
+            Rt.SaveView();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("How long signs and messages take to fade in and out. x1 is the game's own speed.");
     }
 
     static readonly string[] Slots = ["Last used", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"];
