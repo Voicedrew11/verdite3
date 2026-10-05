@@ -794,6 +794,40 @@ builds on it.
   filled by the caller (the submitter's inline pass, or `func_8003C35C`'s).
 - `func_80037BEC(model, bias, rate)`: the same, `a2` the blend rate (0-3).
 
+### The HUD's models and their transform
+
+`func_8003C35C` (stage 15's call #9) has **no transform routine of its own**: the
+HUD's vertex transform is inline, two copies of one loop at `0x8003C6FC` and
+`0x8003C784`. Read from `generated/game.cs` on 2026-10-05; C# in
+`patches/PolyAssemblerHud.cs` (`docs/PICTURE.md`, "The HUD's transform").
+
+- **The records**: from `0x80081C20`, 0x24 bytes each, until a first byte of
+  `0xFF`; a record whose first byte is 1 is drawn. `+0x02` u8 a 0x6C-byte light
+  block at `0x801AEEFC + 0x6C * n`; `+0x04` u16 the model (its pointer at
+  `0x801A92B0 + 4 * id`); `+0x08..+0x0C` the scale (three s16, `ScaleMatrix`);
+  `+0x10..+0x14` the translation (three s16, loaded as `TR`); `+0x18..+0x1C` the
+  rotation (`RotMatrix`); `+0x01`, `+0x06` and `+0x20` go to `func_800431E8`.
+- **Per record**: `RotMatrix` into the stack, `func_80035358` with the light
+  block's `+0x68`/`+0x6A` (not identified), `BK` from its `+0x64..+0x66 << 4`, the
+  light colour matrix from its `+0x50`, its light matrix (`+0x00`) times the
+  rotation by three `MVMVA`s into the stack and loaded as `LLM`, `ScaleMatrix`, then
+  the scaled rotation as `R` and the translation as `TR`. The scratchpad gets the
+  table, cursor, end, cache (`+0x44` = `0x801AAC54`), colour and a CLUT offset of 0
+  (`+0x84`). `func_800431E8` decides whether the vertex pointer at `+0x4C` is
+  recomputed from the model header (the first loop) or the last one reused (the
+  second); the loops are otherwise the same.
+- **The transform**, per vertex: `MVMVA` with `sf=1`, `R·V0 + TR`, **no divide**:
+  the HUD is orthographic. `MAC1..3` are stored to scratchpad `+0x54`, `+0x58`,
+  `+0x5C`, and the cache entry is filled from them as halfwords: X at `+0`, Y at
+  `+2`, `MAC3` at `+6`, then `MAC3 >> 2` at `+4`. Then `func_80035CA4(0, 0)`
+  draws the model from the cache. The shift by 12 drops the fraction, and no
+  `RTPS`/`RTPT` runs, so the vertex map learned nothing of these corners (0%).
+- **The compass is the only piece.** In slot 1's save (`fdat17`), standing and
+  turning, only the record at `0x80081C44` is drawn: model 0, 26 vertices, light
+  block 48, scale 85 on every axis, `rot.x` 4017 (a fixed tilt about X) and
+  `rot.y` the heading. Its `R` always has elements off the diagonal.
+  The gauges are not drawn by this routine.
+
 ### What a C# assembler would have to keep
 
 - **The scratchpad is not in `PSMemory.Ram`**: it is a separate 1 KB array

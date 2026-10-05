@@ -137,6 +137,10 @@ public static class Subpixel
                           $"cull {(Cull ? "fractional" : "whole pixels")} " +
                           $"({PolyAssembler.CullKept / window:F0} kept, {PolyAssembler.CullDropped / window:F0} dropped/s)");
         PolyAssembler.CullKept = PolyAssembler.CullDropped = 0;
+        Console.WriteLine($"[KF3] subpixel: HUD {PolyAssembler.ScreenVertices / window:F0} vertices/s placed on the screen, " +
+                          $"{PolyAssembler.ScreenFractional / window:F0} with a fraction, " +
+                          $"{PolyAssembler.ScreenAligned / window:F0} on unturned pieces kept whole");
+        PolyAssembler.ScreenVertices = PolyAssembler.ScreenFractional = PolyAssembler.ScreenAligned = 0;
 
         Baseline();
         GteDepth.ResetOffsets();

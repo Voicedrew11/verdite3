@@ -104,7 +104,8 @@ Kf3.VBlankPacing.Install();
 // runs both and compares. See "The geometry path in C#" in docs/GEOMETRY.md.
 Kf3.PolyAssembler.Configure(Environment.GetEnvironmentVariable("KF3_POLYASM"),
                             Environment.GetEnvironmentVariable("KF3_POLYASM_MAP"),
-                            Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"));
+                            Environment.GetEnvironmentVariable("KF3_POLYASM_LIT"),
+                            Environment.GetEnvironmentVariable("KF3_POLYASM_HUD"));
 Kf3.PolyAssembler.Install();
 Kf3.PolyAssembler.InstallDepth();
 

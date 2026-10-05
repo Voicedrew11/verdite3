@@ -17,6 +17,8 @@ namespace Kf3;
 ///                           registers and the GTE
 ///     KF3_POLYASM_MAP=0     func_80039D50 recompiled
 ///     KF3_POLYASM_LIT=0     func_80035CA4 recompiled
+///     KF3_POLYASM_HUD=0     func_8003C35C, the HUD's models, recompiled
+///                           (PolyAssemblerHud.cs)
 ///
 /// See "The geometry path in C#" in docs/GEOMETRY.md.
 /// </summary>
@@ -47,7 +49,7 @@ public static partial class PolyAssembler
         Description = "func_80039D50 and func_80035CA4 in C#.",
     };
 
-    public static void Configure(string? mode, string? map, string? lit)
+    public static void Configure(string? mode, string? map, string? lit, string? hud = null)
     {
         _mode = mode?.Trim().ToLowerInvariant() switch
         {
@@ -57,6 +59,7 @@ public static partial class PolyAssembler
         };
         MapEnabled = map?.Trim() != "0";
         LitEnabled = lit?.Trim() != "0";
+        HudEnabled = hud?.Trim() != "0";
     }
 
     public static void Install()
@@ -70,17 +73,19 @@ public static partial class PolyAssembler
         SymbolRegistry.Build();
         var map = SymbolRegistry.Resolve("game", null, Map);
         var lit = SymbolRegistry.Resolve("game", null, Lit);
-        if (map == null || lit == null) return false;
+        var hud = SymbolRegistry.Resolve("game", null, HudModels);
+        if (map == null || lit == null || hud == null) return false;
 
         if (!Queue(ref _queuedMap, map, nameof(ReplaceMap))) return false;
         if (!Queue(ref _queuedLit, lit, nameof(ReplaceLit))) return false;
+        if (!Queue(ref _queuedHud, hud, nameof(ReplaceHud))) return false;
 
         HookManager.Commit();
-        bool ok = HookAttach.Installed(map) && HookAttach.Installed(lit);
+        bool ok = HookAttach.Installed(map) && HookAttach.Installed(lit) && HookAttach.Installed(hud);
         string State(bool on) => !on ? "off" : _mode.ToString().ToLowerInvariant();
         Console.WriteLine(!ok
             ? "[KF3] polyasm: not installed"
-            : $"[KF3] polyasm: map {State(MapEnabled)}, lit {State(LitEnabled)}");
+            : $"[KF3] polyasm: map {State(MapEnabled)}, lit {State(LitEnabled)}, hud {State(HudEnabled)}");
         return ok;
     }
 

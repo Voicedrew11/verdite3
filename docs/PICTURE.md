@@ -42,8 +42,9 @@ Verdite3 builds its packets the same way, and its C# assemblers were written to
 keep the recompiled order of every vertex read and write for this reason
 ("Exactness rules" in `docs/GEOMETRY.md`). Verdite2's C# publishes fractions itself
 in one place only, the HUD's orthographic transform (`PolyAssemblerHud.cs`,
-`GteVertexMap.Publish`), which the map cannot follow; leaving the HUD on whole
-pixels costs nothing anyone sees.
+`GteVertexMap.Publish`), which the map cannot follow. Verdite3's compass
+snapped the same way, and is published the same way since 2026-10-05 ("The HUD's
+transform" below).
 
 **The Z-buffer needs depth from the assemblers.** Verdite2's Z-buffer never looked
 right on the address map's depth, and it stopped needing to when its assemblers
@@ -160,7 +161,7 @@ screenshots.
   | map bulk `func_80039D50` | 254 | 99.9% |
   | near map `func_8003AB04` | 40 | **100%** |
   | lit models `func_80035CA4` | 93 | 100% |
-  | HUD models (`func_80035CA4` under `func_8003C35C`) | 16 | 0% (orthographic) |
+  | HUD models (`func_80035CA4` under `func_8003C35C`) | 16 | 0% (orthographic); **100%** since "The HUD's transform" below |
   | sky `func_80039428` | 45 | 90.8% |
   | anything else | 0 | |
 
@@ -318,6 +319,59 @@ clips with `Clip3FTP`/`Clip4FTP`, which this game does not link).
   fps. Left as they were, and present with the near path recompiled too: a set of
   black `0x2C` packets recorded at a constant 31804 where the map reads about
   25,900, and corners clamped at the GTE's screen limits (±1024).
+
+### The HUD's transform: measured, not judged
+
+Verdite2's `PolyAssemblerHud.cs`, its method only: the compass snapped to whole
+pixels as it turned, because the HUD's transform is an orthographic `MVMVA` the
+address map cannot follow (unit 2's table: 0%).
+
+- **The routine**: this game has no HUD transform routine; the transform is inline
+  in `func_8003C35C`, two copies of one loop (`GAME_INTERNALS.md`, "The HUD's
+  models and their transform"). So `patches/PolyAssemblerHud.cs` replaces the
+  whole of `func_8003C35C`, **transcribed literally** from `generated/game.cs`
+  (registers in the `CpuContext`, the callees called as they were), on
+  `KF3_POLYASM`'s switch and verify; `KF3_POLYASM_HUD=0` leaves it recompiled.
+- **One deliberate change to the access order**: the routine writes X and Y as
+  two halfwords read back from the scratchpad, and the map follows word stores
+  only, so the C# writes them as one word, the same bytes, at the X store.
+  Everything else keeps the recompiled order.
+- **The fraction**: before that store, `(TR << 12) + R·V` rebuilt from the GTE's
+  control registers, and its low 12 bits handed to `GteVertexMap.Publish` with a
+  depth of 0 (placed on the screen, not projected: no W, no depth, still 2D). A
+  product that disagrees with the GTE's integer offers no fraction. Only while
+  `GteDepth.Subpixel` is on.
+- **Unturned pieces kept whole**, as Verdite2's gauges needed: a fraction of 0
+  when every off-diagonal element of R's first two rows is 0, tested once per
+  piece. **It never fires here**: the compass is the only piece this routine
+  draws, and its `R` is always off the diagonal (a fixed tilt about X, the heading
+  about Y). The gauges are not drawn by `func_8003C35C`, so they cannot lose
+  their shadow to this.
+
+Measured in `fdat17` (slot 1), turning both ways (`KF3_AUTOPAD=10:Left:6000,17:Right:6000`):
+
+- **Verify** (`KF3_POLYASM=verify`, sub-pixel on, so the publishing path ran;
+  `KF3_AUTOPAD=10:Left:4000,15:Right:4000,20:Up:3000`, 40 s): `func_8003C35C` 0
+  RAM, 0 scratchpad, 0 register, 0 GTE mismatches, about 1,100 calls a 2 s window;
+  `func_80035CA4` 0 alongside it, about 2,200 calls a window (two for each HUD
+  call under verify, one for each side).
+- **Coverage** (`KF3_MAPCOVERAGE=1`, 144 fps): HUD packets 2,304 a second (16 a
+  frame), corners answered **100.0%**, against **0.0%** with `KF3_POLYASM_HUD=0`.
+- **Fractions** (`KF3_SUBPIXEL_PROBE=1`, 144 fps): 3,744 HUD vertices a second
+  placed on the screen (26 a frame, the compass), 3,408-3,456 with a fraction
+  (the rest land on a whole pixel), 0 on unturned pieces.
+- **Still 2D**: no HUD depth records. Standing, packets
+  (`KF3_GPU_WORLD=0`), perspective, sub-pixel and the Z-buffer on, the
+  `KF3_ZBUFFER_PROBE` line is the same with the HUD in C# and recompiled: 105,408
+  recorded and found, 9,360 unmatched, 141,264 triangles tested, 13,968 kept
+  painter's order. In retained mode (the default) the HUD's 16 packets a frame
+  stay in the table either way, retained submissions are 75.9 a frame both ways,
+  and the fallback table is empty both ways: `func_8003C35C` calls
+  `func_80035CA4` directly and never reaches `RetainedModels.Submit`, so it is
+  never logged as `packet-owned-presentation`.
+- **Frame rate**: `KF3_FPS=144 KF3_FPS_PROBE=1`, turning, 144.0 fps at 15.0
+  ticks/s with sub-pixel on and off (an odd 14.9 or 143-145 both ways).
+- **Not judged by eye**: whether the compass now turns smoothly.
 
 ### Unit 5: widescreen
 
