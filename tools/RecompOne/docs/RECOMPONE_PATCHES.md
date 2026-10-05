@@ -1590,6 +1590,28 @@ Four files in the directory have no entry below:
   diff in the patch file; the fields are under "Retained contract additions under
   verification" below.
 
+- `0086-retained-model-mask.patch` — the retained models (`0085`) are drawn at slot 1,
+  ahead of every packet the walk sends after them, and `0051`'s tolerance (1 unit
+  plus half the depth's change across a pixel) hands a coplanar overlap to the later
+  packet. Over a model's pixels it therefore let through any packet up to the
+  tolerance *behind* the model, such as a near map face's floor behind a creature,
+  whose slope term is large at a grazing angle. The display target's depth is now
+  `DEPTH24_STENCIL8` (sampled, it still reads as depth). While
+  `RetainedScene.ModelMask` is set (**off by default**; the game turns it on), the
+  main view clears the stencil before its models and their colour passes set it where
+  they land (`MarkModels`), and the target records the frame (`ModelMaskFrame`). In
+  that frame a tested packet batch's colour (`GlCore.DrawTested`) draws twice: with
+  the tolerance where the stencil is clear, and against the true depth where it is
+  set. An opaque batch that draws there clears the mark, so the next packet gets the
+  tolerance against it. `RetainedScene.ModelMaskProbe` adds occlusion queries (a
+  stall each): over model pixels, a batch's samples the tolerance passes and those of
+  them behind the stored depth (`MaskSamples`, `MaskBehind`); a blended batch's
+  samples in front by less than the tolerance (`MaskAhead`); and before each model
+  list writes depth, its samples against the map and those that only a test pulled
+  8/32/128/512/960 units nearer passes (`ModelSamples`, `ModelUnderSlack`). Planar
+  captures are untouched. **No recompile.** Measured in Verdite3's `GPU_RENDERER.md`
+  ("Models under later packets").
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual

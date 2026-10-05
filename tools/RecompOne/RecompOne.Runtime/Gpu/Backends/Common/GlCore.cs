@@ -2011,12 +2011,12 @@ public sealed partial class GlCore : IGpuBackend
         if (_legacy)
         {
             _gl.Disable(EnableCap.Blend);
-            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+            DrawTested(rt, zBias, first, _count, true);
         }
         else if (!_kTransparent)
         {
             _gl.Disable(EnableCap.Blend);
-            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+            DrawTested(rt, zBias, first, _count, true);
         }
         else
         {
@@ -2026,20 +2026,20 @@ public sealed partial class GlCore : IGpuBackend
             {
                 _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
                 SetBlend(0f, 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, true);
 
                 _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
                 RebindTarget(rt);
                 _gl.BlendEquationSeparate(BlendEquationModeEXT.FuncReverseSubtract, BlendEquationModeEXT.FuncAdd);
                 SetBlend(1f, 1f);
                 _gl.Uniform4(_uBlendOpaque, 0f, 0f, 0f, 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, false);
             }
             else
             {
                 _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
                 SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, true);
             }
 
             // Texels without the semi-transparency bit draw opaque, so they must hide what is behind them from the occlusion pass.
@@ -2178,6 +2178,80 @@ public sealed partial class GlCore : IGpuBackend
             SurfaceMaterial.Uploads++;
         }
         _gl.ActiveTexture(TextureUnit.Texture0);
+    }
+
+    /// <summary>
+    /// 0086. A batch's colour. Tested (<paramref name="zBias"/>, 0051) over the pixels
+    /// the main view's retained models marked this frame, it draws there against the
+    /// true depth: the models went in at slot 1, ahead of every packet the walk sends
+    /// after, so the tolerance that gives a coplanar overlap to the later table entry
+    /// gave a model's pixels to anything up to the tolerance behind it, such as the
+    /// floor behind a creature, whose slope term is large at a grazing angle.
+    /// An opaque packet that draws there takes the pixel, and the tolerance with it.
+    /// <paramref name="probe"/> once per batch: <see cref="RetainedScene.ModelMaskProbe"/>.
+    /// </summary>
+    void DrawTested(GlDisplayRt? rt, bool zBias, int first, int count, bool probe)
+    {
+        if (!zBias || rt is not { IsPlanar: false } || rt.ModelMaskFrame != _frame)
+        {
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            return;
+        }
+        if (probe) RetainedScene.MaskBatches++;
+        if (probe && RetainedScene.ModelMaskProbe) ProbeModelMask(first, count);
+        if (!RetainedScene.ModelMask)
+        {
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            return;
+        }
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilMask(0);
+        _gl.StencilFunc(StencilFunction.Equal, 0, 1);
+        _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+        SetDepthBias(false);
+        _gl.StencilFunc(StencilFunction.Equal, 1, 1);
+        if (_kZMode == 1)
+        {
+            _gl.StencilMask(1);
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Zero);
+        }
+        _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
+        _gl.StencilMask(0xFF);
+        _gl.Disable(EnableCap.StencilTest);
+        SetDepthBias(true);
+    }
+
+    /// <summary>0086. Over the models' pixels, the samples of this batch the tolerant
+    /// test passes; of those the ones behind the stored depth, and the ones in front of
+    /// it by less than the tolerance. Writes nothing.</summary>
+    void ProbeModelMask(int first, int count)
+    {
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilMask(0);
+        _gl.StencilFunc(StencilFunction.Equal, 1, 1);
+        _gl.ColorMask(false, false, false, false);
+        long Count(float sign)
+        {
+            if (_uDepthBias >= 0) _gl.Uniform1(_uDepthBias, sign * GteDepth.DepthBias / 65536f);
+            if (_uDepthSlope >= 0) _gl.Uniform1(_uDepthSlope, sign * GteDepth.DepthSlope);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long tolerant = Count(1f), held = Count(0f), clear = _kZMode != 1 ? Count(-1f) : held;
+        SetDepthBias(true);
+        _gl.ColorMask(true, true, true, true);
+        _gl.StencilMask(0xFF);
+        _gl.Disable(EnableCap.StencilTest);
+        RetainedScene.MaskSamples += tolerant;
+        RetainedScene.MaskBehind += tolerant - held;
+        // An opaque batch's own depth went in first, so only a blended one's tells.
+        if (_kZMode != 1) RetainedScene.MaskAhead += held - clear;
     }
 
     void SetDepthBias(bool on)

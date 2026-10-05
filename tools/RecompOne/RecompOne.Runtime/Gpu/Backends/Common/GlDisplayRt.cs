@@ -10,7 +10,7 @@ public sealed class GlDisplayRt
     // A texture rather than a renderbuffer, because the ambient-occlusion pass
     // reads the finished buffer back in a full-screen shader and a renderbuffer
     // cannot be sampled. Nothing else changes: it is still the same
-    // DEPTH_COMPONENT24 attachment, still cleared at the head of a frame that
+    // 24-bit depth attachment (with 0086's stencil), still cleared at the head of a frame that
     // draws to this target, and ReadPixels off the FBO (the KF2_ZBUFFER_PROBE=2
     // census) reads it exactly as before.
     public uint Depth;
@@ -53,6 +53,9 @@ public sealed class GlDisplayRt
     public int MarginVerts;
     public int MarginVertFlip = -1;
     public int ZGen = -1;
+    // 0086. The frame whose retained models marked this target's stencil; the
+    // packets drawn after them in that frame test against their true depth there.
+    public long ModelMaskFrame = -1;
     // Upstream's own, kept beside ours rather than in place of it.
     public long LastMarginFrame = -1;
 
@@ -112,9 +115,11 @@ public sealed class GlDisplayRt
         // the driver defaults to, an ordinary sampler2D read of this texture is
         // undefined rather than the stored depth.
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareMode, (int)GLEnum.None);
-        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.DepthComponent24, (uint)TexW, (uint)TexH, 0,
-            PixelFormat.DepthComponent, PixelType.Float, null);
-        gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment,
+        // 0086. With a stencil beside it: the retained models' pixels (ModelMaskFrame).
+        // Sampled, it still reads as depth (DEPTH_STENCIL_TEXTURE_MODE's default).
+        gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Depth24Stencil8, (uint)TexW, (uint)TexH, 0,
+            PixelFormat.DepthStencil, PixelType.UnsignedInt248, null);
+        gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment,
             TextureTarget.Texture2D, Depth, 0);
         gl.BindTexture(TextureTarget.Texture2D, 0);
 
@@ -122,7 +127,9 @@ public sealed class GlDisplayRt
         gl.ClearDepth(1.0);
         gl.Disable(EnableCap.ScissorTest);
         gl.DepthMask(true);
-        gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        gl.ClearStencil(0);
+        gl.StencilMask(0xFF);
+        gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
     }
 
     public void Destroy(GL gl)

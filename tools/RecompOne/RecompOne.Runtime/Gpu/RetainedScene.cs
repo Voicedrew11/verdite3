@@ -1050,6 +1050,38 @@ public static class RetainedScene
     /// probe's way to see what they cover.</summary>
     public static bool MainModelsShown = true;
 
+    /// <summary>0086. The main view's models mark the target's stencil, and a tested
+    /// packet the walk sends after them draws over those pixels against its true depth
+    /// instead of 0051's tolerance: they were drawn at slot 1, ahead of every packet,
+    /// so the tolerance gave a model's pixels to whatever stood just behind it. Off
+    /// unless the game turns it on.</summary>
+    public static bool ModelMask;
+
+    /// <summary>0086. Counts what the tolerance would let through over the models'
+    /// pixels, with two occlusion queries per tested batch drawn after them (a stall
+    /// each); off by default. The counts below are cumulative.</summary>
+    public static bool ModelMaskProbe;
+
+    /// <summary>0086. Main views that marked models; tested batches drawn over the
+    /// mark; samples of those that pass the tolerant test over model pixels, and of
+    /// those, the ones behind the model's true depth, which the mask holds back.</summary>
+    public static long MaskFrames, MaskBatches, MaskSamples, MaskBehind;
+
+    /// <summary>0086, with the probe: samples of the blended ones in front of the model
+    /// by less than the tolerance, which still draw (an opaque batch's own depth is
+    /// already in the buffer when it is probed). Then, before each model list's
+    /// depth, the models' samples against the map: those the tolerant test passes, and
+    /// those it fails but a test pulled 0xF0 slots towards the camera
+    /// passes -- a model just behind a map face, which the table, linking a tile
+    /// 0xF0 slots deeper than its mean, drew over it.</summary>
+    public static long MaskAhead, ModelSamples, ModelUnderMap;
+
+    /// <summary>0086. The probe's slacks, in view-depth units, the last 0xF0 table
+    /// slots; <see cref="ModelUnderSlack"/> counts, per slack, the models' samples it
+    /// passes and the tolerance does not (<see cref="ModelUnderMap"/> is the last).</summary>
+    public static readonly float[] MapSlacks = [8, 32, 128, 512, 0xF0 * 4];
+    public static readonly long[] ModelUnderSlack = new long[5];
+
     /// <summary>The planes the current frame mirrors in, nearest-first by the
     /// port's own ranking; at most <see cref="MaxPlanes"/>.</summary>
     public static void SetPlanes(ReadOnlySpan<float> worldY)

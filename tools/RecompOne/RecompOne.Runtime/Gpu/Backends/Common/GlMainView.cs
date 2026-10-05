@@ -102,6 +102,14 @@ public sealed partial class GlCore
         }
         long t3 = System.Diagnostics.Stopwatch.GetTimestamp();
         int drawn = DrawMapOpaque();
+        // 0086. The models' pixels, for the packets the walk sends after them.
+        _maskModels = RetainedScene.ModelMask || RetainedScene.ModelMaskProbe;
+        if (_maskModels && RetainedScene.MainModelsShown && (models >= 0 || inst >= 0))
+        {
+            ClearModelMask();
+            rt.ModelMaskFrame = _frame;
+            RetainedScene.MaskFrames++;
+        }
         if (models >= 0 && RetainedScene.MainModelsShown)
         {
             DrawWorldModels(f.Models, models);
@@ -113,6 +121,7 @@ public sealed partial class GlCore
             DrawInstances(f.Instances, inst);
             RetainedScene.InstancesDrawn += f.Instances.Count;
         }
+        _maskModels = false;
         EndWorldState();
         EndGpuTimer(query, GpuWork.Batch, 0, Diagnostics.GpuTimes.Pass.World);
 
@@ -276,6 +285,76 @@ public sealed partial class GlCore
         _gl.DepthMask(true);
         RetainedScene.MainMapPrepasses++;
         return drawn;
+    }
+
+    // 0086. The main view's models are drawing, and mark the stencil where they land.
+    bool _maskModels;
+
+    /// <summary>0086. The target's stencil cleared to "no model here", whatever the
+    /// scissor; the models then set it where their colour lands (MarkModels).</summary>
+    void ClearModelMask()
+    {
+        bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.StencilMask(0xFF);
+        _gl.ClearStencil(0);
+        _gl.Clear(ClearBufferMask.StencilBufferBit);
+        if (scissor) _gl.Enable(EnableCap.ScissorTest);
+    }
+
+    /// <summary>0086. Around a model colour pass of the main view: each pixel it draws
+    /// is marked. Nothing is rejected by the stencil.</summary>
+    void MarkModels(bool on)
+    {
+        if (!_maskModels) return;
+        if (on)
+        {
+            _gl.Enable(EnableCap.StencilTest);
+            _gl.StencilFunc(StencilFunction.Always, 1, 1);
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+            _gl.StencilMask(1);
+        }
+        else
+        {
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
+            _gl.StencilMask(0xFF);
+            _gl.Disable(EnableCap.StencilTest);
+        }
+    }
+
+    /// <summary>0086's probe, before a model list writes depth: its samples against the
+    /// map's depth with the tolerance, and those that only a test pulled the map's
+    /// slack towards the camera passes. Writes nothing.</summary>
+    void ProbeModelsUnderMap(Action draw)
+    {
+        if (!_maskModels || !RetainedScene.ModelMaskProbe || _uwDepthBias < 0) return;
+        _gl.ColorMask(false, false, false, false);
+        _gl.DepthMask(false);
+        long Count(float bias, float slope)
+        {
+            _gl.Uniform1(_uwDepthBias, bias / 65536f);
+            if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, slope);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            draw();
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long tolerant = Count(GteDepth.DepthBias, GteDepth.DepthSlope);
+        long slack = 0;
+        for (int i = 0; i < RetainedScene.MapSlacks.Length; i++)
+        {
+            slack = Count(RetainedScene.MapSlacks[i], GteDepth.DepthSlope);
+            RetainedScene.ModelUnderSlack[i] += slack - tolerant;
+        }
+        _gl.Uniform1(_uwDepthBias, 0f);
+        if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
+        _gl.ColorMask(true, true, true, true);
+        _gl.DepthMask(true);
+        RetainedScene.ModelSamples += tolerant;
+        RetainedScene.ModelUnderMap += slack - tolerant;
     }
 
     /// <summary>The depth half of 0051's two passes: colour masked, and PrimFs making
@@ -1089,6 +1168,7 @@ public sealed partial class GlCore
         _gl.BindVertexArray(_mdlVao[slot]);
         if (_uwMipIndirect >= 0) _gl.Uniform1(_uwMipIndirect, 0);
         bool bias = GteDepth.ZBuffer && (GteDepth.DepthBias > 0f || GteDepth.DepthSlope > 0f);
+        ProbeModelsUnderMap(() => DrawModelRuns(f));
         if (bias)
         {
             DepthOnly(true);
@@ -1098,6 +1178,7 @@ public sealed partial class GlCore
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
         }
+        MarkModels(true);
         foreach (var g in f.Groups)
         {
             if (_uwBk >= 0) _gl.Uniform3(_uwBk, g.Bk0, g.Bk1, g.Bk2);
@@ -1108,6 +1189,7 @@ public sealed partial class GlCore
             _gl.DrawArrays(PrimitiveType.Triangles, g.Start, (uint)g.Count);
             if (g.Cull) _gl.Disable(EnableCap.CullFace);
         }
+        MarkModels(false);
         if (bias)
         {
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, 0f);
