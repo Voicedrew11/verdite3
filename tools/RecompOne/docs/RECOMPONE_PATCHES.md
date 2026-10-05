@@ -1635,6 +1635,31 @@ Four files in the directory have no entry below:
   recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Seeing through doors, and
   floor over models again").
 
+- `0088-retained-neighbour-blend.patch` — each map half has its own light record, so
+  the static map's colour and fog stepped at every tile edge where records differ.
+  `NeighbourBlend` blends them **per pixel** in `PrimFs`: the records of the half a
+  pixel lies on and of the three halves around its quarter of the tile (on the same
+  level; none past the map or where a half is missing), weighted bilinearly between
+  the tile centres from the pixel's world X and Z, so either side of an edge or
+  corner blends the same set. The fog averages the records' **results**, each
+  record's cue weight at the pixel's own depth clamped at 4096 (the colour it leaves
+  is black there): the average of the pictures the tiles would draw, with a record
+  that has no fog weighing in as none. Only curve-5 (`LinearDepthCue`) and curve-0
+  records blend; another curve leaves the pixel as it was. The light averages the
+  records' colour matrix and back colour, rounded to integers, under the own record's
+  dots, in `NormalColorCol`'s integers as `recordLit` does; just off a tile's centre
+  that rounds back to the own record, so the blend meets the unblended picture without
+  a step. A pixel whose records all fog and light alike is drawn as before. `WorldVs`
+  passes a record-lit static corner's half, record, RGBC, world X/Z and dots
+  (`recordLit` gains an `out` for its dots) while `uNeighbour` is set; `PrimVs` writes
+  zeros. The port sets `NeighbourBlend.Mode` (fog 1, light 2) and fills
+  `NeighbourBlend.Halves` (each half's record plus one, 160x80, uploaded as R8UI on
+  unit 22 when it changes); `BeginWorldMain` sends the mode, and `EndWorldUniforms`
+  clears it, so reflections and shadow passes are untouched. `_progPrim` puts the two
+  new integer samplers on their own units. **Mode 0, the default, is the program
+  before.** **No recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Blending
+  light and fog across tile edges").
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual

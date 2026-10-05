@@ -431,6 +431,8 @@ public sealed partial class GlCore
         if (_uwSnap >= 0) _gl.Uniform1(_uwSnap, GteDepth.Subpixel ? 0 : 1);
         if (_uwPerPixel >= 0) _gl.Uniform1(_uwPerPixel, GteLightMap.Enabled ? 1 : 0);
         if (_uwDither >= 0) _gl.Uniform1(_uwDither, _env.Dither ? 1 : 0);
+        if (_uwNeighbour >= 0) _gl.Uniform1(_uwNeighbour, NeighbourBlend.Mode);
+        if (_uwNbTile >= 0) _gl.Uniform1(_uwNbTile, NeighbourBlend.Tile);
         // Fogged at each pixel's own depth: a face clipped at the eye has no corner
         // whose screen-affine fog holds at the clip.
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, RetainedScene.MainFogFromZ ? Math.Max(1f, f.View.H) : 0f);
@@ -527,6 +529,7 @@ public sealed partial class GlCore
         if (_uwSnap >= 0) _gl.Uniform1(_uwSnap, 0);
         if (_uwPerPixel >= 0) _gl.Uniform1(_uwPerPixel, 1);
         if (_uwDither >= 0) _gl.Uniform1(_uwDither, 0);
+        if (_uwNeighbour >= 0) _gl.Uniform1(_uwNeighbour, 0);
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, 0f);
         if (_uwSwellOn >= 0) _gl.Uniform1(_uwSwellOn, 0);
         if (_uwClipOn >= 0) _gl.Uniform1(_uwClipOn, 0);

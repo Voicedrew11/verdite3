@@ -289,6 +289,12 @@ public sealed partial class GlCore : IGpuBackend
         if (uMip >= 0) _gl.Uniform1(uMip, 5);
         int uMatPrim = _gl.GetUniformLocation(_progPrim, "uMatTable");
         if (uMatPrim >= 0) _gl.Uniform1(uMatPrim, MatUnit);
+        // 0088. Never read for a packet, but an integer sampler left on unit 0 beside
+        // uVram's float one makes every draw invalid.
+        int uRecPrim = _gl.GetUniformLocation(_progPrim, "uRecords");
+        if (uRecPrim >= 0) _gl.Uniform1(uRecPrim, RecordsUnit);
+        int uNbPrim = _gl.GetUniformLocation(_progPrim, "uNbHalves");
+        if (uNbPrim >= 0) _gl.Uniform1(uNbPrim, NbHalvesUnit);
         InitShadowUniforms(_progPrim, true);
         _uPrimScale = _gl.GetUniformLocation(_progPrim, "uScale");
         SetScaleUniform(_progPrim, GlVram.Scale);

@@ -1544,6 +1544,14 @@ internal static class GlShaders
         // 0072, amended. A half's weight in the gate, faded in and out by the port;
         // PrimFs dithers it away. 1 for everything the gate does not weigh.
         flat out float vFade;
+        // 0088. A record-lit map corner while NeighbourBlend is on: x bit 31 set, 30
+        // the fog on, 29 and 28 the fog and the light blended, bits 14-19 the half's
+        // record, 0-13 its half flag; y its RGBC. Its world X and Z, and its own
+        // record's light dots. 0 for everything else.
+        flat out uvec2 vNb;
+        out vec2 vNbXZ;
+        noperspective out vec3 vNbDots;
+        uniform int uNeighbour;
 
         uniform mat3  uR;
         uniform vec3  uCam;
@@ -1625,7 +1633,7 @@ internal static class GlShaders
             return true;
         }
 
-        void recordLit(uint l, vec3 normal, float ax, float az, uint rgbc, out vec3 color, out vec3 cue) {
+        void recordLit(uint l, vec3 normal, float ax, float az, uint rgbc, out vec3 color, out vec3 cue, out ivec3 dots) {
             int own = int(l & 63u), rot = int((l >> 6) & 3u);
             ivec3 nb = ivec3(int((l >> 8) & 63u), int((l >> 14) & 63u), int((l >> 20) & 63u));
             // TileWeights: own, along X, along Z, the diagonal; 0 where there is no half.
@@ -1649,6 +1657,7 @@ internal static class GlShaders
                       + recInt(own, rot * 9 + 3 * j + 2) * n.z;
                 a[j] = clamp(v >> 12, 0, 0x7FFF);
             }
+            dots = a;
             for (int c = 0; c < 3; c++) {
                 int bk = recInt(own, 45 + c);
                 if (mixL) bk = mixExact(k, ivec4(bk, recInt(rec.y, 45 + c), recInt(rec.z, 45 + c), recInt(rec.w, 45 + c)), t);
@@ -1705,7 +1714,21 @@ internal static class GlShaders
         void main() {
             vec3 w = inWorld, color = inColorF, cue = inCue;
             uint flags = inFlags, rgbc = inRgbc;
-            if (uDepthOnly == 0 && (inLight & 0x80000000u) != 0u) recordLit(inLight, inColorF, inCue.x, inCue.y, inRgbc, color, cue);
+            ivec3 litDots = ivec3(0);
+            vNb = uvec2(0u);
+            vNbXZ = vec2(0.0);
+            vNbDots = vec3(0.0);
+            if (uDepthOnly == 0 && (inLight & 0x80000000u) != 0u) {
+                recordLit(inLight, inColorF, inCue.x, inCue.y, inRgbc, color, cue, litDots);
+                uint nbHid = (inFlags >> 13) & 0x3FFFu;
+                if (uNeighbour != 0 && uModel == 0 && nbHid != 0u) {
+                    vNb = uvec2(0x80000000u | (uFogOn != 0 ? 0x40000000u : 0u)
+                        | ((uNeighbour & 1) != 0 ? 0x20000000u : 0u) | ((uNeighbour & 2) != 0 ? 0x10000000u : 0u)
+                        | (inLight & 63u) << 14 | nbHid, inRgbc);
+                    vNbXZ = inWorld.xz;
+                    vNbDots = vec3(litDots);
+                }
+            }
             if (uModel != 0) {
                 if (!modelFaceKept(inCue, inRgbc)) {
                     gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
@@ -1780,6 +1803,8 @@ internal static class GlShaders
                 vLit = color;
                 vLight = (vLight & 0x07000000u) | 0x80000000u | (rgbc & 0xFFFFFFu);
             }
+            // 0088. A blended pixel is shaded from the lit colour, per pixel lighting or not.
+            if (vNb.x != 0u && vLight == 0u) vLit = color;
             uint mip = inMip;
             if (uMipIndirect != 0) mip = inMip == 0u ? 0u : texelFetch(uMipTable, int(inMip) - 1).r;
             vTex = uvec2(inRect, (flags & 0x80000000u) | mip);
@@ -1845,6 +1870,10 @@ internal static class GlShaders
         flat out uvec2 vTex;
         flat out uint vMat;
         flat out float vFade;
+        // 0088. The world program's; no packet is blended.
+        flat out uvec2 vNb;
+        out vec2 vNbXZ;
+        noperspective out vec3 vNbDots;
 
         uniform vec2 uVertexOffset;
         uniform vec2 uPosBias;
@@ -1878,6 +1907,9 @@ internal static class GlShaders
             vTex = inTex;
             vMat = inMat;
             vFade = 1.0;
+            vNb = uvec2(0u);
+            vNbXZ = vec2(0.0);
+            vNbDots = vec3(0.0);
             vDither = (inTexpage >> 10) & 1;
             vRepClut = (inTexpage >> 12) & 1;
 
@@ -1920,6 +1952,10 @@ internal static class GlShaders
         flat in uvec2 vTex;
         flat in uint vMat;
         flat in float vFade;
+        // 0088. NeighbourBlend's corner word, world X and Z, and own light dots (WorldVs).
+        flat in uvec2 vNb;
+        in vec2 vNbXZ;
+        noperspective in vec3 vNbDots;
 
         layout(location = 0, index = 0) out vec4 FragColor;
         layout(location = 0, index = 1) out vec4 BlendColor;
@@ -2310,6 +2346,34 @@ internal static class GlShaders
 
         // The depth cue's weight, 0..4096, from the raw MAC0 through the curve.
         //@linearDepthCue
+        //@neighbourBlend
+
+        // 0088. A pixel some neighbour of whose half lights or fogs otherwise: its lit
+        // colour (when the light blends) and its cue weight from the records around
+        // it, at its own depth. Every other pixel is drawn as before.
+        bool gNbOn = false, gNbLit = false;
+        float gNbW = 0.0;
+        vec3 gNbColor = vec3(0.0);
+        void nbPrepare() {
+            if (vNb.x == 0u || vDepth <= 0.0) return;
+            ivec4 rec;
+            vec4 k;
+            nbAround(int((vNb.x >> 14) & 63u), int(vNb.x & 0x3FFFu), vNbXZ, rec, k);
+            float z = vDepth * 65536.0, w = 0.0;
+            bool fogOn = (vNb.x & 0x40000000u) != 0u;
+            bool fog = fogOn && (vNb.x & 0x20000000u) != 0u && nbFog(rec, k, z, w);
+            gNbLit = (vNb.x & 0x10000000u) != 0u && nbLight(rec, k, ivec3(round(vNbDots)), vNb.y, gNbColor);
+            if (!fog && !gNbLit) return;
+            // The light alone blended: the own record's cue, at this pixel too, on a
+            // curve this blends.
+            if (!fog && fogOn) {
+                w = nbRecordFog(rec.x, z);
+                if (w < 0.0) { gNbLit = false; return; }
+            }
+            gNbOn = true;
+            gNbW = w;
+        }
+
         float fogRaw() {
             if (((vLight >> 24) & 7u) == 5u) return linearDepthCue(vDepth * 65536.0, vCue);
             if (uCueFromZ <= 0.0 || vDepth <= 0.0) return vFog;
@@ -2320,10 +2384,11 @@ internal static class GlShaders
         float cueWeight() {
             uint curve = (vLight >> 24) & 7u;
             bool level = gCueScale < 1.0 && curve != 0u && curve != 5u;
-            float fog = fogRaw();
+            float fog = gNbOn ? gNbW : fogRaw();
             float raw = level ? levelCue(fog, curve) : fog;
             float ir0 = clamp(raw, 0.0, 4096.0);
-            float w = curve == 1u ? max(ir0 - 800.0, 0.0) * 2.0
+            float w = gNbOn ? fog
+                 : curve == 1u ? max(ir0 - 800.0, 0.0) * 2.0
                  : curve == 2u ? (ir0 < 2800.0 ? ir0 : 3.0 * ir0 - 5600.0)
                  : curve == 3u ? ir0 * 0.5
                  : curve == 4u ? (level ? (ir0 < 2800.0 ? ir0 : 3.0 * ir0 - 5600.0) : fog)
@@ -2349,9 +2414,9 @@ internal static class GlShaders
         }
 
         ivec3 shade8(vec3 extra) {
-            if (vLight == 0u) return ivec3(levelColour(vColor.rgb) * 255.0 + 0.5);
+            if (vLight == 0u && !gNbOn) return ivec3(levelColour(vColor.rgb) * 255.0 + 0.5);
             uint mode = vLight >> 24;
-            vec3 lit = vLit;
+            vec3 lit = gNbLit ? gNbColor : vLit;
             if ((mode & 0x80u) != 0u) {
                 vec3 rgbc = vec3(uvec3(vLight, vLight >> 8u, vLight >> 16u) & uvec3(255u));
                 vec3 a = clamp(vLit, 0.0, 32767.0);
@@ -2474,6 +2539,7 @@ internal static class GlShaders
             }
             // 0071. Not into a planar reflection: its view is the mirrored camera's.
             vec3 extra = vec3(0.0);
+            nbPrepare();
             bool mat = uEmitOn != 0 && vMat != 0u && vLight != 0u;
             vec4 m0 = mat ? texelFetch(uMatTable, ivec2(int(vMat), 0), 0) : vec4(0.0);
             float spec = mat ? texelFetch(uMatTable, ivec2(int(vMat), 2), 0).r : 0.0;
@@ -2653,7 +2719,7 @@ internal static class GlShaders
             FragColor = vec4(quant5(c8), max(texel.a, uSetMask));
             BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;
         }
-        """.Replace("//@linearDepthCue", LinearDepthCue.Glsl);
+        """.Replace("//@linearDepthCue", LinearDepthCue.Glsl).Replace("//@neighbourBlend", NeighbourBlend.Glsl);
     
     public const string FullscreenVs120 = """
         #version 120
