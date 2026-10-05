@@ -25,7 +25,8 @@ namespace Kf3;
 /// </summary>
 public static class FramePacing
 {
-    public static double LogicHz { get; private set; } = 15.0;
+    public const double DefaultTickRate = 15.0;
+    public static double LogicHz { get; private set; } = DefaultTickRate;
     public static double TargetFps { get; private set; }
     public static bool Enabled { get; private set; }
 
@@ -127,9 +128,10 @@ public static class FramePacing
         _probe = probe == "1";
         if (!string.IsNullOrWhiteSpace(tickRate))
         {
-            if (!double.TryParse(tickRate, NumberStyles.Float, CultureInfo.InvariantCulture, out double hz))
+            if (!double.TryParse(tickRate, NumberStyles.Float, CultureInfo.InvariantCulture, out double hz)
+                || !double.IsFinite(hz))
                 throw new ArgumentException($"KF3_TICKRATE: cannot read '{tickRate}'");
-            LogicHz = Math.Clamp(hz, 5.0, 60.0);
+            SetTickRate(hz);
         }
         if (string.IsNullOrWhiteSpace(fps)) return;
         Enabled = true;
@@ -165,6 +167,16 @@ public static class FramePacing
         TargetFps = fps <= 0.0 ? 0.0 : Math.Clamp(fps, 5.0, 1000.0);
         _due = 0.0;
         if (Enabled && _inGame) ApplyHostCeiling();
+    }
+
+    /// <summary>The world's live rate, keeping its progress toward the next tick.</summary>
+    public static void SetTickRate(double hz)
+    {
+        if (!double.IsFinite(hz)) throw new ArgumentOutOfRangeException(nameof(hz));
+        hz = Math.Clamp(hz, 5.0, 60.0);
+        if (hz == LogicHz) return;
+        LogicHz = hz;
+        _fallbackNextMs = -1.0;
     }
 
     public static bool ProbeOn { get => _probe; set => _probe = value; }

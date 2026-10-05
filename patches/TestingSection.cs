@@ -10,7 +10,7 @@ namespace Kf3;
 /// so a change can be compared without a restart. Each control writes the same
 /// state its `KF3_*` variable sets at boot.
 ///
-/// The on/off choices and the frame rate are kept in interface.ini (`kf3.*`) and
+/// The on/off choices, frame rate and tick rate are kept in interface.ini (`kf3.*`) and
 /// put back at the next boot, **unless the variable is set**, which wins. The
 /// routines' recompiled/C#/verify choice is not kept: verify is a comparison for
 /// one session. See "The Testing tab" in docs/DEVELOPMENT.md.
@@ -27,6 +27,18 @@ public sealed class TestingSection : ISettingsSection
     {
       "strings": {
         "settings.kf3testing": { "en": "Testing", "pt-BR": "Testes", "es-419": "Pruebas" },
+        "kf3testing.pacing.tip": {
+          "en": "Runs the world at the tick rate below and draws at the chosen frame rate.",
+          "pt-BR": "Atualiza o mundo na taxa de ticks abaixo e desenha na taxa de quadros escolhida.",
+          "es-419": "Actualiza el mundo a la frecuencia de ticks de abajo y dibuja a la frecuencia de cuadros elegida."
+        },
+        "kf3testing.tickrate": { "en": "Tick rate", "pt-BR": "Taxa de ticks", "es-419": "Frecuencia de ticks" },
+        "kf3testing.tickrate.reset": { "en": "Reset to 15 Hz", "pt-BR": "Restaurar 15 Hz", "es-419": "Restablecer 15 Hz" },
+        "kf3testing.tickrate.tip": {
+          "en": "World updates per second. The original is 15 Hz; changing this changes gameplay speed. Requires frame pacing. Saved for the next launch; KF3_TICKRATE overrides it at boot.",
+          "pt-BR": "Atualizações do mundo por segundo. O original é 15 Hz; alterar isso muda a velocidade do jogo. Requer controle de quadros. Salvo para a próxima execução; KF3_TICKRATE tem prioridade ao iniciar.",
+          "es-419": "Actualizaciones del mundo por segundo. La frecuencia original es 15 Hz; cambiarla cambia la velocidad del juego. Requiere control de cuadros. Se guarda para el próximo inicio; KF3_TICKRATE tiene prioridad al iniciar."
+        },
         "kf3testing.widescreen.aspect": { "en": "Aspect", "pt-BR": "Proporção", "es-419": "Relación de aspecto" },
         "kf3testing.widescreen.tip": {
           "en": "How wide the picture is. Wider shows more of the room, not a stretched 4:3.",
@@ -60,7 +72,7 @@ public sealed class TestingSection : ISettingsSection
         new(Mouse.LeadKey, "KF3_MOUSE_LEAD", () => Mouse.Lead, v => Mouse.Lead = v),
     ];
 
-    const string FpsKey = "kf3.fps", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
+    const string FpsKey = "kf3.fps", TickRateKey = "kf3.tickrate", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
 
     public static void Install()
     {
@@ -81,6 +93,11 @@ public sealed class TestingSection : ISettingsSection
             int fps = Rt.View.GetInt(FpsKey, -1);
             FramePacing.SetTarget(fps >= 0 ? fps : FramePacing.DefaultFps);
         }
+        if (Unset("KF3_TICKRATE"))
+        {
+            float hz = Rt.View.GetFloat(TickRateKey, (float)FramePacing.DefaultTickRate);
+            FramePacing.SetTickRate(float.IsFinite(hz) ? hz : FramePacing.DefaultTickRate);
+        }
         foreach (var k in Switches)
             if (Unset(k.Env) && Rt.View.GetInt(k.Key, -1) is >= 0 and var v) k.Set(v != 0);
         if (Unset("KF3_TEXSCROLL") && Rt.View.GetInt(TexKey, -1) is >= 0 and var t) TextureScroll.Setting = t;
@@ -93,6 +110,13 @@ public sealed class TestingSection : ISettingsSection
     static void Keep(string key, int value)
     {
         Rt.View.SetInt(key, value);
+        Rt.SaveView();
+    }
+
+    static void KeepTickRate(double hz)
+    {
+        FramePacing.SetTickRate(hz);
+        Rt.View.SetFloat(TickRateKey, (float)FramePacing.LogicHz);
         Rt.SaveView();
     }
 
@@ -153,7 +177,7 @@ public sealed class TestingSection : ISettingsSection
     {
         ImGui.SeparatorText("Frame pacing");
         Toggle("Frame pacing", K("kf3.pacing"),
-            "Runs the world at its own 15 ticks a second and draws as often as the rate below.");
+            Localization.T("kf3testing.pacing.tip"));
 
         bool uncapped = FramePacing.TargetFps <= 0.0;
         if (!FramePacing.Enabled) ImGui.BeginDisabled();
@@ -172,6 +196,14 @@ public sealed class TestingSection : ISettingsSection
             FramePacing.SetTarget(uncapped ? 0 : fps);
             Keep(FpsKey, uncapped ? 0 : fps);
         }
+        float hz = (float)FramePacing.LogicHz;
+        ImGui.SetNextItemWidth(240);
+        if (ImGui.SliderFloat(Localization.T("kf3testing.tickrate"), ref hz, 5f, 60f, "%.1f Hz", ImGuiSliderFlags.AlwaysClamp))
+            KeepTickRate(hz);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("kf3testing.tickrate.tip"));
+        ImGui.SameLine();
+        if (ImGui.Button(Localization.T("kf3testing.tickrate.reset")))
+            KeepTickRate(FramePacing.DefaultTickRate);
         if (FramePacing.Enabled) { Rates(); Note($"Drawing {_fps:0.0} fps at {_tps:0.0} ticks a second."); }
         if (!FramePacing.Enabled) ImGui.EndDisabled();
 

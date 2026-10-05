@@ -184,8 +184,10 @@ in at slot 8190 the walk of the main table stops there.
 Settings ▸ **Testing** (`patches/TestingSection.cs`, added 2026-10-02) holds every
 switch the port has, live, so a change can be compared without a restart:
 
-- **Frame pacing** on or off, the frame rate (30-360, or uncapped), and a readout
-  of the frames drawn and ticks taken a second.
+- **Frame pacing** on or off, the frame rate (30-360, or uncapped), the live tick
+  rate (5-60 Hz, with a reset to the original 15 Hz), and a readout of the frames
+  drawn and ticks taken a second. The tick rate is dimmed while pacing is off;
+  changing it changes gameplay speed.
 - **Smoothing**: the camera (with the compass needle and the gauges), creatures
   and objects (not judged), the needle's and the billboards' tick holds, and the
   scrolling textures (every frame, held, carried). Dimmed while pacing is off.
@@ -200,7 +202,8 @@ calls the original. Measured: with nothing set, the model walk runs 14.94 times 
 second (the game's own rate, the frame gate in place); `KF3_FPS=144` still reads
 144.0 fps at 15.0 ticks/s.
 
-**Kept**: the on/off choices, the frame rate and the textures' mode go in
+**Kept**: the on/off choices, the frame rate, the tick rate (`kf3.tickrate`) and
+the textures' mode go in
 `interface.ini` as `kf3.*` and come back at the next boot, applied on
 `RuntimeReadyEvent` (the config loads after `Program.cs`). **A `KF3_*` variable
 that is set wins** over a kept value. Checked: `kf3.pacing=1`, `kf3.fps=120` and

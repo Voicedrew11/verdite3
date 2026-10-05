@@ -19,7 +19,7 @@ kept.
 | `KF3_AUTOSTART` | `1`..`15`: load that card A slot at boot; `new`: a New Game | off |
 | `KF3_AUTOPAD` | `seconds:button:holdMs,…` from the first area load | none |
 | `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is no pacing | unset |
-| `KF3_TICKRATE` | the world's rate under pacing; a comparison only | 15 |
+| `KF3_TICKRATE` | the world's rate under pacing (5-60 Hz); changes gameplay speed. Testing ▸ Frame pacing ▸ Tick rate, kept as `kf3.tickrate`; the variable wins at boot | 15 |
 | `KF3_FPS_PROBE` | `1`: a pacing line a second | off |
 | `KF3_PACING_NOBOUNDARY` | `1`: leave the frame boundary unhooked, to test the watchdog | off |
 | `KF3_VBLANKPACING` | `0`: leave every VSync call outside stage 15 on the runtime's clock, to compare (with `KF3_FPS`, they wait a real vblank by default) | on |
