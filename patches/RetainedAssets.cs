@@ -7,7 +7,7 @@ namespace Kf3;
 /// <summary>Content-addressed source meshes and poses; no projected vertex capture.</summary>
 public static class RetainedAssets
 {
-    public enum Family { Lit, Sky }
+    public enum Family { Lit, Sky, MapBulk }
     public sealed class Mesh
     {
         public int Start, Opaque, Total, MaxVertex;
@@ -71,10 +71,10 @@ public static class RetainedAssets
             int vertexBase, normalBase, step;
             switch (type)
             {
-                case 0x24 when family == Family.Lit: n = 3; gouraud = false; vertexBase = 14; normalBase = 12; step = 2; break;
-                case 0x2C when family == Family.Lit: n = 4; gouraud = false; vertexBase = 18; normalBase = 16; step = 2; break;
+                case 0x24 when family is Family.Lit or Family.MapBulk: n = 3; gouraud = false; vertexBase = 14; normalBase = 12; step = 2; break;
+                case 0x2C when family is Family.Lit or Family.MapBulk: n = 4; gouraud = false; vertexBase = 18; normalBase = 16; step = 2; break;
                 case 0x34: n = 3; vertexBase = 14; normalBase = 12; step = 4; break;
-                case 0x3C: n = 4; vertexBase = 18; normalBase = 16; step = 4; break;
+                case 0x3C when family != Family.MapBulk: n = 4; vertexBase = 18; normalBase = 16; step = 4; break;
                 case 0x30 when family == Family.Sky: n = 3; textured = false; vertexBase = 6; normalBase = 4; step = 4; break;
                 case 0x38 when family == Family.Sky: n = 4; textured = false; vertexBase = 6; normalBase = 4; step = 4; break;
                 default:
@@ -86,14 +86,17 @@ public static class RetainedAssets
                     mesh.IgnoredCommands[command] = ignored + 1;
                     at = body + bytes; continue;
             }
-            if (bytes < vertexBase + (n - 1) * step + 2) { reason = "short-face-body"; return null; }
+            // Bulk map GT3 uses contiguous vertex refs but interleaved normals.
+            int vertexStep = family == Family.MapBulk && type == 0x34 ? 2 : step;
+            int required = Math.Max(vertexBase + (n - 1) * vertexStep, normalBase + (gouraud ? (n - 1) * step : 0)) + 2;
+            if (bytes < required) { reason = "short-face-body"; return null; }
             bool semi = textured && (command & 2) != 0;
             uint tpage = textured ? m.ReadU16(body + 6) & 0x1FFu : 0x8000u;
             int mode = (int)(tpage >> 5 & 3);
             int u0 = 255, v0 = 255, u1 = 0, v1 = 0;
             for (int k = 0; k < n; k++)
             {
-                uint offset = m.ReadU16(body + (uint)(vertexBase + k * step));
+                uint offset = m.ReadU16(body + (uint)(vertexBase + k * vertexStep));
                 if ((offset & 7) != 0) { reason = "unaligned-vertex-index"; return null; }
                 vi[k] = offset / 8; mesh.MaxVertex = Math.Max(mesh.MaxVertex, (int)vi[k]);
                 ni[k] = m.ReadU16(body + (uint)(normalBase + (gouraud ? k * step : 0)));

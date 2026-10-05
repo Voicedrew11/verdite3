@@ -32,7 +32,7 @@ public static class RetainedMap
         {
             if (!used[(int)i]) continue;
             uint header = table + 12 + i * 28;
-            Models[i] = RetainedAssets.Get(m, table, header, RetainedAssets.Family.Lit, out string reason);
+            Models[i] = RetainedAssets.Get(m, table, header, RetainedAssets.Family.MapBulk, out string reason);
             var mesh = Models[i];
             uint vertices = m.ReadU32(header + 4), address = table + 12 + m.ReadU32(header);
             if (mesh == null || vertices > 8192 || !RetainedAssets.InRam(address, vertices * 8) || mesh.MaxVertex >= vertices)
@@ -129,7 +129,12 @@ public static class RetainedMap
         if (near)
         {
             // Opt-in source descriptor extraction; never suppresses the near route.
-            RetainedNear.Probe(m, Models[kind]!, half);
+            if (RetainedNear.Enabled)
+            {
+                uint table = m.ReadU32(TablePointer), header = table + 12 + kind * 28;
+                var mesh = RetainedAssets.Get(m, table, header, RetainedAssets.Family.Lit, out _);
+                if (mesh != null) RetainedNear.Probe(m, mesh, half);
+            }
             GpuWorld.Fallback(0x8003BB04, caller, "near-subdivision-pending");
             return false;
         }

@@ -143,4 +143,5 @@ foreach (string name in new[] { "WorldVs", "WorldNormalVs", "PrimFs", "NormalFs"
 File.WriteAllText(Path.Combine(output, "LinearDepthCue.glsl"), LinearDepthCue.Glsl);
 SceneProbe.NativeInnerFixtures.Run(Check, output);
 assertions += NearDescriptorFixtures.Run(memory, output);
+SceneProbe.BulkMapFixtures.Run(Check, output);
 Console.WriteLine($"Scene source probes: {assertions} assertions passed; composed shaders, {fogCases.Count} cue and {poseCases.Count} literal pose fixtures exported");
