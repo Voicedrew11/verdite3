@@ -144,6 +144,7 @@ Kf3.SceneFeatures.Install();
 Kf3.CullCone.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL"),
                        Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL_PROBE"));
 Kf3.CullCone.Install();
+Kf3.RenderDistance.Configure();
 // The near divisions' screen block widened to the aspect. See patches/NearScreen.cs.
 Kf3.NearScreen.Configure(Environment.GetEnvironmentVariable("KF3_NEARSCREEN"),
                          Environment.GetEnvironmentVariable("KF3_NEARSCREEN_PROBE"));

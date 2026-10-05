@@ -35,6 +35,14 @@ recompiled and running, following Verdite2's method but applied to this disc.
   near/far floor seams, doorways and levels. See "Blending light and fog across
   tile edges" in `GPU_RENDERER.md`.
 
+- **Render distance and a fade-in at its edge** (2026-10-05): built and measured,
+  off by default (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, Video; runtime `0089`).
+  **To judge by eye**: far land and skylines, the fade walking towards and away,
+  creatures fading in, gaps and backs, far land through cave walls, performance.
+  Open: an occlusion rule past the radius if walls leak, a time-based fade for
+  flood/cone pops, models past the radius. See "Render distance" in
+  `WIDESCREEN.md`.
+
 - **Twin-stick control and the Input pane** (2026-10-03, `docs/INPUT.md`):
   built and measured with a synthetic stick; **to judge on a real pad**: the
   pitch direction, the left stick's leak into turning, the feel, and whether the

@@ -54,6 +54,7 @@ public static class AgentServer
         "peek <addr> [bytes=16] - read guest memory, hex",
         "dump <file> - write the 2 MB of guest RAM to a file",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
+        "renderdist <tiles> [fadeTiles] - the retained render distance and its fade (0 the game's, none)",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
@@ -178,7 +179,8 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill"
+                or "renderdist":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -222,6 +224,7 @@ public static class AgentServer
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "kill" => "{\"ok\":true,\"cmd\":\"kill\",\"status\":" + Q(AutoReload.Simulate()) + "}",
         "warp" => SceneDriver.Warp(cmd.Arg1),
+        "renderdist" => RenderDistance.Shell(cmd.Arg1, cmd.Arg2),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
@@ -232,7 +235,8 @@ public static class AgentServer
                  ",\"modelUnderMap\":" + RetainedScene.ModelUnderMap +
                  ",\"modelUnderSlack\":[" + string.Join(',', RetainedScene.ModelUnderSlack) + "]" +
                  ",\"toleranceSamples\":[" + string.Join(',', RetainedScene.ToleranceSamples) + "]" +
-                 ",\"toleranceBehind\":[" + string.Join(',', RetainedScene.ToleranceBehind) + "]}",
+                 ",\"toleranceBehind\":[" + string.Join(',', RetainedScene.ToleranceBehind) + "]" +
+                 "," + RenderDistance.Counters() + "}",
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
 

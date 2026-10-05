@@ -18,6 +18,10 @@ public static class RetainedMap
     static readonly byte[] Halves = new byte[RetainedScene.HalvesW * RetainedScene.HalvesH];
     static int _mixedHalves = -1; static long _mixedRecords = -1;
     public static bool Ready { get; private set; }
+    /// <summary>Each map mesh's vertical extent and its horizontal reach from the tile's
+    /// centre (the largest |X| or |Z|, so any rotation), in world units, for
+    /// RenderDistance's frustum test.</summary>
+    public static readonly short[] MeshYMin = new short[240], MeshYMax = new short[240], MeshReach = new short[240];
     public static long ChunkBuilds, MapUpdates, RecordUpdates;
     /// <summary>Drawn halves beside a half on the same level (of the eight around it)
     /// whose record fogs, or lights, otherwise: where NeighbourBlend changes anything.</summary>
@@ -44,7 +48,9 @@ public static class RetainedMap
             uint vertices = m.ReadU32(header + 4), address = table + 12 + m.ReadU32(header);
             if (mesh == null || vertices > 8192 || !RetainedAssets.InRam(address, vertices * 8) || mesh.MaxVertex >= vertices)
             { Models[i] = null; ModelSignatures[i] = 0; GpuWorld.Fallback(0x8003BB04, 0, reason.Length > 0 ? reason : "map-vertex-range"); continue; }
-            ModelSignatures[i] = mesh.FaceHash ^ mesh.NormalHash ^ RetainedAssets.Hash(m.Ram, address, vertices * 8);
+            ulong signature = mesh.FaceHash ^ mesh.NormalHash ^ RetainedAssets.Hash(m.Ram, address, vertices * 8);
+            if (signature != ModelSignatures[i]) Bounds(m, (int)i, address, vertices);
+            ModelSignatures[i] = signature;
         }
         bool dirty = false;
         for (int chunk = 0; chunk < 100; chunk++)
@@ -70,6 +76,17 @@ public static class RetainedMap
             RetainedScene.SetStatic(CollectionsMarshal.AsSpan(vertices)); MapUpdates++;
         }
         Ready = RetainedScene.StaticCount[0] > 0;
+    }
+    static void Bounds(PSMemory m, int kind, uint address, uint vertices)
+    {
+        int low = short.MaxValue, high = short.MinValue, reach = 0;
+        for (uint v = 0; v < vertices; v++)
+        {
+            int x = (short)m.ReadU16(address + v * 8), y = (short)m.ReadU16(address + v * 8 + 2), z = (short)m.ReadU16(address + v * 8 + 4);
+            low = Math.Min(low, y); high = Math.Max(high, y); reach = Math.Max(reach, Math.Max(Math.Abs(x), Math.Abs(z)));
+        }
+        if (low > high) low = high = 0;
+        MeshYMin[kind] = (short)low; MeshYMax[kind] = (short)high; MeshReach[kind] = (short)Math.Min(reach, short.MaxValue);
     }
     static RetainedScene.Vertex[] BuildChunk(PSMemory m, uint table, int x0, int z0)
     {
@@ -185,6 +202,7 @@ public static class RetainedMap
         // near path's libgte division left corners at or behind the eye without a depth
         // (their packets drew in painter's order over the models).
         int tile = (int)(index / 10); RetainedScene.NoteHalf(tile % 80, tile / 80, (int)(index % 10 / 5));
+        RenderDistance.NoteWalk((int)(index / 5));
         GpuWorld.Retained++;
         return GpuWorld.Drawing;
     }

@@ -672,8 +672,9 @@ The same format as Verdite2's, at another address:
   kinds and `NCDT` for the others.
 
 **`func_8003BFD0`, the walk** (Verdite2's `func_80031C94`): a 25x25 window of
-cells round the camera (Verdite2's is 24x24), its origin at `0x801AEC74`/`78`
-(copied to `+0x118`/`+0x11C`), bounded to the 80x80 map. A cell's grid byte must
+cells reaching ahead of the camera (Verdite2's is 24x24; see "The draw radius and
+the window" below), its origin at `0x801AEC74`/`78` (copied to `+0x118`/`+0x11C`),
+bounded to the 80x80 map. A cell's grid byte must
 have bit `0x02` for either half to be drawn (Verdite2 has bit 0 for the lower and
 bit 1 for the upper); its position relative to the camera goes to
 `0x1F800100` and `func_8003BB04` draws it.
@@ -687,6 +688,42 @@ gate (`0x8018FAD4 == 1` and `0x8018FAEA` set: a mesh past half the table is
 skipped, Verdite2's `0x8017E05C`/`0x8017E072` gate) and the assembler: **grid bit
 `0x04` with at least 10 KB of primitive buffer left is `func_8003AB04`, otherwise
 `func_80039D50`.** Inlined GTE throughout, where Verdite2 calls libgte.
+
+**The far gate** in full: while the s16 at `0x8018FAD4` is 1 (an area change
+pending, "Changing area" above) and the byte at `0x8018FAEA` is set, a half whose
+mesh index is at or past half the model table's count (`*(table + 4) >> 1`) is
+skipped. It only acts during a load; what `0x8018FAEA` marks was not read. The
+retained renderer's added halves (`patches/RenderDistance.cs`) take the same gate.
+
+### The draw radius and the window
+
+Read from `func_80034BF4` and checked against it (2026-10-05): the recompiled
+classifier ran on the 28-area corpus's RAM at 64 yaws and five pitches, 8,960 runs,
+in `tools/scene-probe/RenderDistanceFixtures.cs`.
+
+- **The eye's tile is the window middle, not its centre.** The middle cell is
+  row `(0xC7FF - 8·sin s7) >> 12`, column `(0xC7FF - 8·cos s7) >> 12` (`s7` = yaw +
+  `0x400`, sin and cos at 4096), 4 to 20; the epilogue writes the origin
+  `0x801AEC74`/`78` as the eye's tile (`0x801AEC64`/`68`) less the middle. The
+  window so reaches up to 20 cells ahead of the eye and 4 behind it. Rows are Z,
+  columns X. In every run the middle was the eye's tile.
+- **A cell is drawn** (bit `0x02`) only when it is in the window, inside the cone
+  (two half-planes from an apex about three cells behind the eye, at the
+  half-angle S5) and its **whole-tile offset (i, j) from the eye's tile** has
+  `i² + j² < T5`, in integers; then a flood may clear it. `T5` is the radius byte
+  squared, times `cos(S5/2) >> 12` once `S5 ≥ 600` (looking up or down). Every lit
+  cell of the 8,960 runs met all three tests; 521,464 cells that met them were
+  cleared by a flood.
+- **The radius byte `0x801AEAE9` is a zone value.** Three writers: the area set-up
+  `func_80035394` writes 13 (and 1 to `0x801AEAEA`); object kind `0xE3` writes its
+  own while `func_80046884` puts the player's tile inside its box, once from
+  `func_80044D9C` (record bytes −8/−7 the box, −6 the radius, −5 for `0x801AEAEA`)
+  and every tick from `func_80047010` (object `+0x30`/`+0x31` the box, `+0x32` the
+  radius, `+0x33`). The corpus's arrivals read 9 in areas 3 and 12-27 and 13 in the
+  rest; a run that arrived in 21, 25 and 27 from other tiles read 13 throughout.
+  What `0x801AEAEA` does was not read.
+- **The sky** (`func_800400AC`) ran in areas 0-12 of the scene census and in none of
+  13-27.
 
 **`func_80039D50`, the bulk assembler** (Verdite2's `func_8002FECC`, 147 calls
 and about 285 packets a frame here):

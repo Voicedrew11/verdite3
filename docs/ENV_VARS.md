@@ -146,6 +146,17 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
 - `KF3_NEIGHBOUR_BLEND=1`: blend each map pixel's light and fog with the light records
   of the tiles around it, so they no longer step at a tile edge (runtime `0088`); unset
   uses the saved choice (`kf3.neighbourblend`), default off until judged.
+- `KF3_RENDERDIST=<tiles>`: the retained map drawn out to that many tiles (up to 30;
+  0 or below the game's own edge is the game's reach); unset uses the saved choice
+  (`kf3.renderdistance`), default off until judged. See "Render distance" in
+  `WIDESCREEN.md`.
+- `KF3_RENDERDIST_FADE=<tiles>`: the map and models faded out over that band before
+  the edge of what is drawn (0 none); unset uses `kf3.renderdistance.fade`, default
+  off until judged.
+- `KF3_RENDERDIST_PROBE=1`: a line every five seconds (halves added, the edge, the
+  deepest box, the walk's halves outside the predicted reach, which must be 0) and
+  every change of the radius byte. Also the `renderdist <tiles> [fade]` shell verb
+  and the `rd*` members of `gpu`.
 - `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage.
 
 Video exposes the feature controls; Testing exposes session-only scene/reference

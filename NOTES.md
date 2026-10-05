@@ -58,7 +58,9 @@ perspective and the Z-buffer are on; native scene and persistent mesh/pose submi
 descriptor fixtures, shader probes and measured retained-depth coverage. The near
 map and near models are retained (no near fallback); front-table and exceptional
 contexts remain open. Light and fog blended across tile edges
-(`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built and measured, off until judged.
+(`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built and measured, off until judged, and
+so are a render distance past the game's radius and a fade at the edge of what is
+drawn (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, runtime `0089`; `docs/WIDESCREEN.md`).
 No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
 ## The documents

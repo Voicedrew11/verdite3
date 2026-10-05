@@ -89,6 +89,9 @@ def main():
 
     program(source("WorldVs"), source("PrimFs"))
     program(source("WorldNormalVs"), source("NormalFs"))
+    # 0089 added an input to both fragment programs: the packets' programs must still link.
+    program(source("PrimVs"), source("PrimFs"))
+    program(source("NormalVs"), source("NormalFs"))
     cases = json.loads((args.fixtures / "fog-cases.json").read_text())
     vertex = """#version 330 core
     void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }
@@ -244,19 +247,73 @@ def main():
             neighbour_bad.append(dict(case=case, gpuFog=fog, gpuLight=gpu_light))
         blended[0] += case["fog"] >= 0
         blended[1] += expected_light >= 0
-    report = dict(renderer=renderer, composedPrograms=2, linearCases=len(cases), maximumError=maximum,
+    # DistanceFade (0089), as PrimFs and NormalFs compose it, at the CPU reference's points.
+    fade_cases = json.loads((args.fixtures / "fade-cases.json").read_text())
+    fade_program = program(vertex, "#version 330 core\nuniform vec3 point; out float result;\n" + source("DistanceFade")
+                            + "\nvoid main() { result = distanceFade(point.xy, point.z); }")
+    use(fade_program)
+    fade_location = get_location(fade_program, b"uFade")
+    fade_depth = get_location(fade_program, b"uFadeZ")
+    fade_point = get_location(fade_program, b"point")
+    uniform4 = gl("glUniform4f", None, i, f, f, f, f)
+    uniform1 = gl("glUniform1f", None, i, f)
+    gl("glBindFramebuffer", None, u, u)(0x8d40, framebuffer)
+    gl("glViewport", None, i, i, i, i)(0, 0, 1, 1)
+    fade_bad, fade_error = [], 0.0
+    for cam_x, cam_z, edge, band, depth_limit, x, z, depth, expected in fade_cases:
+        uniform4(fade_location, cam_x, cam_z, edge, band)
+        uniform1(fade_depth, depth_limit)
+        uniform(fade_point, x, z, depth)
+        draw(4, 0, 3)
+        value = f()
+        read(0, 0, 1, 1, 0x1903, 0x1406, C.byref(value))
+        error = abs(value.value - expected)
+        fade_error = max(fade_error, error)
+        if error > 1e-4:
+            fade_bad.append(dict(camera=[cam_x, cam_z], edge=edge, band=band, depth=depth_limit, point=[x, z, depth],
+                                 expected=expected, gpu=value.value))
+    # Its ordered dither: which of a 4x4 block's pixels each weight drops.
+    dither_cases = json.loads((args.fixtures / "fade-dither.json").read_text())
+    dither_program = program(vertex, "#version 330 core\nuniform float weight; out float result;\n" + source("DistanceFade")
+                             + "\nvoid main() { result = fadeDropped(weight) ? 1.0 : 0.0; }")
+    use(dither_program)
+    dither_texture, dither_framebuffer = u(), u()
+    gl("glGenTextures", None, i, C.POINTER(u))(1, C.byref(dither_texture))
+    gl("glBindTexture", None, u, u)(0x0de1, dither_texture)
+    gl("glTexImage2D", None, u, i, i, i, i, i, u, u, ptr)(0x0de1, 0, 0x822e, 4, 4, 0, 0x1903, 0x1406, None)
+    gl("glGenFramebuffers", None, i, C.POINTER(u))(1, C.byref(dither_framebuffer))
+    gl("glBindFramebuffer", None, u, u)(0x8d40, dither_framebuffer)
+    gl("glFramebufferTexture2D", None, u, u, u, u, i)(0x8d40, 0x8ce0, 0x0de1, dither_texture, 0)
+    gl("glViewport", None, i, i, i, i)(0, 0, 4, 4)
+    dither_bad = []
+    by_weight = {}
+    for weight, x, y, dropped in dither_cases:
+        by_weight.setdefault(weight, {})[(x, y)] = dropped
+    for weight, expected in by_weight.items():
+        uniform1(get_location(dither_program, b"weight"), weight / 1000.0)
+        draw(4, 0, 3)
+        values = (f * 16)()
+        read(0, 0, 4, 4, 0x1903, 0x1406, values)
+        for (x, y), dropped in expected.items():
+            if int(values[y * 4 + x]) != dropped:
+                dither_bad.append(dict(weight=weight, x=x, y=y, expected=dropped, gpu=values[y * 4 + x]))
+    report = dict(renderer=renderer, composedPrograms=4, linearCases=len(cases), maximumError=maximum,
                   mismatches=bad, poseVertices=pose_vertices, poseMismatches=pose_bad,
                   lightCases=len(light_cases), lightMismatches=light_bad,
                   neighbourCases=len(neighbour["cases"]), neighbourFogBlended=blended[0],
-                  neighbourLightBlended=blended[1], neighbourFogError=fog_error, neighbourMismatches=neighbour_bad)
+                  neighbourLightBlended=blended[1], neighbourFogError=fog_error, neighbourMismatches=neighbour_bad,
+                  fadeCases=len(fade_cases), fadeError=fade_error, fadeMismatches=fade_bad,
+                  ditherCases=len(dither_cases), ditherMismatches=dither_bad)
     (args.fixtures / "gpu-report.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(f"{renderer}: two actual retained programs linked; {len(cases)} cue cases, max error {maximum}; "
+    print(f"{renderer}: four actual programs linked; {len(cases)} cue cases, max error {maximum}; "
           f"{pose_vertices} pose vertices, {len(pose_bad)} mismatches; {len(light_cases)} native light cases, {len(light_bad)} mismatches; "
           f"{len(neighbour['cases'])} neighbour cases ({blended[0]} fog, {blended[1]} light blended), "
-          f"{len(neighbour_bad)} mismatches, fog error {fog_error}")
-    if bad or pose_bad or light_bad or neighbour_bad:
-        raise RuntimeError(f"{len(bad)} GPU cue, {len(pose_bad)} GPU pose, {len(light_bad)} GPU light and "
-                           f"{len(neighbour_bad)} GPU neighbour mismatches")
+          f"{len(neighbour_bad)} mismatches, fog error {fog_error}; {len(fade_cases)} fade cases, "
+          f"{len(fade_bad)} mismatches, error {fade_error:.2e}; {len(dither_cases)} dither cases, {len(dither_bad)} mismatches")
+    if bad or pose_bad or light_bad or neighbour_bad or fade_bad or dither_bad:
+        raise RuntimeError(f"{len(bad)} GPU cue, {len(pose_bad)} GPU pose, {len(light_bad)} GPU light, "
+                           f"{len(neighbour_bad)} GPU neighbour, {len(fade_bad)} GPU fade and "
+                           f"{len(dither_bad)} GPU dither mismatches")
     api(egl, "eglTerminate", C.c_uint, C.c_void_p)(display)
 
 

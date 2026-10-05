@@ -166,7 +166,8 @@ bytes at 4:3, 8,708 at 16:9, 8,868 at 21:9 of 106,496; 0 frames ran out and 0 ne
 halves starved in every run. Pacing 144.0 fps drawn at 15.0 ticks/s.
 
 The cone was checked as the second suspect and ruled out. Unlike Verdite2, the
-window is centred on the camera and the occlusion flood's rays start at the
+window is built round the camera's tile (it reaches 20 cells ahead and 4 behind;
+see "The draw radius and the window" in `GAME_INTERNALS.md`) and the occlusion flood's rays start at the
 camera tile (`func_800345F4` / `func_800348F4`, called from `func_80034BF4`), and
 the `KF3_WIDESCREEN_CULL_PROBE=2` map shows the wedge's apex about four cells
 behind the camera, so every cell round the camera is already lit. A Verdite2-style
@@ -177,6 +178,117 @@ packets/frame (125 vs 125). Not kept.
 
 **Mechanism measured, picture not judged**: whether the corners and the near
 walls still pop in is the user's to look at.
+
+## Render distance, and a fade where things pop in
+
+`patches/RenderDistance.cs` with runtime `0089` (`DistanceFade`). Built
+2026-10-05 from `RENDER_DISTANCE_HANDOFF.md`. **Measured, not judged; both off by
+default.** The retained renderer only: the packet path, the reflections and the
+models keep the game's reach, and the guest's grid is never changed.
+
+- `KF3_RENDERDIST=<tiles>` (Video ▸ "Draw past the game's distance",
+  `kf3.renderdistance`): draw the map out to that many tiles, up to 30. Below the
+  game's own edge it does nothing.
+- `KF3_RENDERDIST_FADE=<tiles>` (Video ▸ "Fade in at the edge of the view",
+  `kf3.renderdistance.fade`): fade the map and the models out over that band
+  before the edge, which is the render distance when it is on and the game's edge
+  when it is off.
+
+### The game's edge
+
+The game draws a tile when its whole-tile offset from the eye's tile is inside the
+radius, it is in the window and it is in the cone ("The draw radius and the window"
+in `GAME_INTERNALS.md`). That edge is stepped, and moves with the eye's tile and
+the yaw (the window reaches ahead). A fade that ends at a fixed distance from the
+eye must end where no left-out tile can be, from any yaw and any place in the
+eye's tile, or a tile would vanish while still partly opaque. `GameEdge` finds that
+distance by brute force over the classifier (64 yaws, 4x4 places, a grid of
+-8..32), cached by `T5` and the cone's half-angle rounded up to 32:
+
+| `T5` | when | edge |
+|---|---|---|
+| 169 | radius 13, level | 11.66 tiles |
+| 143 | radius 13, looking up or down a little | 10.63 |
+| 132 | radius 13, looking down further | 7.81 |
+| 81 | radius 9, level | 7.81 |
+| 68, 63 | radius 9, looking up or down | 7.07, 6.71 |
+
+The fixture checked each against the exact nearest left-out tile for that run's
+yaw from 9x9 places: never nearer than the edge, and equal to it at the worst yaw.
+Looking up or down far enough to scale `T5` pulls the edge in, since the game
+draws less there; level and slightly pitched views keep it constant, and turning
+never moves it.
+
+### Selection
+
+Each frame (`GpuWorld.Begin`, after the grid and before the walk), with the
+render distance past the game's edge, every half whose tile is outside the game's
+window-and-radius, whose tile comes within the distance, whose mesh exists, which
+the far gate would not skip, and whose box (the mesh's own height range and reach,
+`RetainedMap.MeshYMin`/`MeshYMax`/`MeshReach`) meets the widened frustum is written
+255 into the frame's `MainHalves`. Inside the radius the game's grid decides, its
+flood included. There is no occlusion rule past the radius (see below).
+
+### The fade
+
+Per pixel in `PrimFs`, `clamp((edge - d) / band, 0, 1)` with `d` the horizontal
+distance from the camera, through the ordered dither the half gate already used,
+and the same in `NormalFs` for AO and the surface buffer. Past 62,976 of view depth
+it also falls to 0 by 65,024, so nothing drawn reaches the 16-bit depth limit.
+The sky and the arm never fade.
+
+### Measured
+
+- **Fixtures** (`tools/scene-probe/RenderDistanceFixtures.cs`): the classifier as
+  above; the selection on a synthetic map (the game's tiles never added, the ring
+  past the radius and the far tiles added, nothing behind the eye, past the
+  distance or empty, the far gate honoured); the fade exported for the GPU. The
+  source probe passes 5,632,542 assertions (the classifier sweep is most of them).
+- **GPU** (`scripts/shader_probe.py`, RX 9070 XT): the packet programs still link
+  with the new inputs; 360 fade cases match `DistanceFade.Weight` within 5e-7, and
+  112 dither cases match `DistanceFade.Dropped` exactly.
+- **Live, 28 areas at 30 tiles with a 3-tile fade** (`scripts/render_distance_tour.py`,
+  four level headings and two pitched at each arrival): **0 missed** of 24,508
+  retained draws; 128-501 halves added a frame by area (walked: 36-211); **0** of the
+  walk's halves outside the predicted reach; **0** added halves the walk also drew.
+  The deepest added box corner reached 65,826, which the depth fade covers.
+- **Off** (areas 3, 12, 13, 21, 25): no frame faded, nothing added, 4,384 draws, 0
+  missed; every walked half inside the predicted reach.
+- **Cost**, uncapped (`KF3_FPS=off`), fixed views at arrival, 16:9 (all at radius
+  13 in this run; see "The draw radius and the window"):
+
+  | view | off | game edge, fade 3 | 16 | 24 | 30 |
+  |---|---|---|---|---|---|
+  | area 21, yaw 0 | 1,345 | 1,350 | 1,267 | 1,164 | 1,082 |
+  | area 25, yaw 0 | 1,327 | 1,318 | 1,242 | 1,142 | 1,069 |
+  | area 27, yaw 2048 | 1,322 | 1,356 | 1,268 | 1,159 | 1,080 |
+  | area 10, yaw 2048 | 423 | 421 | 364 | 360 | 350 |
+  | area 0, yaw 2048 | 1,001 | 1,001 | 843 | 578 | 531 |
+
+  The fade alone costs nothing measurable. Area 0 looking back over the map is the
+  heaviest: 30 tiles halves its frame rate there, still over 500 fps. The runtime's
+  GPU timers (`0084`) have no reader in this port, so no per-pass split.
+
+### Not covered
+
+- **Occlusion past the radius**: none. Far land may show through cave walls or
+  doorways where the game's flood would have hidden it; Verdite2's flood
+  continuation is the fix if it does. Areas 13-27 draw no sky.
+- **Pops a distance fade cannot cover**: cells the flood or the cone change as you
+  turn or round a corner still pop. A time-based fade (Verdite2's `ReflectionReach`)
+  would be the next step.
+- **Models stay at the game's reach**: with the render distance on, creatures and
+  objects past the game's radius are not drawn (the model walk submits only what the
+  grid lit); the fade at the game's edge applies to them only with the render
+  distance off.
+- **Reflections** keep the game's halves.
+
+### For the user to judge
+
+Distant land and skylines instead of sky; the edge fading rather than popping,
+walking towards it and away; creatures fading in; gaps or backs of geometry the
+designers never meant to be seen; caves and doorways (far land through walls);
+performance outdoors; the fade pulling in when looking down.
 
 ## The primitive buffer
 

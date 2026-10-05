@@ -103,10 +103,12 @@ public static class GpuWorld
             GteDepth.ProjCx = (int)Gte.ReadControl(24) / 65536f;
             GteDepth.ProjCy = (int)Gte.ReadControl(25) / 65536f;
         }
-        RetainedScene.BeginFrame(ReadView(mem));
+        var view = ReadView(mem);
+        RetainedScene.BeginFrame(view);
         RetainedScene.MainView = Mode == 2 && Blocker == null;
         RetainedScene.DepthStageProbe = _surfaceProbe && RetainedScene.MainView;
         RetainedScene.MainSerial = RetainedScene.MainView ? RetainedScene.Serial : 0;
+        if (RetainedScene.MainView) RenderDistance.Frame(mem, view);
         _frame = true; Frames++;
     }
     public static RetainedScene.View ReadView(IMemory m)
@@ -129,6 +131,7 @@ public static class GpuWorld
     }
     public static void Present(CpuContext c, IMemory m)
     {
+        if (_frame) RenderDistance.AfterWalk();
         if (!_frame || Environment.TickCount64 < _reportAt) return;
         _reportAt = Environment.TickCount64 + 5000;
         if (Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1") RetainedScene.SurfaceCheck = true;

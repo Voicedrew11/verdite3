@@ -63,6 +63,13 @@ public static class CullCone
     /// <summary>The factor in force, 1 when the cone is the game's own.</summary>
     public static float Factor { get; private set; } = 1f;
 
+    /// <summary>RenderDistance's, from the last classifier run: the draw radius squared
+    /// (T5, with the cos scale) and the half-angle the cone was lit with (S5, widened
+    /// when the factor is over 1); <see cref="FrameCount"/> counts the runs.</summary>
+    public static int FrameT5 { get; private set; }
+    public static int FrameAngle { get; private set; }
+    public static long FrameCount { get; private set; }
+
     // KF3_WIDESCREEN_CULL: "0"/"off" switches off, "1"/"on" follows the aspect,
     // a positive number pins the factor.
     static bool? _forced;
@@ -185,6 +192,12 @@ public static class CullCone
         _stackBase = c.SP - 0x400u;
         _mem = m;
         Apply();
+        {
+            int s5f = StockAngle(m.ReadU16(PitchAddr) & 0xFFF), df = m.ReadU8(RadiusAddr);
+            FrameT5 = s5f < 600 ? df * df : (df * df * Trig(_cos, s5f >> 1)) >> 12;
+            FrameAngle = Factor > 1f && s5f < 1024 ? WidenAngle(s5f, Factor) : s5f;
+            FrameCount++;
+        }
 
         // At the stock angle with nothing asked of the probe, the hook is a no-op.
         if (Factor <= 1f && !_measure) return;
@@ -262,7 +275,7 @@ public static class CullCone
 
     /// <summary>func_80034BF4:5-50 -- fold the pitch to a quarter turn and scale
     /// it into the lateral half-angle, 440..584 of 4096 units.</summary>
-    static int StockAngle(int p)
+    public static int StockAngle(int p)
     {
         int q = p;
         if (q >= 2049) q = 0x1000 - q;
@@ -279,7 +292,7 @@ public static class CullCone
 
     /// <summary>The angle whose tangent is <paramref name="factor"/> times the
     /// tangent of <paramref name="s5"/>, in 4096-per-turn units, rounded.</summary>
-    static int WidenAngle(int s5, float factor)
+    public static int WidenAngle(int s5, float factor)
     {
         double theta = s5 * (2.0 * Math.PI / 4096.0);
         double wide = Math.Atan(factor * Math.Tan(theta)) * (4096.0 / (2.0 * Math.PI));

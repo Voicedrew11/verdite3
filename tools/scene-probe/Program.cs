@@ -135,7 +135,7 @@ for (int sample = 0; sample < 48; sample++)
 }
 File.WriteAllText(Path.Combine(output, "light-cases.json"), System.Text.Json.JsonSerializer.Serialize(lightCases));
 Type shader = typeof(RetainedScene).Assembly.GetType("RecompOne.Runtime.Hle.GlShaders")!;
-foreach (string name in new[] { "WorldVs", "WorldNormalVs", "PrimFs", "NormalFs", "ModelGlsl" })
+foreach (string name in new[] { "WorldVs", "WorldNormalVs", "PrimFs", "NormalFs", "ModelGlsl", "PrimVs", "NormalVs" })
 {
     var field = shader.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
     File.WriteAllText(Path.Combine(output, name + ".glsl"), (string)field.GetValue(null)!);
@@ -145,4 +145,5 @@ SceneProbe.NativeInnerFixtures.Run(Check, output);
 assertions += NearDescriptorFixtures.Run(memory, output);
 SceneProbe.BulkMapFixtures.Run(Check, output);
 SceneProbe.NeighbourFixtures.Run(Check, output);
+SceneProbe.RenderDistanceFixtures.Run(Check, output);
 Console.WriteLine($"Scene source probes: {assertions} assertions passed; composed shaders, {fogCases.Count} cue and {poseCases.Count} literal pose fixtures exported");

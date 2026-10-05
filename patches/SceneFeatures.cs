@@ -37,6 +37,10 @@ public static class SceneFeatures
       "kf3scene.high": {"en":"High", "pt-BR":"Alta", "es-419":"Alta"},
       "kf3scene.distance": {"en":"Enhancement distance (tiles)", "pt-BR":"Distância das melhorias (blocos)", "es-419":"Distancia de las mejoras (bloques)"},
       "kf3scene.everywhere": {"en":"Enhance at every distance", "pt-BR":"Melhorar em todas as distâncias", "es-419":"Mejorar a cualquier distancia"},
+      "kf3scene.far": {"en":"Draw past the game's distance", "pt-BR":"Desenhar além da distância do jogo", "es-419":"Dibujar más allá de la distancia del juego"},
+      "kf3scene.fartiles": {"en":"Render distance (tiles)", "pt-BR":"Distância de renderização (blocos)", "es-419":"Distancia de renderizado (bloques)"},
+      "kf3scene.fadein": {"en":"Fade in at the edge of the view", "pt-BR":"Surgir gradualmente na borda da visão", "es-419":"Aparecer gradualmente en el borde de la vista"},
+      "kf3scene.fadetiles": {"en":"Fade band (tiles)", "pt-BR":"Faixa de transição (blocos)", "es-419":"Franja de transición (bloques)"},
       "kf3scene.renderer": {"en":"Scene renderer", "pt-BR":"Renderizador da cena", "es-419":"Renderizador de la escena"},
       "kf3scene.reference": {"en":"Reference packets", "pt-BR":"Pacotes de referência", "es-419":"Paquetes de referencia"},
       "kf3scene.shadow": {"en":"Retain alongside reference", "pt-BR":"Reter junto à referência", "es-419":"Retener junto a la referencia"},
@@ -62,6 +66,8 @@ public static class SceneFeatures
                 { "low" => 0, "medium" => 1, "high" => 2, _ => Rt.View.GetInt("kf3.ao.quality", 1) });
             GteDepth.Anisotropy = (int)Math.Clamp(Number("KF3_ANISO", "kf3.aniso", 1), 1, 16);
             SetDistance(Number("KF3_ENHANCEDIST", "kf3.enhancedistance", 0));
+            RenderDistance.SetTiles(Number("KF3_RENDERDIST", "kf3.renderdistance", 0));
+            RenderDistance.SetFade(Number("KF3_RENDERDIST_FADE", "kf3.renderdistance.fade", 0));
             RetainedScene.SurfaceCheck = Env("KF3_GPU_SURFACE_PROBE") == "1";
             SettingsRegistry.Extend("display", Draw);
             SettingsRegistry.Extend("kf3testing", DrawTesting);
@@ -96,6 +102,21 @@ public static class SceneFeatures
         if (ImGui.Checkbox(T("everywhere"), ref everywhere)) { SetDistance(everywhere ? 0 : tiles); Save("kf3.enhancedistance", everywhere ? 0 : tiles); }
         ImGui.BeginDisabled(everywhere);
         if (ImGui.SliderFloat(T("distance"), ref tiles, 2, 16, "%.1f")) { SetDistance(tiles); Save("kf3.enhancedistance", tiles); }
+        ImGui.EndDisabled();
+        // The retained renderer's reach and the fade at its edge (RenderDistance).
+        bool far = RenderDistance.Tiles > 0;
+        float reach = far ? RenderDistance.Tiles : 16;
+        if (ImGui.Checkbox(T("far"), ref far)) { RenderDistance.SetTiles(far ? reach : 0); Save("kf3.renderdistance", RenderDistance.Tiles); }
+        ImGui.BeginDisabled(!far);
+        if (ImGui.SliderFloat(T("fartiles"), ref reach, 8, RenderDistance.MaxTiles, "%.0f"))
+        { RenderDistance.SetTiles(reach); Save("kf3.renderdistance", RenderDistance.Tiles); }
+        ImGui.EndDisabled();
+        bool fade = RenderDistance.FadeTiles > 0;
+        float band = fade ? RenderDistance.FadeTiles : 3;
+        if (ImGui.Checkbox(T("fadein"), ref fade)) { RenderDistance.SetFade(fade ? band : 0); Save("kf3.renderdistance.fade", RenderDistance.FadeTiles); }
+        ImGui.BeginDisabled(!fade);
+        if (ImGui.SliderFloat(T("fadetiles"), ref band, 0.5f, RenderDistance.MaxFade, "%.1f"))
+        { RenderDistance.SetFade(band); Save("kf3.renderdistance.fade", RenderDistance.FadeTiles); }
         ImGui.EndDisabled();
     }
     static void DrawTesting()

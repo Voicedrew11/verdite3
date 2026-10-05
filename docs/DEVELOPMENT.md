@@ -322,7 +322,11 @@ rebuilding them. Its executable takes the game output directory and a temporary
 fixture directory. It checks source cache mutations and actual recompiled pose
 math, and exports the runtime's composed shaders. `scripts/shader_probe.py
 <fixture-directory>` links them in an offscreen EGL context and checks isolated
-fog/pose/light and neighbour-blend numeric outputs. It captures no game window.
+fog/pose/light, neighbour-blend and distance-fade numeric outputs, and that the
+packet programs still link. It captures no game window. The render-distance
+fixtures run the recompiled cull classifier on the RAM corpus (`KF3_CORPUS`,
+default `/tmp/verdite3-gpu-reference/shadow-corpus`; skipped when absent), and
+`scripts/render_distance_tour.py` is their live counterpart.
 Rebuild the probe after the runtime changes: it keeps its own copy of the runtime
 DLL, and a stale one exports the old shaders.
 
