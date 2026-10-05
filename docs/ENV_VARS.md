@@ -143,6 +143,9 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
 - `KF3_AO_NORMALS=0`: compare depth-reconstructed normals with geometry normals.
 - `KF3_ANISO=1..16`, `KF3_MIPMAPS=1`: decoded texture filtering and mip atlas.
 - `KF3_ENHANCEDIST=tiles`: enhanced shading/filtering range; 0 everywhere.
+- `KF3_NEIGHBOUR_BLEND=1`: blend each map pixel's light and fog with the light records
+  of the tiles around it, so they no longer step at a tile edge (runtime `0088`); unset
+  uses the saved choice (`kf3.neighbourblend`), default off until judged.
 - `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage.
 
 Video exposes the feature controls; Testing exposes session-only scene/reference

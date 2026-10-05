@@ -640,6 +640,23 @@ The same format as Verdite2's, at another address:
   three bytes at `+0x64` (shifted left 4), and the depth cue's pair at `+0x68`,
   `+0x6A` (handed to `func_80035358`). Verdite2's are `0x68` bytes, with the back
   colour at `+0x62`.
+- **The depth cue's pair**: `func_80035358(near, far)` stores them at `0x801AEC7C`
+  and `0x801AEC80`, where the assemblers read them (scratchpad `+0x58`/`+0x5C`), and
+  calls `SetFogNear(near, 200)`, or `SetFogNear(0xFFFF, 200)` when near equals far.
+  The half's record is therefore its only light and fog input: colour matrix, back
+  colour and pair. A record fogs nothing when its near is 32000 or more (the
+  assembler's gate) or equals its far.
+- **Records across a tile edge** (the saved 28-area RAM corpus, 2026-10-05, from
+  arrival positions): each area uses 1 to 5 records, with pairs from
+  `(6000, 14000)` to `(18000, 24000)`; none fogs nothing. Of 107,137 drawn halves,
+  1,725 (1.6%) have a half on the same level among the eight around them whose
+  pair differs, and 1,504 one whose colour matrix or back colour differs; 784
+  record edges in all. Areas 20-25 and 27 use one record each. Some areas differ in
+  fog only (area 4: 136 fog, 43 light; area 19: 34 and 0). Measured live, the
+  records are uploaded about once per area load and did not change while standing
+  in an area; the map's half table changed one to two times per load. These are the
+  inputs `NeighbourBlend` blends (`docs/GPU_RENDERER.md`, "Blending light and fog
+  across tile edges").
 - **The meshes**: the model table `*(0x1F800010)`, 28-byte entries from `+0xC`:
   `+0` the vertices' offset, `+4` the vertex count, `+8` the normals' offset,
   `+0x10` the faces' offset, `+0x14` the face count. A vertex is 8 bytes

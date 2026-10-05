@@ -5,6 +5,7 @@ Uses an offscreen EGL context. No game window or image is captured.
 SceneProbe exports the composed shader sources directly from the built runtime.
 """
 import argparse
+import base64
 import ctypes as C
 import json
 from pathlib import Path
@@ -163,7 +164,7 @@ def main():
     world = source("WorldVs")
     record_source = world[world.index("uniform isampler2D uRecords;"):world.index("float linearDepthCue(")]
     light_program = program(vertex, "#version 330 core\nuniform vec3 sampleNormal; uniform uint sampleLight, sampleRgbc; out ivec4 result;\n"
-                            + record_source + "\nvoid main() { vec3 colour, cue; recordLit(sampleLight, sampleNormal, 0.0, 0.0, sampleRgbc, colour, cue); result = ivec4(ivec3(colour), 0); }")
+                            + record_source + "\nvoid main() { vec3 colour, cue; ivec3 dots; recordLit(sampleLight, sampleNormal, 0.0, 0.0, sampleRgbc, colour, cue, dots); result = ivec4(ivec3(colour), 0); }")
     gl("glUseProgram", None, u)(light_program)
     set_integer(get_location(light_program, b"uRecords"), 0)
     record_texture = u()
@@ -186,14 +187,76 @@ def main():
         read(0, 0, 1, 1, 0x8d99, 0x1404, value)
         if list(value)[:3] != case["expected"]:
             light_bad.append(dict(normal=case["normal"], expected=case["expected"], gpu=list(value)[:3]))
+    # NeighbourBlend's functions, as PrimFs composes them, at the CPU reference's points.
+    neighbour = json.loads((args.fixtures / "neighbour-cases.json").read_text())
+    neighbour_program = program(vertex, "#version 330 core\nuniform int own, hid; uniform vec3 point; uniform ivec3 sampleDots;"
+                                " uniform uint sampleRgbc; out vec4 result;\n" + source("LinearDepthCue") + source("NeighbourBlend")
+                                + "\nvoid main() { ivec4 rec; vec4 k; float w; vec3 c;"
+                                " nbAround(own, hid, point.xy, rec, k);"
+                                " bool f = nbFog(rec, k, point.z, w); bool l = nbLight(rec, k, sampleDots, sampleRgbc, c);"
+                                " result = vec4(f ? w : -1.0, l ? c.r + c.g * 256.0 + c.b * 65536.0 : -1.0, 0.0, 1.0); }")
+    use = gl("glUseProgram", None, u)
+    use(neighbour_program)
+    active = gl("glActiveTexture", None, u)
+    set_integer(get_location(neighbour_program, b"uRecords"), 0)
+    set_integer(get_location(neighbour_program, b"uNbHalves"), 1)
+    gl("glUniform1f", None, i, f)(get_location(neighbour_program, b"uNbTile"), neighbour["tile"])
+    halves_texture, result_texture = u(), u()
+    active(0x84c1)
+    gl("glGenTextures", None, i, C.POINTER(u))(1, C.byref(halves_texture))
+    gl("glBindTexture", None, u, u)(0x0de1, halves_texture)
+    parameter(0x0de1, 0x2801, 0x2600)
+    parameter(0x0de1, 0x2800, 0x2600)
+    gl("glPixelStorei", None, u, i)(0x0cf5, 1)
+    table = base64.b64decode(neighbour["halves"])
+    halves = (C.c_ubyte * len(table)).from_buffer_copy(table)
+    gl("glTexImage2D", None, u, i, i, i, i, i, u, u, ptr)(0x0de1, 0, 0x8232, 160, 80, 0, 0x8d94, 0x1401, halves)
+    active(0x84c0)
+    gl("glBindTexture", None, u, u)(0x0de1, record_texture)
+    gl("glGenTextures", None, i, C.POINTER(u))(1, C.byref(result_texture))
+    gl("glBindTexture", None, u, u)(0x0de1, result_texture)
+    gl("glTexImage2D", None, u, i, i, i, i, i, u, u, ptr)(0x0de1, 0, 0x8814, 1, 1, 0, 0x1908, 0x1406, None)
+    gl("glFramebufferTexture2D", None, u, u, u, u, i)(0x8d40, 0x8ce0, 0x0de1, result_texture, 0)
+    gl("glBindTexture", None, u, u)(0x0de1, record_texture)
+    loaded, neighbour_bad, fog_error, blended = None, [], 0.0, [0, 0]
+    unsigned = gl("glUniform1ui", None, i, u)
+    set3i = gl("glUniform3i", None, i, i, i, i)
+    for case in neighbour["cases"]:
+        if loaded != case["variant"]:
+            values = (i * len(neighbour["variants"][case["variant"]]))(*neighbour["variants"][case["variant"]])
+            gl("glTexImage2D", None, u, i, i, i, i, i, u, u, ptr)(0x0de1, 0, 0x8d82, 13, 64, 0, 0x8d99, 0x1404, values)
+            loaded = case["variant"]
+        set_integer(get_location(neighbour_program, b"own"), case["own"])
+        set_integer(get_location(neighbour_program, b"hid"), case["hid"])
+        uniform(get_location(neighbour_program, b"point"), case["x"], case["z"], case["depth"])
+        set3i(get_location(neighbour_program, b"sampleDots"), *case["dots"])
+        unsigned(get_location(neighbour_program, b"sampleRgbc"), case["rgbc"])
+        draw(4, 0, 3)
+        value = (f * 4)()
+        read(0, 0, 1, 1, 0x1908, 0x1406, value)
+        fog, light = value[0], value[1]
+        expected_light = case["light"]
+        gpu_light = -1 if light < 0 else int(light)
+        bad_fog = (fog < 0) != (case["fog"] < 0) or (fog >= 0 and abs(fog - case["fog"]) > 0.01)
+        if fog >= 0 and case["fog"] >= 0:
+            fog_error = max(fog_error, abs(fog - case["fog"]))
+        if bad_fog or gpu_light != expected_light:
+            neighbour_bad.append(dict(case=case, gpuFog=fog, gpuLight=gpu_light))
+        blended[0] += case["fog"] >= 0
+        blended[1] += expected_light >= 0
     report = dict(renderer=renderer, composedPrograms=2, linearCases=len(cases), maximumError=maximum,
                   mismatches=bad, poseVertices=pose_vertices, poseMismatches=pose_bad,
-                  lightCases=len(light_cases), lightMismatches=light_bad)
+                  lightCases=len(light_cases), lightMismatches=light_bad,
+                  neighbourCases=len(neighbour["cases"]), neighbourFogBlended=blended[0],
+                  neighbourLightBlended=blended[1], neighbourFogError=fog_error, neighbourMismatches=neighbour_bad)
     (args.fixtures / "gpu-report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(f"{renderer}: two actual retained programs linked; {len(cases)} cue cases, max error {maximum}; "
-          f"{pose_vertices} pose vertices, {len(pose_bad)} mismatches; {len(light_cases)} native light cases, {len(light_bad)} mismatches")
-    if bad or pose_bad or light_bad:
-        raise RuntimeError(f"{len(bad)} GPU cue, {len(pose_bad)} GPU pose and {len(light_bad)} GPU light mismatches")
+          f"{pose_vertices} pose vertices, {len(pose_bad)} mismatches; {len(light_cases)} native light cases, {len(light_bad)} mismatches; "
+          f"{len(neighbour['cases'])} neighbour cases ({blended[0]} fog, {blended[1]} light blended), "
+          f"{len(neighbour_bad)} mismatches, fog error {fog_error}")
+    if bad or pose_bad or light_bad or neighbour_bad:
+        raise RuntimeError(f"{len(bad)} GPU cue, {len(pose_bad)} GPU pose, {len(light_bad)} GPU light and "
+                           f"{len(neighbour_bad)} GPU neighbour mismatches")
     api(egl, "eglTerminate", C.c_uint, C.c_void_p)(display)
 
 

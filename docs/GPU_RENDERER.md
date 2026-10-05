@@ -179,7 +179,8 @@ Near/subdivision topology and UV/colour/order arithmetic; front table and generi
 barriers; orthographic/view-space/blended-arm branches; all exceptional/modal,
 area-module, boot/movie/menu/preview callers; complete indirect/DMA attribution;
 full native inner-function and deferred-fallback equivalence; every clip/segment;
-GPU projection and lighting numeric fixtures; neighbour blending; solid blended
+GPU projection and lighting numeric fixtures; neighbour blending (built and
+measured, off until judged: see "Blending light and fog across tile edges"); solid blended
 surface classification; SSAO/filter/mipmap/distance settings; texture packs;
 mutation/resource/epoch/second-view checks; fixed-world performance and user
 visual acceptance. Opaque or starting-area success is not full coverage.
@@ -572,3 +573,105 @@ the same stale 320 while the world was retained.
 Fix: `GpuWorld.Begin` publishes H and OFX/OFY from the GTE's control registers
 (26, 24, 25) before the frame's view is read. Measured after: retained drawing on
 every frame, 0 missed. **Not judged by eye.**
+
+## Blending light and fog across tile edges (2026-10-05)
+
+Each map half is lit and fogged from its own light record, so where two records
+meet, the colour and the fog step at the tile edge. `KF3_NEIGHBOUR_BLEND=1` (Video ▸
+*Blend light across tile edges*, key `kf3.neighbourblend`, **off by default**) blends
+them, ported from the neighbour part of Verdite2's `EvenFog`. Its clipped-half fog
+fix is not ported: this game has no view-space clipper. The inputs, measured on
+this disc, are in `GAME_INTERNALS.md` ("Records across a tile edge"): 1.6% of drawn
+halves sit beside a half whose pair differs, and no record is without fog.
+
+### What is blended, and where
+
+Runtime `0088` (`NeighbourBlend`, `tools/RecompOne/docs/RECOMPONE_PATCHES.md`) blends
+**per pixel**, in `PrimFs`. The four records weighing in are those of the half the
+pixel lies on and of the three halves around its quarter of the tile, on the same
+level, with Verdite2's bilinear weights between tile centres. Here the weights come
+from the pixel's world X and Z, not from a mesh corner: the own record alone at the
+tile's centre, half and half on an edge, a quarter each at a corner. A missing half
+(mesh byte 240 or more, or past the map's edge) weighs nothing, so both sides of a
+shared edge or corner blend the same set. The quarter turn does not enter the
+weights, since they come from world position. It enters only the own record's light
+matrix, through the corner's dots, which `recordLit` already computes per turn.
+
+Verdite2 blends at mesh corners, from each corner's sign of offset. A face that spans
+a tile would then carry corner blends across its whole interior and never show its
+own record. Computing per pixel avoids that, and avoids T-junction seams.
+
+**The fog blends results, not records.** Each record's cue weight is evaluated at
+the pixel's own depth (`LinearDepthCue`: quarter depth, truncating division, the
+32000 cutoff, 7951 maximum), clamped at 4096, where the colour it leaves is black,
+and those weights are averaged. Why: a record with no fog has no near/far pair to
+average (its near is a sentinel); each record's weight is clamped, so a mean pair
+would move both clamp points and draw a curve no tile has; and averaging the weights
+is averaging the pictures the tiles draw, which is the intended result. The shared
+0085 path averages DQA/DQB instead. For Verdite2's curves that is a mean taken
+before the knee, and for this game's pairs it does not work. A pixel whose records
+use another curve is left as it was.
+
+**The light blends records**, as 0085 and Verdite2 do: the colour matrix and back
+colour, each mean rounded half away from zero to an integer, under the own record's
+light matrix, then `NormalColorCol`'s integers. NCCS is linear in both before its
+clamps, so this equals blending results except where a clamp bites. The rounding
+also makes a pixel just off a tile's centre give exactly the own record's colour, so
+the blended region meets the unblended without a step.
+
+A pixel whose weighing records all fog and light alike is drawn exactly as before.
+A blended pixel is lit and fogged per pixel. With per-pixel lighting off, the rest of
+the map keeps its corner-interpolated fog. Where the blend starts, at a tile's centre
+lines, the two differ only by that interpolation's error.
+
+Bulk and near faces are both the retained static mesh (`RetainedNear` only probes),
+so they blend alike and no seam can form between them. Models, the sky and the arm
+are not map halves and are untouched. Reflections and shadow passes clear the mode
+(`EndWorldUniforms`).
+
+### Wiring
+
+`RetainedMap.UpdateHalves` hands the runtime every half's record each frame.
+`NeighbourBlend.SetHalves` uploads only when one changed: a map mutation updates
+the table as the chunks update. Records still upload through 0085 when their hash
+changes. `RetainedMap.FogMixed/LightMixed` count the halves the blend can change.
+The `[KF3] retained scene` line prints the mode, those counts and the record/half
+uploads.
+
+### Measured
+
+- **Fixtures** (`tools/scene-probe/NeighbourFixtures.cs`). The half table, mutation and
+  removal go through `RetainedMap.Update` with records in RAM. 3,096 points on shared
+  edges and corners, on both levels, give the same fog (within 0.01 of 4096) and
+  exactly the same light from either side, at six depths and three dot sets; 2,952 of
+  them blend the fog and 2,340 the light. Also covered: a centre (own record only);
+  0.01 units off a centre (the own colour exactly); a missing neighbour; a record
+  without fog beside one with fog (half the weight on the edge); the upper level
+  seeing only the upper level; the map's corner; a curve this does not blend. The
+  source probe passes **7,092 assertions** (884 before).
+- **GPU** (`scripts/shader_probe.py`, Radeon RX 9070 XT, offscreen). PrimFs's actual
+  functions ran on 3,294 points: across edges, corners and centres, just inside each
+  side, past the tile (a mesh reaches 10 units beyond it), the map's corner and the
+  upper level. **0 mismatches**: the light is exact, and the fog is within 0.00035 of
+  the CPU reference (1,638 fog-blended and 1,602 light-blended cases). The composed
+  world program links, and every existing cue, pose and light case is still exact.
+  Off by construction: `uNeighbour` 0 leaves `vNb` 0, and every changed expression
+  reduces to the one before.
+- **Live, all 28 areas** (scene driver, four headings from each arrival, blend on):
+  28,455 main draws, **0 missed**, no blocker. The mixed-half counts match the offline
+  corpus area by area (area 3 289/289, area 4 136/43, area 13 398/398, area 19 34/0).
+  There were 30 record uploads and 43 half-table uploads in 29 loads. Blend off,
+  areas 3/13/4: 3,983 draws, 0 missed.
+- **Cost**: uncapped at the autostart view in fdat17, 1,029-1,058 fps with the blend
+  on against 1,022-1,049 off, within the run-to-run spread. A view filled with
+  blended tiles was not timed.
+
+No Verdite2 run. Its vendored runtime predates `0086`/`0087` and the linear cue, so
+it cannot take this change until it pulls them. Mode 0 changes nothing, as with
+`0087`. **Not judged by eye.** No screenshots were taken.
+
+**For the user to check**, with the switch on and off: light and fog running smoothly
+across tile edges, in place of a step; no new seam between near and far floor, or at
+doorways and between levels; tiles keeping their own look at their centres; and any
+edge where the blend looks wrong. Area 13 (398 mixed halves), area 3 (289) and
+area 11 (127) have the most blended edges; area 4's are mostly fog alone.

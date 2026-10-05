@@ -322,7 +322,9 @@ rebuilding them. Its executable takes the game output directory and a temporary
 fixture directory. It checks source cache mutations and actual recompiled pose
 math, and exports the runtime's composed shaders. `scripts/shader_probe.py
 <fixture-directory>` links them in an offscreen EGL context and checks isolated
-fog/pose numeric outputs. It captures no game window.
+fog/pose/light and neighbour-blend numeric outputs. It captures no game window.
+Rebuild the probe after the runtime changes: it keeps its own copy of the runtime
+DLL, and a stale one exports the old shaders.
 
 With one controlled shell-enabled game, `scripts/scene_corpus.py --output
 <temporary-directory> --headings 4` confirms actual area/overlay and gathers RAM

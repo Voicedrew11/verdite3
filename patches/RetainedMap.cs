@@ -14,8 +14,14 @@ public static class RetainedMap
     static readonly ulong[] ModelSignatures = new ulong[240];
     static readonly int[] Records = new int[RetainedScene.RecordCount * RetainedScene.RecordInts];
     static ulong _lights;
+    // Each half's record plus one, 0 for none, as NeighbourBlend takes them.
+    static readonly byte[] Halves = new byte[RetainedScene.HalvesW * RetainedScene.HalvesH];
+    static int _mixedHalves = -1; static long _mixedRecords = -1;
     public static bool Ready { get; private set; }
     public static long ChunkBuilds, MapUpdates, RecordUpdates;
+    /// <summary>Drawn halves beside a half on the same level (of the eight around it)
+    /// whose record fogs, or lights, otherwise: where NeighbourBlend changes anything.</summary>
+    public static int FogMixed, LightMixed;
     public static void Invalidate()
     {
         Ready = false; _lights = 0; Array.Clear(Signatures); Array.Clear(Chunks);
@@ -24,6 +30,7 @@ public static class RetainedMap
     public static void Update(PSMemory m)
     {
         UpdateRecords(m);
+        UpdateHalves(m);
         uint table = m.ReadU32(TablePointer);
         if (!RetainedAssets.InRam(table, 12)) { Ready = false; return; }
         Span<bool> used = stackalloc bool[240]; used.Clear();
@@ -118,6 +125,41 @@ public static class RetainedMap
             Records[at + 51] = near >= 32000 ? 0 : (int)LinearDepthCue.Curve;
         }
         RetainedScene.SetRecords(Records); _lights = hash; RecordUpdates++;
+    }
+    static void UpdateHalves(PSMemory m)
+    {
+        // Half i of the map is (z * 80 + x) * 2 + upper, the table's own layout.
+        for (uint i = 0; i < 12800; i++)
+        {
+            uint half = Map + i * 5;
+            Halves[i] = m.ReadU8(half) < 240 ? (byte)((m.ReadU8(half + 4) & 63) + 1) : (byte)0;
+        }
+        NeighbourBlend.SetHalves(Halves);
+        if (_mixedHalves == NeighbourBlend.Generation && _mixedRecords == RecordUpdates) return;
+        _mixedHalves = NeighbourBlend.Generation; _mixedRecords = RecordUpdates;
+        int fog = 0, light = 0;
+        for (int z = 0; z < 80; z++)
+            for (int x = 0; x < 80; x++)
+                for (int upper = 0; upper < 2; upper++)
+                {
+                    int own = Halves[z * 160 + x * 2 + upper] - 1;
+                    if (own < 0) continue;
+                    bool f = false, l = false;
+                    for (int dz = -1; dz <= 1; dz++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = x + dx, nz = z + dz;
+                            if ((uint)nx >= 80 || (uint)nz >= 80) continue;
+                            int r = Halves[nz * 160 + nx * 2 + upper] - 1;
+                            if (r < 0 || r == own) continue;
+                            f |= Records[r * RetainedScene.RecordInts + RetainedScene.RecWord] != Records[own * RetainedScene.RecordInts + RetainedScene.RecWord];
+                            for (int k = RetainedScene.RecLcm; k < RetainedScene.RecWord && !l; k++)
+                                l = Records[r * RetainedScene.RecordInts + k] != Records[own * RetainedScene.RecordInts + k];
+                        }
+                    if (f) fog++;
+                    if (l) light++;
+                }
+        FogMixed = fog; LightMixed = light;
     }
     public static bool Submit(PSMemory m, uint half, bool near, uint caller)
     {

@@ -57,8 +57,9 @@ renderer since 2026-10-05 (`KF3_GPU_WORLD=0` for packets), drawing whenever
 perspective and the Z-buffer are on; native scene and persistent mesh/pose submission; all-area inner native comparisons, near-face
 descriptor fixtures, shader probes and measured retained-depth coverage. The near
 map and near models are retained (no near fallback); front-table and exceptional
-contexts remain open. No visual acceptance or full
-GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
+contexts remain open. Light and fog blended across tile edges
+(`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built and measured, off until judged.
+No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
 ## The documents
 

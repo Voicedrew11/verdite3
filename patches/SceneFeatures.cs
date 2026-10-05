@@ -18,6 +18,8 @@ public static class SceneFeatures
         new("kf3.ao", "KF3_AO", "ao", () => GteDepth.AmbientOcclusion, v => GteDepth.AmbientOcclusion = v),
         new("kf3.ao.normals", "KF3_AO_NORMALS", "normals", () => AoGeometry.Enabled, v => { AoGeometry.Enabled = v; GteDepth.AoNormals = v; }),
         new("kf3.mipmaps", "KF3_MIPMAPS", "mips", () => GteDepth.Mipmaps, v => GteDepth.Mipmaps = v),
+        new("kf3.neighbourblend", "KF3_NEIGHBOUR_BLEND", "blend", () => NeighbourBlend.Mode != 0,
+            v => NeighbourBlend.Mode = v ? NeighbourBlend.Fog | NeighbourBlend.Light : 0),
     ];
     const string Names = """
     {"strings": {
@@ -27,6 +29,7 @@ public static class SceneFeatures
       "kf3scene.ao": {"en":"Ambient occlusion", "pt-BR":"Oclusão ambiente", "es-419":"Oclusión ambiental"},
       "kf3scene.normals": {"en":"Geometry normals", "pt-BR":"Normais da geometria", "es-419":"Normales de la geometría"},
       "kf3scene.mips": {"en":"Mipmaps", "pt-BR":"Mipmaps", "es-419":"Mipmaps"},
+      "kf3scene.blend": {"en":"Blend light across tile edges", "pt-BR":"Misturar a luz entre as bordas dos blocos", "es-419":"Mezclar la luz entre los bordes de los bloques"},
       "kf3scene.aniso": {"en":"Texture filtering", "pt-BR":"Filtragem de texturas", "es-419":"Filtrado de texturas"},
       "kf3scene.quality": {"en":"Occlusion quality", "pt-BR":"Qualidade da oclusão", "es-419":"Calidad de la oclusión"},
       "kf3scene.low": {"en":"Low", "pt-BR":"Baixa", "es-419":"Baja"},

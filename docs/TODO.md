@@ -29,6 +29,12 @@ recompiled and running, following Verdite2's method but applied to this disc.
   near/front/exceptional contexts, lighting/features, mutation and visual
   acceptance remain open.
 
+- **Blending light and fog across tile edges** (Verdite2's `EvenFog`, its
+  neighbour part only; 2026-10-05): built and measured, off by default
+  (`KF3_NEIGHBOUR_BLEND`, Video). **To judge by eye**: transitions at tile edges,
+  near/far floor seams, doorways and levels. See "Blending light and fog across
+  tile edges" in `GPU_RENDERER.md`.
+
 - **Twin-stick control and the Input pane** (2026-10-03, `docs/INPUT.md`):
   built and measured with a synthetic stick; **to judge on a real pad**: the
   pitch direction, the left stick's leak into turning, the feel, and whether the

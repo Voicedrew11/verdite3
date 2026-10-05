@@ -138,7 +138,9 @@ public static class GpuWorld
             $"GPUdraws/missed={RetainedScene.MainDraws}/{RetainedScene.MainMissed} instances={RetainedScene.InstancesDrawn} " +
             $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} " +
             $"mask={(RetainedScene.ModelMask ? "on" : "off")} frames/batches={RetainedScene.MaskFrames}/{RetainedScene.MaskBatches} " +
-            $"samples/behind={RetainedScene.MaskSamples}/{RetainedScene.MaskBehind} blocker={Blocker ?? "none"}");
+            $"samples/behind={RetainedScene.MaskSamples}/{RetainedScene.MaskBehind} " +
+            $"blend={NeighbourBlend.Mode} mixed-halves fog/light={RetainedMap.FogMixed}/{RetainedMap.LightMixed} " +
+            $"record/half-uploads={RetainedScene.RecordUploads}/{NeighbourBlend.Uploads} blocker={Blocker ?? "none"}");
         if (Environment.GetEnvironmentVariable("KF3_GPU_CENSUS_FILE") is { Length: > 0 } path)
             File.WriteAllText(path, JsonSerializer.Serialize(new
             {
@@ -176,6 +178,10 @@ public static class GpuWorld
                     RetainedAssets.MeshBuilds, RetainedAssets.MeshHits, RetainedAssets.RigidBuilds, RetainedAssets.RigidHits,
                     MoPose.PoseBuilds, MoPose.PoseHits, MoPose.Deferred, MoPose.Materialized,
                     RetainedMap.ChunkBuilds, RetainedMap.MapUpdates, RetainedMap.RecordUpdates,
+                },
+                Neighbour = new
+                {
+                    NeighbourBlend.Mode, RetainedMap.FogMixed, RetainedMap.LightMixed, NeighbourBlend.Uploads,
                 },
             }, new JsonSerializerOptions { WriteIndented = true }));
     }

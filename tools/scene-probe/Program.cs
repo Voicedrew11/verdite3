@@ -144,4 +144,5 @@ File.WriteAllText(Path.Combine(output, "LinearDepthCue.glsl"), LinearDepthCue.Gl
 SceneProbe.NativeInnerFixtures.Run(Check, output);
 assertions += NearDescriptorFixtures.Run(memory, output);
 SceneProbe.BulkMapFixtures.Run(Check, output);
+SceneProbe.NeighbourFixtures.Run(Check, output);
 Console.WriteLine($"Scene source probes: {assertions} assertions passed; composed shaders, {fogCases.Count} cue and {poseCases.Count} literal pose fixtures exported");
