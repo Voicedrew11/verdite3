@@ -76,8 +76,11 @@ public static class RetainedMap
                     int rot = m.ReadU8(half + 2) & 3, record = m.ReadU8(half + 4) & 63;
                     uint vertices = table + 12 + m.ReadU32(table + 12 + (uint)kind * 28);
                     uint light = RetainedScene.PackLight(record, rot, 0, 0, 0, false, false, false, false, false);
-                    foreach (var face in mesh.Faces)
+                    // Last face first, as the table walk draws one slot's faces
+                    // (RetainedAssets.Build): the first face is drawn on top.
+                    for (int f = mesh.Faces.Length - 1; f >= 0; f--)
                     {
+                        var face = mesh.Faces[f];
                         // The bulk assembler deliberately ignores GT4; near uses a
                         // different subdivision policy and stays an explicit route.
                         if ((face.Command & 0xFD) == 0x3C) continue;

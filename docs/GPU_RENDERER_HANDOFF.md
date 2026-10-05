@@ -1,5 +1,15 @@
 # Retained GPU renderer: next-session handoff
 
+## Status (2026-10-05, fourth session)
+
+The user reported sign lettering and decals hidden by the object they are on.
+Measured cause: a plaque's lettering is face 0 of its mesh, on the same corners as
+the plate after it, and the table draws a slot's first-built face last; the
+retained store drew faces in source order, so the plate won the coplanar
+tolerance. Retained meshes and map halves now hold their faces last first. See
+"Sign lettering under its plate" in `GPU_RENDERER.md`. **For the user to check:**
+sign text and decals show, near and far, along with the checks below.
+
 ## Status (2026-10-05, third session)
 
 The user then reported part of an NPC seen through a door they stood beside, and

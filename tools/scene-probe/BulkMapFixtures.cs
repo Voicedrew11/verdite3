@@ -90,9 +90,49 @@ public static class BulkMapFixtures
             }
             reports.Add(new { command, bytes, packet, rotations = 4 });
         }
+        CoplanarOrder(m, check);
         RetainedMap.Invalidate();
         File.WriteAllText(Path.Combine(output, "bulk-map-cases.json"), JsonSerializer.Serialize(reports));
-        Console.WriteLine("Bulk map fixtures: 8 recompiled packet cases, 4 retained rotations each");
+        Console.WriteLine("Bulk map fixtures: 8 recompiled packet cases, 4 retained rotations each, coplanar order");
+    }
+
+    /// <summary>Two quads on the same four corners, as a sign's lettering and its plate:
+    /// the face the table walk draws last (on top) must be the one the retained store
+    /// draws last, for the map and for a model.</summary>
+    static void CoplanarOrder(PSMemory m, Action<bool, string> check)
+    {
+        for (uint face = 0; face < 2; face++)
+        {
+            uint at = Face + face * 36;
+            for (uint i = 0; i < 32; i += 4) m.WriteU32(at + 4 + i, 0);
+            m.WriteU32(at, 0x2Cu << 24 | 32u << 6);
+            for (uint k = 0; k < 4; k++)
+            {
+                m.WriteU16(at + 4 + k * 4, (ushort)(0x101 * (k + 1 + face * 8)));
+                m.WriteU16(at + 4 + 18 + k * 2, (ushort)(k * 8));
+            }
+            m.WriteU16(at + 4 + 10, 0x60);
+        }
+        m.WriteU32(Table + 32, 2);
+        for (uint i = 0; i < 0x8000; i += 4) m.WriteU32(Ot + i, 0);
+        SeedAssembler(m);
+        Game.func_80039D50(new CpuContext { A0 = 0, SP = 0x801F8000 }, m);
+        // The walk follows a slot from its head: the last packet in it is drawn last.
+        var walked = new List<uint>();
+        for (uint i = 0; i < 0x8000; i += 4)
+            for (uint p = m.ReadU32(Ot + i) & 0xFFFFFF; p != 0 && walked.Count < 8; p = m.ReadU32(0x80000000 | p) & 0xFFFFFF)
+                walked.Add(m.ReadU16(0x80000000 | p + 0xC));
+        check(walked.Count == 2, $"coplanar: {walked.Count} packets linked, expected two in one slot");
+        m.WriteU8(Map, 0); m.WriteU8(Map + 1, 0); m.WriteU8(Map + 2, 0); m.WriteU8(Map + 4, 0);
+        RetainedMap.Invalidate(); RetainedMap.Update(m);
+        var corners = RetainedScene.Static.ToArray();
+        check(corners.Length == 12, "coplanar: retained map corner count");
+        check(((int)corners[^6].U | (int)corners[^6].V << 8) == walked[^1], "coplanar: retained map draws another face last than the table walk");
+        var model = RetainedAssets.Get(m, Table, Table + 12, RetainedAssets.Family.Lit, out string reason);
+        check(model != null && model.Opaque == 12, $"coplanar: model mesh {reason}");
+        var last = RetainedScene.MeshCorners[model!.Start + model.Opaque - 6];
+        check(((int)last.U | (int)last.V << 8) == walked[^1], "coplanar: retained model draws another face last than the table walk");
+        m.WriteU32(Table + 32, 1);
     }
 
     static void SeedAssembler(PSMemory m)

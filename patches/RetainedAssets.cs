@@ -59,6 +59,8 @@ public static class RetainedAssets
         reason = "";
         var opaque = new List<RetainedScene.Vertex>(); var blended = new List<RetainedScene.Vertex>();
         var mesh = new Mesh { Faces = new Face[count], MaxVertex = -1 };
+        // Each face's corners, in source order; stored below in reverse.
+        var corners = new RetainedScene.Vertex[count][];
         Span<uint> vi = stackalloc uint[4], ni = stackalloc uint[4], uv = stackalloc uint[4];
         uint at = source;
         for (int i = 0; i < count; i++)
@@ -115,18 +117,30 @@ public static class RetainedAssets
                     | (semi ? RetainedScene.FlagSemi | (uint)mode << 8 : 0),
                 Light = textured ? 0 : RetainedScene.FaceColour | (m.ReadU32(body) & 0xFFFFFF),
             };
-            var dst = semi ? blended : opaque;
             ReadOnlySpan<int> order = n == 4 ? [0, 1, 2, 1, 3, 2] : [0, 1, 2];
-            mesh.Faces[i] = new(dst.Count, order.Length, mode, semi, command);
+            mesh.Faces[i] = new(0, order.Length, mode, semi, command);
+            corners[i] = new RetainedScene.Vertex[order.Length];
             for (int j = 0; j < order.Length; j++)
             {
                 int k = order[j]; var v = template; uint normal = normals + ni[k];
                 v.X = vi[k]; v.R = (short)m.ReadU16(normal); v.G = (short)m.ReadU16(normal + 2); v.B = (short)m.ReadU16(normal + 4);
                 v.U = uv[k] & 255; v.V = uv[k] >> 8;
                 if (j >= 3) v.Flags |= RetainedScene.FlagQuadTail;
-                dst.Add(v);
+                corners[i][j] = v;
             }
             at = body + bytes;
+        }
+        // The assembler links each face at the head of its table slot, so of faces in
+        // one slot the walk draws the last built first and the first built last, on
+        // top. A coplanar pair goes to the later draw under 0051's tolerance, so the
+        // store holds the faces last first: a sign's lettering (face 0 of its mesh)
+        // over the plate it shares every corner with (a later face).
+        for (int i = (int)count - 1; i >= 0; i--)
+        {
+            if (corners[i] is not { } face) continue;
+            var dst = mesh.Faces[i].Semi ? blended : opaque;
+            mesh.Faces[i] = mesh.Faces[i] with { Corner = dst.Count };
+            dst.AddRange(face);
         }
         mesh.FaceBytes = at - source;
         mesh.FaceHash = Hash(m.Ram, source, mesh.FaceBytes);

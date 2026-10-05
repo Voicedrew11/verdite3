@@ -515,3 +515,44 @@ by the map within 128 units was unchanged in areas 0, 7 and 9 (it is walls and
 door frames), fell from 2.8e-3 to 1.3e-3 in area 1, and was under 4e-6 in 10 and
 17. Bases in the floor are not the effect reported, and the rule would also show
 models through the top of a low step, so it was taken out.
+
+## Sign lettering under its plate (2026-10-05)
+
+The user reports, under Retained GPU, that the text on signs and other decals does
+not show: the object it is on covers it.
+
+Mechanism, from the meshes. A wall plaque is a map mesh (area 0 kinds 118 and 221,
+area 5 kind 105 in the RAM corpus) whose **face 0** is the lettering (CLUT `7A0D`,
+page `0F`) and a later face (51, or 36) the plate under it, on **the same four
+corners**. The assembler links each face at the head of its table slot, so the walk
+draws a slot's faces last built first: the lettering, built first, is drawn last
+and on top. The retained store held each mesh's faces in source order, and under
+`0051`'s tolerance a coplanar pair goes to the later draw, so the plate covered the
+lettering. Before the near map was retained, a plaque close enough to read was a
+near packet, drawn in table order; from further off the plate already won.
+
+A scan of every mesh in the corpus's model table for faces sharing a plane and
+overlapping: 10 opaque pairs, each the full plaque quad, lettering first; 186
+pairs with a blended face, which the backend draws after the opaque ones (a
+model's sorted by slot and build order, the map's in the store's order).
+
+Fix: `RetainedAssets.Build` stores a mesh's faces last first (opaque and blended
+partitions both), and `RetainedMap.BuildChunk` copies a half's faces last first,
+so of two faces on one plane the first built is drawn last, as the walk draws it.
+Faces not on one plane are still decided by depth. A model's blended faces, the
+sky and the arm are sorted by their own slot and build index, which this does not
+change.
+
+`BulkMapFixtures.CoplanarOrder`: two quads on the same corners through the
+recompiled bulk assembler (`80039D50`), its table slot walked from the head; the
+retained map's and a model mesh's last-drawn face must be the walk's last. Against
+the previous build it fails (`retained map draws another face last than the table
+walk`); now the source probe passes **884 assertions**, and the composed shaders
+link on the Radeon with every cue, pose and light case exact.
+
+The last fixes still hold, measured on this build with the tour of areas 0, 5 and 7
+(`model_mask_tour.py`, three things an area, 72 views; mask and tolerance probes
+on): 2,554,741 submissions all retained, no fallback; 17,173 main draws, **0
+missed**; no packet batch over the models (no near packets are left); map samples
+passing only by more than 512 units **0**, instance samples by more than 64 units
+**0**, as after `0087`. **Not judged by eye.**

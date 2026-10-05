@@ -21,8 +21,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
   near map and near models are now retained, so no near packet draws in painter's
   order over the models, and the depth tolerance is bounded on edge-on faces
-  (`0087`): measured, **awaiting the user's check by eye** (NPCs through doors,
-  floor over creatures and objects); then performance.
+  (`0087`), and coplanar faces draw in the table's order (sign lettering over its
+  plate): measured, **awaiting the user's check by eye** (NPCs through doors,
+  floor over creatures and objects, sign text and decals); then performance.
   See [the handoff](GPU_RENDERER_HANDOFF.md). Selected inner native
   comparisons and all 28 loaded-area fixtures are measured; complete
   near/front/exceptional contexts, lighting/features, mutation and visual
