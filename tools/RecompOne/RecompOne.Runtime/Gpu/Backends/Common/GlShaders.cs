@@ -505,6 +505,8 @@ internal static class GlShaders
         flat out float vM;
         out vec2 vUv;
         flat out uint vTex;
+        // 0089. The world program's; no packet is faded.
+        out vec2 vFadeXZ;
 
         void main() {
             vec2 p = (inPos + uPosBias) * uFbInv - 1.0;
@@ -514,6 +516,7 @@ internal static class GlShaders
             vM = inM;
             vUv = inUv;
             vTex = inTex;
+            vFadeXZ = vec2(0.0);
         }
         """;
 
@@ -530,12 +533,14 @@ internal static class GlShaders
     /// never reached falls back to the old cross product rather than to a wrong
     /// normal.
     /// </summary>
-    public const string NormalFs = """
+    public static readonly string NormalFs = """
         #version 330 core
         in float vDepth;
         flat in float vM;
         in vec2 vUv;
         flat in uint vTex;
+        // 0089. A world corner's X and Z, for DistanceFade (WorldNormalVs).
+        in vec2 vFadeXZ;
         // 0067. Two outputs. The first is the occlusion pass's normal buffer and
         // is blended (ONE, ONE_MINUS_SRC_ALPHA), so a translucent surface writes
         // alpha 0 and leaves the opaque surface under it -- whose depth is the one
@@ -562,6 +567,8 @@ internal static class GlShaders
         uniform vec2 uDepthStep;
         // The map's water, one slice of view depth, (x, y]; y 0 is none.
         uniform vec2 uZSlice;
+
+        //@distanceFade
 
         vec4 vfetch(ivec2 c) { return texelFetch(uVram, c & ivec2(1023, 511), 0); }
         int vu5(float f) { return int(floor(f * 31.0 + 0.5)); }
@@ -600,6 +607,8 @@ internal static class GlShaders
             float z = vDepth * 65536.0;
             // Taken here, in uniform control flow, for a surface's texel below.
             vec2 dUvx = dFdx(vUv), dUvy = dFdy(vUv);
+            // 0089. A pixel the colour pass dithers away by distance is no surface.
+            if (fadeDropped(distanceFade(vFadeXZ, z))) discard;
             // A veil, a see-through 2D box: where it is see-through, both buffers
             // are left as they are and its mark is added to the id (the draw blends
             // it so); a texel without the semi-transparency bit is an overlay.
@@ -665,7 +674,7 @@ internal static class GlShaders
             oColor = opaque ? vec4(n * 0.5 + 0.5, 1.0) : vec4(0.0);
             oSurface = vec4(octEncode(n), vDepth, id);
         }
-        """;
+        """.Replace("//@distanceFade", DistanceFade.Glsl);
 
     /// <summary>
     /// 0085. The retained map into the normal and surface buffers: <c>WorldVs</c>'s
@@ -821,6 +830,9 @@ internal static class GlShaders
         flat out float vM;
         out vec2 vUv;
         flat out uint vTex;
+        // 0089. As WorldVs's.
+        out vec2 vFadeXZ;
+        uniform vec4 uFade;
 
         uniform mat3  uR;
         uniform vec3  uCam;
@@ -855,6 +867,7 @@ internal static class GlShaders
         void main() {
             uint flags = inFlags;
             vec3 w = inWorld;
+            vFadeXZ = vec2(0.0);
             if (uModel != 0) {
                 uint m = uModelMat;
                 if (uModelBlend != 0) {
@@ -887,6 +900,7 @@ internal static class GlShaders
                 return;
             }
             if (uSwellOn != 0 && (flags & 0x8000000u) != 0u) w.y += swellDy(w);
+            vFadeXZ = uModel != 0 && (uModelView != 0 || uModelSky != 0) ? uFade.xy : w.xz;
             vec3 v = uR * (w - uCam) + uT;
             if (uModel != 0 && uModelView != 0) v = modelEye(uint(inWorld.x));
             float z = v.z;
@@ -1552,6 +1566,10 @@ internal static class GlShaders
         out vec2 vNbXZ;
         noperspective out vec3 vNbDots;
         uniform int uNeighbour;
+        // 0089. The corner's world X and Z, for DistanceFade in PrimFs; the camera's
+        // (uFade.xy) for the sky and a model placed in view space, which never fade.
+        out vec2 vFadeXZ;
+        uniform vec4 uFade;
 
         uniform mat3  uR;
         uniform vec3  uCam;
@@ -1718,6 +1736,7 @@ internal static class GlShaders
             vNb = uvec2(0u);
             vNbXZ = vec2(0.0);
             vNbDots = vec3(0.0);
+            vFadeXZ = vec2(0.0);
             if (uDepthOnly == 0 && (inLight & 0x80000000u) != 0u) {
                 recordLit(inLight, inColorF, inCue.x, inCue.y, inRgbc, color, cue, litDots);
                 uint nbHid = (inFlags >> 13) & 0x3FFFu;
@@ -1756,6 +1775,7 @@ internal static class GlShaders
                 }
             }
             if (uSwellOn != 0 && (flags & 0x8000000u) != 0u) w.y += swellDy(w);
+            vFadeXZ = uModel != 0 && (uModelView != 0 || uModelSky != 0) ? uFade.xy : w.xz;
             gl_ClipDistance[0] = (uPlaneY - uPlaneBias) - w.y;
             if (uMirror != 0) w.y = 2.0 * uPlaneY - w.y;
             vec3 v = uR * (w - uCam) + uT;
@@ -1874,6 +1894,8 @@ internal static class GlShaders
         flat out uvec2 vNb;
         out vec2 vNbXZ;
         noperspective out vec3 vNbDots;
+        // 0089. The world program's; no packet is faded.
+        out vec2 vFadeXZ;
 
         uniform vec2 uVertexOffset;
         uniform vec2 uPosBias;
@@ -1910,6 +1932,7 @@ internal static class GlShaders
             vNb = uvec2(0u);
             vNbXZ = vec2(0.0);
             vNbDots = vec3(0.0);
+            vFadeXZ = vec2(0.0);
             vDither = (inTexpage >> 10) & 1;
             vRepClut = (inTexpage >> 12) & 1;
 
@@ -1956,6 +1979,8 @@ internal static class GlShaders
         flat in uvec2 vNb;
         in vec2 vNbXZ;
         noperspective in vec3 vNbDots;
+        // 0089. DistanceFade's world X and Z (WorldVs).
+        in vec2 vFadeXZ;
 
         layout(location = 0, index = 0) out vec4 FragColor;
         layout(location = 0, index = 1) out vec4 BlendColor;
@@ -2347,6 +2372,7 @@ internal static class GlShaders
         // The depth cue's weight, 0..4096, from the raw MAC0 through the curve.
         //@linearDepthCue
         //@neighbourBlend
+        //@distanceFade
 
         // 0088. A pixel some neighbour of whose half lights or fogs otherwise: its lit
         // colour (when the light blends) and its cue weight from the records around
@@ -2497,11 +2523,9 @@ internal static class GlShaders
                 if (lz > cz) { gCueScale = cz / lz; gCueZ = cz; }
             }
             // 0072, amended. A half fading in or out of a reflection: an ordered
-            // dither, so it needs no blending and keeps its depth.
-            if (vFade < 1.0) {
-                ivec2 fp = ivec2(gl_FragCoord.xy) & 3;
-                if ((float(ditherTbl[fp.y * 4 + fp.x] + 4) + 0.5) / 8.0 > vFade) discard;
-            }
+            // dither, so it needs no blending and keeps its depth. 0089: times the
+            // main view's DistanceFade, 1 where it is off.
+            if (fadeDropped(vFade * distanceFade(vFadeXZ, vDepth * 65536.0))) discard;
             if (uPlainZ > 0.0 && vDepth > 0.0)
                 gPlain = smoothstep(uPlainZ - 2048.0, uPlainZ, vDepth * 65536.0);
             if (uMaskOn != 0) {
@@ -2719,7 +2743,8 @@ internal static class GlShaders
             FragColor = vec4(quant5(c8), max(texel.a, uSetMask));
             BlendColor = texel.a >= 0.5 ? uBlend : uBlendOpaque;
         }
-        """.Replace("//@linearDepthCue", LinearDepthCue.Glsl).Replace("//@neighbourBlend", NeighbourBlend.Glsl);
+        """.Replace("//@linearDepthCue", LinearDepthCue.Glsl).Replace("//@neighbourBlend", NeighbourBlend.Glsl)
+            .Replace("//@distanceFade", DistanceFade.Glsl);
     
     public const string FullscreenVs120 = """
         #version 120

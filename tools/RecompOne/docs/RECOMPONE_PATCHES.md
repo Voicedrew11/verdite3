@@ -1660,6 +1660,29 @@ Four files in the directory have no entry below:
   before.** **No recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Blending
   light and fog across tile edges").
 
+- `0089-retained-distance-fade.patch` — the main view could only draw the halves the
+  game's walk submitted, at full weight, so a port could neither draw past the game's
+  draw radius nor soften the edge where land pops in. Two additions. **The gate**:
+  `RetainedScene.CurrentMainHalves` hands the port the current frame's
+  `MainHalves`, so it can add halves past the walk's reach to the main view alone (not
+  reflected, not the mirror's). **The fade**: `DistanceFade`, per pixel in `PrimFs`,
+  weight `clamp((edge - d) / band, 0, 1)` with d the **horizontal** distance from the
+  camera's X and Z, so turning on the spot fades nothing and a model fades with the
+  ground under it; past a depth limit less 2048 the weight also falls to 0 by the
+  limit (`DepthLimit` 65,024), before the world program's 16-bit depth runs out. It
+  multiplies 0072's `vFade` into the same ordered dither (`fadeDropped`, the
+  crosshatch's table), so there is no blending and a drawn pixel keeps its depth.
+  `WorldVs` and `WorldNormalVs` pass the corner's world X/Z (`vFadeXZ`; the camera's
+  for the sky's models and a model placed in view space, which never fade); `PrimVs`
+  and `NormalVs` write zeros. `NormalFs` drops the same pixels, so AO and the
+  surface buffer do not see what the colour pass dithered away. The port sets a
+  frame's fade with `RetainedScene.SetFade` (edge, band, depth limit; cleared by
+  `BeginFrame`); `BeginWorldMain` sends it to the main view only (`uFade`,
+  `uFadeZ`), `EndWorldUniforms` clears it, and `DrawWorldNormals` sends it to the
+  normal program. `NormalFs` is now a `static readonly` composed string. **A frame
+  with no fade and no added half is the program before.** **No recompile.**
+  Measured in Verdite3's `WIDESCREEN.md` ("Render distance").
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual

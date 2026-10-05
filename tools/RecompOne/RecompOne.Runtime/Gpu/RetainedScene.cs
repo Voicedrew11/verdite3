@@ -529,8 +529,12 @@ public static class RetainedScene
         /// tile walk drew, unless the port weighs them (<see cref="CurrentHalves"/>).</summary>
         public readonly byte[] Halves = new byte[HalvesW * HalvesH];
         /// <summary>0085. The halves the frame's own walk drew, 255 each: the main
-        /// view's gate, which nothing grows or fades.</summary>
+        /// view's gate, which nothing grows or fades. 0089: the port may add halves
+        /// past the walk's reach (<see cref="CurrentMainHalves"/>).</summary>
         public readonly byte[] MainHalves = new byte[HalvesW * HalvesH];
+        /// <summary>0089. The main view's <see cref="DistanceFade"/>: its edge and band
+        /// in world units from the camera's X and Z, and its depth limit; all 0 is none.</summary>
+        public float FadeEdge, FadeBand, FadeDepth;
         /// <summary>0085. The swell this frame was walked with: per wave, its
         /// wavenumber along X and Z, its height and its phase; and whether it is on.</summary>
         public readonly float[] Swell = new float[12];
@@ -623,6 +627,7 @@ public static class RetainedScene
         MirrorSerial = 0;
         Array.Clear(f.Halves);
         Array.Clear(f.MainHalves);
+        f.FadeEdge = f.FadeBand = f.FadeDepth = 0f;
     }
 
     // ---- 0085: the mirror ----------------------------------------------------------
@@ -693,6 +698,22 @@ public static class RetainedScene
     /// is not reflected, 255 fully, and between is dithered (the world program's
     /// <c>vFade</c>). Empty outside a frame.</summary>
     public static Span<byte> CurrentHalves => Current.Serial == _serial ? Current.Halves : Span<byte>.Empty;
+
+    /// <summary>0089. The current frame's main-view gate, for a port that draws halves
+    /// past the walk's reach: 255 is drawn, and a half written here is neither
+    /// reflected nor noted for the mirror. Empty outside a frame.</summary>
+    public static Span<byte> CurrentMainHalves => Current.Serial == _serial ? Current.MainHalves : Span<byte>.Empty;
+
+    /// <summary>0089. The current frame's <see cref="DistanceFade"/>: <paramref name="edge"/>
+    /// and <paramref name="band"/> in world units of horizontal distance from the camera
+    /// (band 0 none), <paramref name="depth"/> the view depth everything is gone by (0
+    /// none).</summary>
+    public static void SetFade(float edge, float band, float depth)
+    {
+        var f = Current;
+        if (f.Serial != _serial) return;
+        f.FadeEdge = edge; f.FadeBand = band; f.FadeDepth = depth;
+    }
 
     /// <summary>One model's triangles, in world space, to the current frame.</summary>
     public static void AddDynamic(ReadOnlySpan<Vertex> tris)

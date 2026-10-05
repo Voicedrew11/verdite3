@@ -77,6 +77,7 @@ public sealed partial class GlCore
         Unit("uMip", 5); Unit("uMatTable", MatUnit); Unit("uMaskSurface", MaskUnit); Unit("uHalves", HalvesUnit);
         Unit("uRecords", RecordsUnit); Unit("uNbHalves", NbHalvesUnit);
         _uwNeighbour = L("uNeighbour"); _uwNbTile = L("uNbTile");
+        _uwFade = L("uFade"); _uwFadeZ = L("uFadeZ");
         void I(string n, int v) { int l = L(n); if (l >= 0) _gl.Uniform1(l, v); }
         void F(string n, float v) { int l = L(n); if (l >= 0) _gl.Uniform1(l, v); }
         int tw = L("uTexWindow");
@@ -270,6 +271,19 @@ public sealed partial class GlCore
     const int NbHalvesUnit = 22;
     uint _nbHalvesTex;
     int _nbHalvesGen = -1, _uwNeighbour = -1, _uwNbTile = -1;
+    // 0089. DistanceFade's uniforms, in the world program and its normal program.
+    int _uwFade = -1, _uwFadeZ = -1, _uwnFade = -1, _uwnFadeZ = -1;
+
+    /// <summary>0089. The frame's DistanceFade, or none.</summary>
+    void SendFade(int fade, int depth, RetainedScene.Frame? f)
+    {
+        if (fade >= 0)
+        {
+            if (f == null) _gl.Uniform4(fade, 0f, 0f, 0f, 0f);
+            else _gl.Uniform4(fade, (float)f.View.CamX, (float)f.View.CamZ, f.FadeEdge, f.FadeBand);
+        }
+        if (depth >= 0) _gl.Uniform1(depth, f?.FadeDepth ?? 0f);
+    }
 
     unsafe void UploadNbHalves()
     {
