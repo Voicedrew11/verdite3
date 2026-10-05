@@ -556,3 +556,19 @@ on): 2,554,741 submissions all retained, no fallback; 17,173 main draws, **0
 missed**; no packet batch over the models (no near packets are left); map samples
 passing only by more than 512 units **0**, instance samples by more than 64 units
 **0**, as after `0087`. **Not judged by eye.**
+
+## The view too narrow until the Z-buffer was toggled (2026-10-05)
+
+Reported: the field of view was wrong, and turning the Z-buffer off and on again
+put it right. `GpuWorld.ReadView` gave the retained view `GteDepth.ProjH/ProjCx/
+ProjCy`, which only `Gte.Rtp` publishes (`NoteProjection`, with AO or SSR on).
+Retained drawing replaces every world RTP, so they stayed at their defaults:
+measured at `func_80035630` with retained drawing on, `ProjH` 320 with no vertex
+ever seen, the GTE's own H **200**, OFX/OFY 160/120. Turning the Z-buffer off
+blocks retained drawing, the packets project through RTP and publish 200, and the
+value outlived turning it back on. The AO, normal, reflection and clip passes read
+the same stale 320 while the world was retained.
+
+Fix: `GpuWorld.Begin` publishes H and OFX/OFY from the GTE's control registers
+(26, 24, 25) before the frame's view is read. Measured after: retained drawing on
+every frame, 0 missed. **Not judged by eye.**

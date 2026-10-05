@@ -93,6 +93,16 @@ public static class GpuWorld
         _frame = false;
         if (Mode == 0 || _scene == 0 || NativeScene.Verifying || m is not PSMemory mem) return;
         RetainedMap.Update(mem);
+        // The projection is published from Gte.Rtp, which retained drawing never
+        // reaches, so it kept its 320 default against the game's 200 and narrowed
+        // the view until a packet frame (the Z-buffer off) projected once. The GTE's
+        // own registers are the projection, for this pass and the surface passes.
+        if ((ushort)Gte.ReadControl(26) is > 0 and var h)
+        {
+            GteDepth.ProjH = h;
+            GteDepth.ProjCx = (int)Gte.ReadControl(24) / 65536f;
+            GteDepth.ProjCy = (int)Gte.ReadControl(25) / 65536f;
+        }
         RetainedScene.BeginFrame(ReadView(mem));
         RetainedScene.MainView = Mode == 2 && Blocker == null;
         RetainedScene.DepthStageProbe = _surfaceProbe && RetainedScene.MainView;
