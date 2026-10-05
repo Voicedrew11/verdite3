@@ -219,6 +219,59 @@ public static class RetainedScene
     /// authored id, a blended one.</summary>
     public static readonly long[] SurfaceIds = new long[6];
 
+    // ---- 0085. the depth-stage probe ------------------------------------------------
+
+    /// <summary>0085's depth-stage probe, off by default: sample the frame target's
+    /// depth at two stages, once every five seconds. Numeric FBO reads only.</summary>
+    public static bool DepthStageProbe;
+
+    /// <summary>The probe's stages: after the retained main draw, and the present's source.</summary>
+    public const int ProbeMain = 0, ProbePresent = 1, ProbeStages = 2;
+
+    /// <summary>How long the probe waits between runs.</summary>
+    public const long ProbePeriodMs = 5000;
+
+    static long _probeAt;
+    static bool _probeArmed;
+
+    /// <summary>Whether the after-main stage is due; the runtime owns the cadence.</summary>
+    public static bool ProbeMainDue => DepthStageProbe && Environment.TickCount64 >= _probeAt;
+
+    /// <summary>Whether the present stage follows the after-main sample that armed it.</summary>
+    public static bool ProbePresentDue => DepthStageProbe && _probeArmed;
+
+    /// <summary>The after-main sample was taken: wait out the period, arm the present stage.</summary>
+    public static void ProbeMainTaken() { _probeAt = Environment.TickCount64 + ProbePeriodMs; _probeArmed = true; }
+
+    /// <summary>The present sample was taken.</summary>
+    public static void ProbePresentTaken() => _probeArmed = false;
+
+    /// <summary>The probe's runs, samples, depth-carrying samples, and stages with no
+    /// target or no depth attachment, by stage.</summary>
+    public static readonly long[] ProbeRuns = new long[ProbeStages];
+    public static readonly long[] ProbeSamples = new long[ProbeStages];
+    public static readonly long[] ProbeDepth = new long[ProbeStages];
+    public static readonly long[] ProbeTargetAbsent = new long[ProbeStages], ProbeDepthAbsent = new long[ProbeStages];
+
+    /// <summary>The samples with no surface buffer to read an id from, and the samples
+    /// whose buffer is not the sampled frame's (the pass runs at present), by stage.</summary>
+    public static readonly long[] ProbeSurfaceAbsent = new long[ProbeStages], ProbeSurfaceStale = new long[ProbeStages];
+
+    /// <summary>The present stage's ids sampled, six a stage in <see cref="SurfaceIds"/>'
+    /// order; the after-main stage reads no ids, its buffer being an older frame's.</summary>
+    public static readonly long[] ProbeSurfaceIds = new long[ProbeStages * 6];
+
+    /// <summary>The probe's last reading, by stage: target, frame, retained serial, size.</summary>
+    public static readonly uint[] ProbeTargetFbo = new uint[ProbeStages];
+    public static readonly long[] ProbeFrame = new long[ProbeStages];
+    public static readonly int[] ProbeTargetSerial = new int[ProbeStages];
+    public static readonly int[] ProbeTargetW = new int[ProbeStages], ProbeTargetH = new int[ProbeStages];
+
+    /// <summary>Present/after-main pairs taken, and whether the two read the same
+    /// target and the same retained serial; a pair that did not is still counted.</summary>
+    public static long ProbePairRuns, ProbePairFboMatch, ProbePairFboMismatch;
+    public static long ProbePairSerialMatch, ProbePairSerialMismatch;
+
     /// <summary>0085. The port's switch: the map's blended faces (water) are drawn by
     /// the backend too, a slice of view depth at a time where the table's walk would
     /// have drawn their packets (<see cref="WaterDrawer"/>).</summary>

@@ -2421,6 +2421,18 @@ public sealed partial class GlCore : IGpuBackend
         }
         else if (GteDepth.Reflections && !rgb24)
             ScreenReflections.NoTarget++;
+        // 0085's probe: with both consumers off the surface pass is still drawn for
+        // `SurfaceCheck` and for the depth-stage probe, so the readback is the frame's.
+        if (!aoOn && !ssrOn && (RetainedScene.SurfaceCheck || RetainedScene.ProbePresentDue)
+            && !rgb24 && _progNormal != 0 && src is { Depth: not 0 })
+            surfaces = DrawSurfaces(src!, GlVram.Scale);
+        // The depth-stage probe, present stage: the source about to be shown, with ids
+        // only from a fresh surface pass.
+        if (!rgb24 && RetainedScene.ProbePresentDue)
+        {
+            ProbeDepthStage(RetainedScene.ProbePresent, src, src?.RetainedSerial ?? 0, surfaces);
+            RetainedScene.ProbePresentTaken();
+        }
 
         var compProfile = Diagnostics.Profiler.Begin(Diagnostics.Profiler.Composite);
         long compStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -2773,7 +2785,8 @@ public sealed partial class GlCore : IGpuBackend
     /// reads; see NormalFs.
     unsafe bool RenderSurfaces(GlDisplayRt src, int scale)
     {
-        if ((!GteDepth.AoNormals && !GteDepth.Reflections) || _progNormal == 0
+        if ((!GteDepth.AoNormals && !GteDepth.Reflections && !RetainedScene.SurfaceCheck
+             && !RetainedScene.DepthStageProbe) || _progNormal == 0
             || src.Geo.Count == 0 && src.Geo.WorldSerial == 0) return false;
         EnsureNormalTarget(src, scale);
         if (src.Normal == 0) return false;
@@ -3202,7 +3215,7 @@ public sealed partial class GlCore : IGpuBackend
         int w = rt.Wide1x * scale, h = rt.H * scale;
         // A numerical surface probe also needs the material/depth attachment,
         // even when no reflection feature consumes it in ordinary drawing.
-        bool surface = GteDepth.Reflections || RetainedScene.SurfaceCheck;
+        bool surface = GteDepth.Reflections || RetainedScene.SurfaceCheck || RetainedScene.DepthStageProbe;
         if (rt.Normal != 0 && rt.NormalW == w && rt.NormalH == h && (rt.Surface != 0) == surface) return;
         if (rt.Normal == 0)
         {

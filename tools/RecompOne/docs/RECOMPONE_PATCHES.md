@@ -1584,6 +1584,11 @@ Four files in the directory have no entry below:
   play) was refused by the present for good: the 4:3 VRAM fallback, and no pass that
   needs a display target. The fifteenth diff in the patch file. See "A target made
   under the GPU world renderer never latched" in `docs/WIDESCREEN.md`.
+  Since amended: the depth-stage probe reads this draw's target back, and the
+  surface probe's pass runs with the occlusion and reflection features off
+  (`RetainedScene.DepthStageProbe`, `RetainedScene.SurfaceCheck`). The sixteenth
+  diff in the patch file; the fields are under "Retained contract additions under
+  verification" below.
 
 ## Retained contract additions under verification (2026-10-04)
 
@@ -1600,13 +1605,41 @@ map, so model-only frames can render. The port still owns scene validity.
 The numerical surface probe can request the surface attachment without enabling
 reflection features; normal/AO-only configurations can therefore measure it too.
 
+The retained world can be sampled for depth at two stages without an image. The
+game sets `RetainedScene.DepthStageProbe` (off by default; the port's switch, as
+`SurfaceCheck` is), and the runtime then reads the frame target back at most once
+every five seconds: immediately after the retained main draw, and again at the
+present for the source it is about to show, after the present's surface pass. The
+after-main stage reads depth only and counts its surface samples as stale, since
+the pass has not run for that frame. The present stage reads normal/surface ids
+only where `DrawSurfaces` drew for that present (the probe takes the draw's
+success as `surfaceFresh`); a surface attachment left over from an older frame is
+counted stale, never read. Both stages record the target, frame, retained serial
+and size they read, and the present stage records whether the pair read the same
+target and serial. A stage with no target, a target with no depth attachment, and
+a sample with no surface buffer are counted as absent rather than reported as
+zeros; a pair that did not match still counts its two stages. Every read puts the
+read framebuffer, that framebuffer's read buffer and the pack alignment back, and
+the normal/surface framebuffer's own read buffer with them, in the surface probe
+as well.
+
+The surface probe also runs with the occlusion and reflection features off. With
+neither consumer ready, the present draws the surface pass for the probe alone at
+the render scale when `SurfaceCheck` or the depth-stage probe's present stage asks
+for it, `RenderSurfaces` runs for either switch, and the geometry keeper
+(`AoGeometry.Active`) collects the frame's triangles and the retained map's frame
+entry for as long as either holds, so that pass has something to read. That is
+deliberately not `GteDepth.SurfacesWanted`, which would change what the packet
+path writes to the depth buffer, and it leaves `GteDepth.AmbientOcclusion` and
+`GteDepth.Reflections` unset.
+
 Applicable late fixes from the Verdite2 vendored copy preserve `NotRect` through
 surface classification/depth records and texture repair's dialogue ink holes.
 The existing `SurfaceMaterial.Classify` overload remains binary compatible.
 The bounded Verdite2 new-game check keeps retained map/poses/sky/water/mirror and
 normal passes active with zero reported legacy world projections/3D packets.
-These changes form an isolated shared-subtree checkpoint; no public push is
-authorized. Shader arithmetic is measured separately from visual acceptance.
+Shared checkpoints belong in subtree-only commits and the Verdite fork, per
+repository guidance. Shader arithmetic is measured separately from visual acceptance.
 
 `0007`, `0008` and `patches/EndingHold.cs` are the shape to keep in mind
 generally: **anything the runtime refreshes only at `VSync` is invisible to a

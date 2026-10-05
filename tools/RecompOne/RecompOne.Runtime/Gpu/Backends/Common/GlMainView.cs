@@ -128,6 +128,12 @@ public sealed partial class GlCore
             rt.Geo.WorldCy = cy;
         }
         MarkDrawn(rt);
+        // The probe: the depth the retained main draw left, before water, packets, present.
+        if (RetainedScene.ProbeMainDue)
+        {
+            ProbeDepthStage(RetainedScene.ProbeMain, rt, RetainedScene.MainSerial);
+            RetainedScene.ProbeMainTaken();
+        }
         // The margin latch counts packet vertices past the game's clip (V), and the
         // map and models drawn here are no packets, so a target made while this
         // draws -- an aspect changed in play -- never latched and the present
@@ -1290,6 +1296,26 @@ public sealed partial class GlCore
 
     float[]? _chkSurf, _chkDepth;
 
+    /// <summary>A readback's saved state: the read framebuffer, that framebuffer's read
+    /// buffer and the pack alignment, put back by <see cref="Restore"/>.</summary>
+    readonly struct ReadState
+    {
+        readonly int _fbo, _buf, _align;
+        public ReadState(GL gl)
+        {
+            _fbo = gl.GetInteger(GLEnum.ReadFramebufferBinding);
+            _buf = gl.GetInteger(GLEnum.ReadBuffer);
+            _align = gl.GetInteger(GLEnum.PackAlignment);
+            gl.PixelStore(PixelStoreParameter.PackAlignment, 4);
+        }
+        public void Restore(GL gl)
+        {
+            gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, (uint)_fbo);
+            gl.ReadBuffer((ReadBufferMode)_buf);
+            gl.PixelStore(PixelStoreParameter.PackAlignment, _align);
+        }
+    }
+
     /// <summary>The probe's: the surface buffer just drawn, read back against the
     /// target's depth on a 4-pixel grid. Waits on the GPU; the probe only.</summary>
     unsafe void CheckSurfaces(GlDisplayRt src)
@@ -1298,13 +1324,15 @@ public sealed partial class GlCore
         int sw = src.NormalW, sh = src.NormalH, dw = src.TexW, dh = src.TexH;
         if (_chkSurf == null || _chkSurf.Length < sw * sh * 4) _chkSurf = new float[sw * sh * 4];
         if (_chkDepth == null || _chkDepth.Length < dw * dh) _chkDepth = new float[dw * dh];
+        var state = new ReadState(_gl);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, src.NormalFbo);
+        int normalBuf = _gl.GetInteger(GLEnum.ReadBuffer);
         _gl.ReadBuffer(ReadBufferMode.ColorAttachment1);
         fixed (float* p = _chkSurf) _gl.ReadPixels(0, 0, (uint)sw, (uint)sh, PixelFormat.Rgba, PixelType.Float, p);
-        _gl.ReadBuffer(ReadBufferMode.ColorAttachment0);
+        _gl.ReadBuffer((ReadBufferMode)normalBuf);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, src.Fbo);
         fixed (float* p = _chkDepth) _gl.ReadPixels(0, 0, (uint)dw, (uint)dh, PixelFormat.DepthComponent, PixelType.Float, p);
-        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0);
+        state.Restore(_gl);
         for (int y = 0; y < sh; y += 4)
         for (int x = 0; x < sw; x += 4)
         {
@@ -1318,5 +1346,78 @@ public sealed partial class GlCore
             if (z > dz + 64f + dz / 64f) RetainedScene.SurfaceBehind++;
         }
         RetainedScene.SurfaceChecks++;
+    }
+
+    float[]? _probeDepth, _probeSurf;
+
+    /// <summary>0085's probe at one stage: the target's depth on a 4-pixel grid, and at
+    /// present the surface buffer, only where a pass drew it this frame. No image, and
+    /// no state left changed.</summary>
+    unsafe void ProbeDepthStage(int stage, GlDisplayRt? rt, int serial, bool surfaceFresh = false)
+    {
+        int dw = rt?.TexW ?? 0, dh = rt?.TexH ?? 0;
+        RetainedScene.ProbeRuns[stage]++;
+        RetainedScene.ProbeTargetFbo[stage] = rt?.Fbo ?? 0;
+        RetainedScene.ProbeFrame[stage] = _frame;
+        RetainedScene.ProbeTargetSerial[stage] = serial;
+        RetainedScene.ProbeTargetW[stage] = dw;
+        RetainedScene.ProbeTargetH[stage] = dh;
+        bool absent = rt == null || rt.Fbo == 0 || dw <= 0 || dh <= 0;
+        bool depth = !absent && rt!.Depth != 0;
+        int sw = rt?.NormalW ?? 0, sh = rt?.NormalH ?? 0;
+        bool hasSurface = !absent && rt!.NormalFbo != 0 && rt.Surface != 0 && sw > 0 && sh > 0;
+        // Ids come only from a fresh pass: an attachment left from an older frame is stale.
+        bool surface = hasSurface && stage == RetainedScene.ProbePresent && surfaceFresh;
+        if (absent) RetainedScene.ProbeTargetAbsent[stage]++;
+        else if (!depth) RetainedScene.ProbeDepthAbsent[stage]++;
+
+        if (depth || hasSurface)
+        {
+            var state = new ReadState(_gl);
+            if (depth)
+            {
+                if (_probeDepth == null || _probeDepth.Length < (long)dw * dh) _probeDepth = new float[(long)dw * dh];
+                _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, rt!.Fbo);
+                fixed (float* p = _probeDepth)
+                    _gl.ReadPixels(0, 0, (uint)dw, (uint)dh, PixelFormat.DepthComponent, PixelType.Float, p);
+            }
+            if (surface)
+            {
+                if (_probeSurf == null || _probeSurf.Length < (long)sw * sh * 4) _probeSurf = new float[(long)sw * sh * 4];
+                _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, rt!.NormalFbo);
+                int normalBuf = _gl.GetInteger(GLEnum.ReadBuffer);
+                _gl.ReadBuffer(ReadBufferMode.ColorAttachment1);
+                fixed (float* p = _probeSurf)
+                    _gl.ReadPixels(0, 0, (uint)sw, (uint)sh, PixelFormat.Rgba, PixelType.Float, p);
+                _gl.ReadBuffer((ReadBufferMode)normalBuf);
+            }
+            state.Restore(_gl);
+
+            for (int y = 0; y < dh; y += 4)
+            for (int x = 0; x < dw; x += 4)
+            {
+                RetainedScene.ProbeSamples[stage]++;
+                if (depth && _probeDepth![(long)y * dw + x] < 0.99999f) RetainedScene.ProbeDepth[stage]++;
+                if (!hasSurface) { RetainedScene.ProbeSurfaceAbsent[stage]++; continue; }
+                if (!surface) { RetainedScene.ProbeSurfaceStale[stage]++; continue; }
+                int sx = Math.Min(sw - 1, (int)((long)x * sw / dw)), sy = Math.Min(sh - 1, (int)((long)y * sh / dh));
+                float id = _probeSurf![((long)sy * sw + sx) * 4 + 3];
+                RetainedScene.ProbeSurfaceIds[stage * 6 + (id < 0.5f ? 0 : id < 1.5f ? 1 : id < 2.5f ? 2 : id < 3.5f ? 3 : id < 255.5f ? 4 : 5)]++;
+            }
+        }
+        if (stage == RetainedScene.ProbePresent) ProbeDepthPair();
+    }
+
+    /// <summary>0085's probe: whether the present reading's target and serial were the
+    /// after-main reading's. A pair that did not still counts its own two stages.</summary>
+    void ProbeDepthPair()
+    {
+        RetainedScene.ProbePairRuns++;
+        if (RetainedScene.ProbeTargetFbo[RetainedScene.ProbePresent] == RetainedScene.ProbeTargetFbo[RetainedScene.ProbeMain])
+            RetainedScene.ProbePairFboMatch++;
+        else RetainedScene.ProbePairFboMismatch++;
+        if (RetainedScene.ProbeTargetSerial[RetainedScene.ProbePresent] == RetainedScene.ProbeTargetSerial[RetainedScene.ProbeMain])
+            RetainedScene.ProbePairSerialMatch++;
+        else RetainedScene.ProbePairSerialMismatch++;
     }
 }
