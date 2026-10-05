@@ -35,7 +35,9 @@ in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
 the model walk and the MO pose blender in C# (`KF3_MODELWALK`, `KF3_MOPOSE`,
 verified, on), the creatures, objects and their clip times carried between ticks
 (`KF3_SMOOTH_MODELS`, judged, on under pacing) and the scrolling textures held
-to the tick (`KF3_TEXSCROLL`); keyboard and mouse controls (`KF3_KEYS`,
+to the tick (`KF3_TEXSCROLL`); the title's Continue with a full card
+(`KF3_TITLECONTINUE`) and the last save reloaded on death (`KF3_AUTORELOAD`,
+Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and mouse controls (`KF3_KEYS`,
 `KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the

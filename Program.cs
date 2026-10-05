@@ -60,6 +60,23 @@ Kf3.AgentServer.Configure(Environment.GetEnvironmentVariable("KF3_SHELL"));
 Kf3.AgentServer.Install();
 Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
+
+// Continue on the title with a full card: OPEN.EXE's card check fails when it
+// cannot create a scratch file, which five saves guarantee. KF3_TITLECONTINUE=0
+// compares. See "Saves and the start menu" in docs/GAME_INTERNALS.md.
+Kf3.TitleContinue.Configure(Environment.GetEnvironmentVariable("KF3_TITLECONTINUE"));
+Kf3.TitleContinue.Install();
+
+// Reload the last save on death, through the in-game menu's own Load. A setting
+// under Gameplay; the variables win over it:
+//     KF3_AUTORELOAD=1          on (the default); 0 leaves the death alone
+//     KF3_AUTORELOAD_DELAY=2.5  seconds of the death sequence first
+//     KF3_AUTORELOAD_SLOT=0     0 = the game's last used slot, 1..5 pins one
+// See "Death and auto reload" in docs/GAME_INTERNALS.md.
+Kf3.AutoReload.Configure(Environment.GetEnvironmentVariable("KF3_AUTORELOAD"),
+                         Environment.GetEnvironmentVariable("KF3_AUTORELOAD_DELAY"),
+                         Environment.GetEnvironmentVariable("KF3_AUTORELOAD_SLOT"));
+Kf3.AutoReload.Install();
 Kf3.StageProbe.Install();
 Kf3.GeometryProbe.Install();
 Kf3.SceneCensus.Install();

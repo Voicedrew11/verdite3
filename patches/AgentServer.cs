@@ -58,6 +58,7 @@ public static class AgentServer
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
         "gpu - the retained renderer's cumulative draw and model-mask counters",
+        "kill - kill the player through the game's death latch (tests auto reload)",
     ];
 
     public static void Configure(string? spec)
@@ -177,7 +178,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu":
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -219,6 +220,7 @@ public static class AgentServer
         "dump" => DoDump(cmd.Arg1),
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
+        "kill" => "{\"ok\":true,\"cmd\":\"kill\",\"status\":" + Q(AutoReload.Simulate()) + "}",
         "warp" => SceneDriver.Warp(cmd.Arg1),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +

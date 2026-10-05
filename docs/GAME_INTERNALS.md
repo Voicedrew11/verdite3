@@ -460,6 +460,72 @@ the item heals and the full restores share it.
 - In game, the menu (Cross) has Save and Load (`func_8001E710`, which calls the
   loader at `0x8001E968`). Driving it from a script with Cross saves over the
   slot: see "Driving the game without a person" in `docs/DEVELOPMENT.md`.
+- **Load is a card session around the loader, then a short arm.** `func_8001E710`
+  opens the session `func_80028034` (which allocates the `0x6000`-byte buffer at
+  `gp+0x1B4`), calls the loader, closes it with `func_80028090`, and returns the
+  slot or 0. The menu dispatcher `func_8001A774` turns a load into -3, and its
+  caller's -3 arm (`0x80030740`) is: `func_80028F90()` (the post-load fixup: the
+  equipment and spells re-applied; `func_80028E9C` zeroes the view tilt
+  `0x801B2618` and the death camera's sink `0x801B2650`), then
+  `func_80029188(a, a, a, u8[0x8018FADB], u8[0x8018FADC], 0xFF)` with `a =
+  u8[0x8018FAD8]`, then `func_8002B6F0()`. `func_80029188` is the respawn: it
+  runs the area load itself (stages 8 and the CD loader in a loop), and its
+  placement `func_8002B760` clears the action byte.
+
+### The title's Continue and a full card
+
+**OPEN.EXE leaves Continue off when the card is full** (read 2026-10-05). Before
+the title menu (`0x80011FDC`), `func_80014174` checks the card, then proves it
+writable by opening `bu00:BASLUS-00255TEMP` with create (the name at `0x8001108C`,
+mode `0x200`) and deleting it; it returns 2 when the create fails. Any non-zero
+answer skips the directory read `func_80014264` and leaves the save count at 0,
+and the menu `func_800131AC(&choice, count)` then has no Continue. A save is 3
+blocks of the card's 15, so **five saves fill it**, and from then on the saves
+are only reachable through the in-game Load. GAME.EXE's copy of the same check
+(`func_800280D4`) treats 2 as readable and goes on to the directory, which is
+why that path works. The runtime's card (`MemoryCard.Create`) refuses a create
+with no free block as the hardware does; this is the game's own rule.
+
+`patches/TitleContinue.cs` posts on `func_80014174` and turns 2 into 0, so the
+directory decides. **Measured**: card A with five saves, Start pressed through
+OPEN.EXE: the title preselected Continue and `0x800102FA` read 1 in GAME.EXE;
+with `KF3_TITLECONTINUE=0`, 0 (a New Game).
+
+## Death and auto reload
+
+The death clock `0x801B261E` (zeroed by the latch, +1 a tick in the state-17
+handler at `0x80031C54`) runs the sequence: 1..31 the animation, 32..64 the fade
+(`func_80017158`, amount `(n - 32) << 7`), and at 65 the respawn. At 65 the
+handler asks `func_8005D7BC(0x6B)`, **DRAGON CRYSTAL**: held, it is used up
+(`func_8005D7F8`), the player is placed at `(0x1C800, -0x3A80, 0xC000)` and
+respawned in area 0 with everything else kept. Not held, the game starts over:
+`func_8005EA64` (the New Game inventory) and `func_80029188(0, 0, 0, 0, 0, 0xFF)`.
+At 15 Hz, 65 ticks is 4.3 s.
+
+`patches/AutoReload.cs` is Verdite2's auto reload on these addresses. A post on
+stage 4 `func_80030FCC` (which runs while dead, on a world tick) watches the
+action byte; from a death it saw the player enter, it holds the clock at 31 for
+2.5 s, then runs the menu's Load without the menu: `func_80028034`, the loader
+on the last used slot `0x8009C2C0` (or a pinned one), `func_80028090`, and the -3
+arm above, with `func_8003078C` (the game's reset of the action byte and the
+view springs) kept for a death the respawn did not clear. A death holding a
+DRAGON CRYSTAL is left to the game. A session that has neither saved nor loaded
+(slot 0) is left to the game too.
+
+**Measured 2026-10-05**, slot 1 (`fdat17`, area 5, LV 12, HP 108/134), with and
+without `KF3_FPS=60`: the shell's `kill`, the clock held at 31, then
+`reloaded slot 1 into area 5 (HP 108/134, LV 12, state 0x00, held at tick 31)`,
+the save's position and heading, the loop running, the tilt and sink at 0. The
+tilt spring's velocity `0x801B2674` is left at -4, as the game's own respawn
+leaves it. The beacon's `area` reads 255 afterwards, since the respawn's
+release passes `0xFF` to the pending descriptor `0x8018FAE4`; the menu's own
+Load passes the same. **A script must wait for the loop before `kill`**: after
+`autostart` the area's arrival holds the main loop for about 5 s (`fdat17`), and
+a death the patch never saw the player alive for is not armed, so a `kill` sent
+then is the game's own death (the first try ran to 65 and a New Game). A death
+in play cannot come first, since the world runs in the same loop as stage 4.
+Not measured: the DRAGON CRYSTAL deferral, and a death by damage rather than
+the latch.
 
 ## The geometry path
 

@@ -18,6 +18,10 @@ kept.
 | `KF3_SHELL` | `1` or a port: the command channel on `127.0.0.1:27903` | off |
 | `KF3_AUTOSTART` | `1`..`15`: load that card A slot at boot; `new`: a New Game | off |
 | `KF3_AUTOPAD` | `seconds:button:holdMs,…` from the first area load | none |
+| `KF3_TITLECONTINUE` | `0`: the title's own card check, which leaves Continue off on a full card (five saves); a comparison only | on |
+| `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
+| `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |
+| `KF3_AUTORELOAD_DELAY` | seconds of the death sequence before the reload (0-10); not a setting | 2.5 |
 | `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is no pacing | unset |
 | `KF3_TICKRATE` | the world's rate under pacing (5-60 Hz); changes gameplay speed. Testing ▸ Frame pacing ▸ Tick rate, kept as `kf3.tickrate`; the variable wins at boot | 15 |
 | `KF3_FPS_PROBE` | `1`: a pacing line a second | off |

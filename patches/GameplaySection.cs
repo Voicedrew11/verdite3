@@ -83,5 +83,40 @@ public sealed class GameplaySection : ISettingsSection
             ImGui.SetTooltip("Turns the view the frame you move the mouse, instead of on the game's next tick.");
 
         ImGui.EndDisabled();
+
+        DrawAutoReload();
+    }
+
+    static readonly string[] Slots = ["Last used", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"];
+
+    /// <summary>Verdite2's AutoReloadPage: the switch, and the slot dimmed and
+    /// indented under it while it is off.</summary>
+    static void DrawAutoReload()
+    {
+        bool on = AutoReload.Enabled;
+        if (ImGui.Checkbox("Reload the last save on death", ref on))
+        {
+            AutoReload.SetEnabled(on);
+            Set(AutoReload.OnKey, on);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Puts you back at your last save instead of the menus.");
+
+        ImGui.Indent();
+        ImGui.BeginDisabled(!AutoReload.Enabled);
+
+        int slot = AutoReload.Slot;
+        ImGui.SetNextItemWidth(260);
+        if (ImGui.Combo("Save slot", ref slot, Slots, Slots.Length))
+        {
+            AutoReload.SetSlot(slot);
+            Rt.View.SetInt(AutoReload.SlotKey, AutoReload.Slot);
+            Rt.SaveView();
+        }
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Which save to reload. \"Last used\" follows where you saved or loaded.");
+
+        ImGui.EndDisabled();
+        ImGui.Unindent();
     }
 }
