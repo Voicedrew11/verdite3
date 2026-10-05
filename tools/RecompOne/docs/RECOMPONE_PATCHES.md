@@ -339,7 +339,8 @@ Four files in the directory have no entry below:
   already runs that loop but only ever for its own condition. Exposed as
   `Runtime.Pump`. Everything else the progress UI needs was public already —
   `Popup` is abstract-public and `PopupManager.Register` takes any implementation
-  — so `Verdite2.Launcher/BuildProgressPopup.cs` is not a patch. UI only, **no
+  — so the launcher's `BuildProgressPopup.cs` (Verdite Core's `launcher/`, shared
+  by the ports since 2026-10-05) is not a patch. UI only, **no
   recompile**. See "The one patch this needed" in `docs/PACKAGING.md`.
 
 - `0032-expose-pad-queries.patch` — `InputManager` is `internal`, so a port
@@ -804,7 +805,8 @@ Four files in the directory have no entry below:
   creation as `GLFW_WAYLAND_APP_ID` — the raw `0x00026001`, because Silk 2.22 has
   no name for a GLFW 3.4 hint — and as the X11 class and instance name beside it.
   Measured after: `xdg_toplevel#45.set_app_id("verdite2")` on the wire. What wants
-  both is `patches/CardIcon.cs` and `patches/DesktopEntry.cs`. UI only — **no
+  both is each game's `patches/CardIcon.cs` and Verdite Core's `WindowIcon` and
+  `DesktopEntry`. UI only — **no
   recompile**. See "The icon comes off the disc" in `docs/PACKAGING.md`.
 
 - `0062-one-named-pad-button.patch` — `GetFirstPressedPadButton` sweeps the enum
@@ -1357,7 +1359,7 @@ Four files in the directory have no entry below:
   counter being the first of them, and a width of 0 skips one (the counter's is 0
   when it is off). The counter's slot is never narrower than `000 / 000 fps`, so
   what sits left of it does not move as the count changes width.
-  `Verdite2.Launcher/UpdateBadge.cs` is the only caller. Numbered past
+  The launcher's `UpdateBadge.cs` (Verdite Core's `launcher/`) is the only caller. Numbered past
   `remaster-design`'s `0070`-`0080` so the two branches do not collide. UI only —
   **no recompile**. See "Telling the player about a new release" in
   `docs/PACKAGING.md`.
