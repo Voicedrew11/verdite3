@@ -52,8 +52,9 @@ on the fork's `checkpoint/retained-depth-probes`, and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
 `docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
 
-**Retained GPU renderer in development** (2026-10-05): opt-in native scene and
-persistent mesh/pose submission; all-area inner native comparisons, near-face
+**Retained GPU renderer in development** (2026-10-05): the default scene
+renderer since 2026-10-05 (`KF3_GPU_WORLD=0` for packets), drawing whenever
+perspective and the Z-buffer are on; native scene and persistent mesh/pose submission; all-area inner native comparisons, near-face
 descriptor fixtures, shader probes and measured retained-depth coverage. The near
 map and near models are retained (no near fallback); front-table and exceptional
 contexts remain open. No visual acceptance or full

@@ -108,9 +108,11 @@ prefix from the game.
   reference), `0` recompiled.
 - `KF3_NATIVE_SCENE_VERIFY_FUNCS=hex,...`: compare only selected function
   addresses, allowing inner assemblers to be checked separately from outer calls.
-- `KF3_GPU_WORLD=shadow|1`: persistent source extraction beside packets, or
-  opt-in retained drawing with explicit attributed fallbacks. Requires native
-  submission, perspective/depth and a supported backend for substitution.
+- `KF3_GPU_WORLD=0|shadow|1`: retained drawing with explicit attributed
+  fallbacks, the default since 2026-10-05 (Testing ▸ Scene renderer); `shadow`
+  extracts beside packets, `0` draws packets only. Requires native submission,
+  perspective/depth and a supported backend for substitution; without them the
+  packets draw, and the scene line reports the blocker.
 - `KF3_GPU_CENSUS_FILE=path`: cumulative submissions/fallbacks, asset and actual
   backend counters as JSON, rewritten periodically.
 - `KF3_SCENE_CENSUS=1`, `KF3_SCENE_CENSUS_FILE=path`: packet/domain/caller/area

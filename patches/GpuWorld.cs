@@ -11,8 +11,8 @@ namespace Kf3;
 /// <summary>The game owns scene lifetime, domains and fallback decisions.</summary>
 public static class GpuWorld
 {
-    // 0 reference, 1 retain alongside reference, 2 retained drawing (opt-in).
-    public static int Mode { get; private set; }
+    // 0 reference, 1 retain alongside reference, 2 retained drawing (the default).
+    public static int Mode { get; private set; } = 2;
     public static int Setting
     {
         get => Mode;
@@ -44,7 +44,7 @@ public static class GpuWorld
     public static void Install()
     {
         Mode = Environment.GetEnvironmentVariable("KF3_GPU_WORLD")?.ToLowerInvariant() switch
-        { "shadow" or "capture" => 1, "1" or "on" => 2, _ => 0 };
+        { "0" or "off" or "reference" => 0, "shadow" or "capture" => 1, _ => 2 };
         _surfaceProbe = Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1";
         RetainedScene.ModelMask = Environment.GetEnvironmentVariable("KF3_GPU_MODEL_MASK") != "0";
         RetainedScene.ModelMaskProbe = Environment.GetEnvironmentVariable("KF3_GPU_MASK_PROBE") == "1";
