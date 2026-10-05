@@ -318,10 +318,10 @@ legacy world projections/3D packets, zero missed map walks/mirror captures, and
 165,484 depth-bearing surface samples with zero missing/behind samples in the
 last window. This establishes starting-area compatibility only.
 
-Shared runtime checkpoint: game-repo commit `04a9c9b` contains only
+Shared runtime checkpoint: game-repo commit `e57a33c` contains only
 `tools/RecompOne`; its exact matching subtree commit is
-`a339e6f715d6d83d7506fb55fdc040a61786b5c3`, pushed to the Verdite fork branch
-`checkpoint/retained-depth-probes`. No upstream issue or PR was created.
+`4c3375f6b82b4e0798f479adad4c68ae347ecf98`, the head of the Verdite fork branch
+`checkpoint/retained-depth-probes` (first pushed at `a339e6f`, game commit `04a9c9b`). No upstream issue or PR was created.
 Game adapter/probe/docs changes are committed separately from the shared runtime.
 The user's pre-existing pacing/settings edits are preserved in their own commit.
 

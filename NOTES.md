@@ -43,7 +43,7 @@ near path in C# (`docs/PICTURE.md`; all measured, none judged, all off); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone`, based on `2013e51` (the vblank
 event delivered once), with retained-runtime checkpoint
-`a339e6f7` pushed to the fork on `checkpoint/retained-depth-probes`, and
+`4c3375f6` pushed to the fork on `checkpoint/retained-depth-probes`, and
 `tools/verdite-core` of Verdite Core at `a6c2434`. The acceptance test is in
 `docs/DEVELOPMENT.md`; what is next is in `docs/TODO.md`.
 

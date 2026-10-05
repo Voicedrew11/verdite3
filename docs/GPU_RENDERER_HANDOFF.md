@@ -81,9 +81,9 @@ No shared subtree was edited in the completed slice. Release builds and all
 assertions cover eight opaque/semi commands, four retained tile rotations,
 UV/normal associations, GT4 skips and separate model/near cache entries.
 
-The shared runtime checkpoint is game-repo commit `04a9c9b`, exclusively
+The shared runtime checkpoint is game-repo commit `e57a33c`, exclusively
 `tools/RecompOne`. Its exact subtree commit is
-`a339e6f715d6d83d7506fb55fdc040a61786b5c3`, pushed to the Verdite fork branch
+`4c3375f6b82b4e0798f479adad4c68ae347ecf98`, pushed to the Verdite fork branch
 `checkpoint/retained-depth-probes`. Shared edits still require subtree-only
 commits and matching fork commits; no upstream issues or PRs.
 
