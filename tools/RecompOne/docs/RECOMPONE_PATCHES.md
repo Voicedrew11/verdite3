@@ -750,6 +750,13 @@ Four files in the directory have no entry below:
   fps: 18,309 tris/s kept, 142.4 normal passes/s, 100.0% of the covered picture lit
   from a geometry normal, 144.0 fps drawn at 20.0 ticks/s either way. **No
   recompile.** See "The normal was the guess" in `docs/RENDERING.md`.
+  *Amended (2026-10-05):* a kept triangle carries its UV and texel word
+  (`GlCore.SurfaceTex`, `VeilTex`'s packing), and `NormalFs` drops a texel that is
+  `0x0000` in sample VRAM, at `PrimFs`'s centre tap, as the colour pass does. Before,
+  a billboard's transparent texels wrote no depth but did write its camera-facing
+  normal, so AO shaded the wall behind at that normal: a faint box round every
+  sprite with AO on. A texture window or an image keeps the whole face (the decode
+  has no window). The normal pass now always binds sample VRAM on unit 0.
 
 - `0059-world-space-occlusion.patch` — the occlusion pass also marches the area's own
   80x80 tile grid, so a wall behind the camera occludes as one in front of it does,

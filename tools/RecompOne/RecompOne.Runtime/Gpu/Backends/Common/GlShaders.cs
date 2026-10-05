@@ -598,6 +598,8 @@ internal static class GlShaders
 
         void main() {
             float z = vDepth * 65536.0;
+            // Taken here, in uniform control flow, for a surface's texel below.
+            vec2 dUvx = dFdx(vUv), dUvy = dFdy(vUv);
             // A veil, a see-through 2D box: where it is see-through, both buffers
             // are left as they are and its mark is added to the id (the draw blends
             // it so); a texel without the semi-transparency bit is an overlay.
@@ -627,6 +629,16 @@ internal static class GlShaders
             // 0067. The HUD and anything else 2D: no normal and no depth, only the
             // fact that it covers what is under it.
             if (id > 2.5 && id < 3.5) { oColor = vec4(0.0); oSurface = vec4(0.0, 0.0, 0.0, id); return; }
+            // A textured surface's transparent texel drew nothing and wrote no
+            // depth, so it is no surface here either: a billboard's box would
+            // otherwise lay its own normal over the wall the depth buffer holds.
+            // The texel is PrimFs's centre tap, truncated the way it rounds.
+            if ((vTex & 0x80000000u) != 0u) {
+                ivec2 tc = ivec2(dUvx.x < 0.0 ? int(ceil(vUv.x - 0.0001)) : int(floor(vUv.x + 0.0001)),
+                                 dUvy.y < 0.0 ? int(ceil(vUv.y - 0.0001)) : int(floor(vUv.y + 0.0001)));
+                vec4 t = veilTexel(tc);
+                if (t.rgb == vec3(0.0) && t.a < 0.5) discard;
+            }
             if (z <= 0.0) { oColor = vec4(0.0); oSurface = vec4(0.0); return; }
             if (uZSlice.y > 0.0 && (z <= uZSlice.x || z > uZSlice.y)) discard;
             vec2 s = gl_FragCoord.xy / uScale;

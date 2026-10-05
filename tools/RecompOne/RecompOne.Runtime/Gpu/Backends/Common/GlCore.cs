@@ -1073,8 +1073,11 @@ public sealed partial class GlCore : IGpuBackend
             {
                 // A blended triangle carries 128 over its material (NormalFs).
                 float gm = zMode == 2 ? m + SurfaceMaterial.BlendedFlag : m;
+                // Its texel too, so a billboard's transparent texels -- which drew
+                // no depth -- write no normal either (NormalFs).
+                uint tex = SurfaceTex(f);
                 _kTarget.Geo.Frame(_frame, GteDepth.Generation);
-                _kTarget.Geo.Add(GeoVert(a, gm), GeoVert(b, gm), GeoVert(c, gm));
+                _kTarget.Geo.Add(GeoVert(a, gm, tex), GeoVert(b, gm, tex), GeoVert(c, gm, tex));
             }
         }
         if (lightGen >= 0) _kLightGen = lightGen;
@@ -1142,8 +1145,15 @@ public sealed partial class GlCore : IGpuBackend
 
     /// <summary>0058. A vertex as the normal pass wants it: the position the colour
     /// pass is about to draw, and the view depth the plane is reconstructed from.</summary>
-    static AoGeometry.V GeoVert(in HleVertex v, float m) =>
-        new() { X = v.X, Y = v.Y, Z = m == SurfaceMaterial.Overlay || m >= SurfaceMaterial.VeilHalf ? 0f : v.Z, M = m };
+    static AoGeometry.V GeoVert(in HleVertex v, float m, uint tex) =>
+        new() { X = v.X, Y = v.Y, Z = m == SurfaceMaterial.Overlay || m >= SurfaceMaterial.VeilHalf ? 0f : v.Z, M = m,
+                Tu = v.U, Tv = v.V, Tex = tex };
+
+    /// <summary>A surface's texel for the normal pass, as <see cref="VeilTex"/>, or 0
+    /// where the pass cannot read it as the colour pass did: an image, or under a
+    /// texture window, which the pass's decode leaves out. Those keep the whole face.</summary>
+    uint SurfaceTex(in PrimFlags f) =>
+        _env.TwMaskX == 0 && _env.TwMaskY == 0 && !f.UseImage ? VeilTex(f) : 0u;
 
     /// <summary>A see-through 2D primitive's mark: mode 0 shows half of what is behind it.</summary>
     static float VeilOf(in PrimFlags f) => f.BlendMode == 0 ? SurfaceMaterial.VeilHalf : SurfaceMaterial.VeilFull;
@@ -2846,10 +2856,11 @@ public sealed partial class GlCore : IGpuBackend
     /// about to read. Agreeing with the depth buffer is therefore a property of the
     /// order rather than of a test that could disagree with it.
     ///
-    /// The one place it can be wrong is a textured polygon that discarded a texel:
-    /// it wrote no depth there and does write a normal. That costs a wrong normal on
-    /// the see-through parts of a grate, never a wrong depth, and the pass's own
-    /// fallback is what those pixels used to get.
+    /// A textured polygon's transparent texels wrote no depth, so they write no
+    /// normal either: NormalFs reads the texel from VRAM and drops them. Otherwise a
+    /// billboard's box was shaded with its own camera-facing normal at the wall's
+    /// depth behind it, a faint rectangle round the sprite with AO on. Only under a
+    /// texture window, which that decode leaves out, is the whole face kept.
     /// </summary>
     ///
     /// 0067. It is drawn once for both passes and it is the surface buffer too: a
@@ -2909,12 +2920,10 @@ public sealed partial class GlCore : IGpuBackend
         // alpha added, on both attachments (it writes zero to the normal buffer).
         // A veil run is drawn twice: its see-through texels with that blend
         // (uVeilPass 1), then a textured one's opaque texels as an overlay (2).
+        // A veil's texel and a textured surface's both come from sample VRAM.
         var breaks = src.Geo.Breaks;
-        if (breaks.Count > 0)
-        {
-            _gl.ActiveTexture(TextureUnit.Texture0);
-            _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-        }
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
         // 0085. The map's water goes in where the colour pass drew it among the list.
         var water = world && _wnReady ? src.Geo.Water : null;
         int start = 0, bi = 0, wi = 0;
@@ -2930,11 +2939,8 @@ public sealed partial class GlCore : IGpuBackend
                 _gl.UseProgram(_progNormal);
                 _gl.BindVertexArray(_nrmVao);
                 _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _nrmVbo);
-                if (breaks.Count > 0)
-                {
-                    _gl.ActiveTexture(TextureUnit.Texture0);
-                    _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-                }
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
             }
             // After the water the walk drew before it.
             if (armAt >= 0 && armAt <= start)
@@ -2946,11 +2952,8 @@ public sealed partial class GlCore : IGpuBackend
                 _gl.UseProgram(_progNormal);
                 _gl.BindVertexArray(_nrmVao);
                 _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _nrmVbo);
-                if (breaks.Count > 0)
-                {
-                    _gl.ActiveTexture(TextureUnit.Texture0);
-                    _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-                }
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
             }
             for (; bi < breaks.Count && breaks[bi] <= start; bi++) veil = !veil;
             if (start >= verts.Length) break;
