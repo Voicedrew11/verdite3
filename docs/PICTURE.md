@@ -100,6 +100,14 @@ screenshots.
   whole session, so nothing reaches the GPU by a third route.
 - 144.0 fps drawn at 15.0 ticks/s both ways.
 - **Not judged by eye**: None's bands and Smooth's gradient.
+- **Since 2026-10-06 the bit is masked in the GPU, not cleared in RAM**: runtime
+  `0090`'s `Gpu.SuppressDither`, which `NoDither.Enabled` sets, takes every E1 word
+  as asking for no dither where the GPU decodes it. The pre/post pairs no longer
+  write guest memory, and the table walk runs only for `KF3_NODITHER_PROBE=1`; it
+  had been walking the whole ordering table a second time before every DrawOTag,
+  0.047 ms a frame at slot 5. The probe, Smooth, slot 5 (`fdat05`), uncapped: about
+  880 draw envs and 13,200 table E1 words a second asking for dither, all of them,
+  and **GPUSTAT bit 9 0 throughout**, as before.
 
 ### Unit 2: perspective and sub-pixel on the address map
 
