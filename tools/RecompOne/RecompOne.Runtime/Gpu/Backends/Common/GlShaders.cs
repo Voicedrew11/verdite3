@@ -507,9 +507,12 @@ internal static class GlShaders
         flat out uint vTex;
         // 0089. The world program's; no packet is faded.
         out vec2 vFadeXZ;
+        // 0098. As WorldNormalVs's.
+        flat out float vKeep;
 
         void main() {
             vec2 p = (inPos + uPosBias) * uFbInv - 1.0;
+            vKeep = 1.0;
             float w = max(inZ, 1.0);
             gl_Position = vec4(p * w, 0.0, w);
             vDepth = inZ * (1.0/65536.0);
@@ -541,6 +544,8 @@ internal static class GlShaders
         flat in uint vTex;
         // 0089. A world corner's X and Z, for DistanceFade (WorldNormalVs).
         in vec2 vFadeXZ;
+        // 0098. A model's own weight (uModelKeep), 1 for everything else.
+        flat in float vKeep;
         // 0067. Two outputs. The first is the occlusion pass's normal buffer and
         // is blended (ONE, ONE_MINUS_SRC_ALPHA), so a translucent surface writes
         // alpha 0 and leaves the opaque surface under it -- whose depth is the one
@@ -608,7 +613,7 @@ internal static class GlShaders
             // Taken here, in uniform control flow, for a surface's texel below.
             vec2 dUvx = dFdx(vUv), dUvy = dFdy(vUv);
             // 0089. A pixel the colour pass dithers away by distance is no surface.
-            if (fadeDropped(distanceFade(vFadeXZ, z))) discard;
+            if (fadeDropped(vKeep * distanceFade(vFadeXZ, z))) discard;
             // A veil, a see-through 2D box: where it is see-through, both buffers
             // are left as they are and its mark is added to the id (the draw blends
             // it so); a texel without the semi-transparency bit is an overlay.
@@ -693,6 +698,9 @@ internal static class GlShaders
     /// </summary>
     const string ModelGlsl = """
         uniform int   uModel;
+        // 0098. The instance's own weight, 1 - ModelInstance.FadeOut: dithered as
+        // DistanceFade's, on top of it.
+        uniform float uModelKeep;
         uniform isamplerBuffer uModelVerts;
         uniform int   uModelBase;
         uniform mat3  uModelR;
@@ -838,6 +846,8 @@ internal static class GlShaders
         // 0089. As WorldVs's.
         out vec2 vFadeXZ;
         uniform vec4 uFade;
+        // 0098. A model's own weight, as WorldVs folds it into vFade.
+        flat out float vKeep;
 
         uniform mat3  uR;
         uniform vec3  uCam;
@@ -873,6 +883,7 @@ internal static class GlShaders
             uint flags = inFlags;
             vec3 w = inWorld;
             vFadeXZ = vec2(0.0);
+            vKeep = uModel != 0 ? uModelKeep : 1.0;
             if (uModel != 0) {
                 uint m = uModelMat;
                 if (uModelBlend != 0) {
@@ -1783,6 +1794,7 @@ internal static class GlShaders
                     return;
                 }
             }
+            if (uModel != 0) vFade *= uModelKeep;
             if (uSwellOn != 0 && (flags & 0x8000000u) != 0u) w.y += swellDy(w);
             vFadeXZ = uModel != 0 && (uModelView != 0 || uModelSky != 0) ? uFade.xy : w.xz;
             gl_ClipDistance[0] = (uPlaneY - uPlaneBias) - w.y;

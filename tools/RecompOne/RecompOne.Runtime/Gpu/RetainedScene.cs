@@ -897,6 +897,10 @@ public static class RetainedScene
         /// <summary>The forced-blend twin's rate plus one, every face blended at it; 0 for
         /// the faces' own.</summary>
         public int TwinMode;
+        /// <summary>0098. How far this model alone is faded out, 0 (drawn in full) to 1
+        /// (gone), through the same ordered dither as <see cref="DistanceFade"/> and on top
+        /// of it, in the colour pass and the normal pass alike.</summary>
+        public float FadeOut;
     }
 
     /// <summary>0085. A mesh corner's <see cref="Vertex.Light"/>: the low 24 bits are its

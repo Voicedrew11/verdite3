@@ -1796,6 +1796,18 @@ Four files in the directory have no entry below:
   present, no driver report; 144 fps held except one second at 126 (1→8) and 133
   (2→6), the new texture's allocation. Verdite3's shell drives it (`scale`). **No
   recompile.**
+- `0098-retained-model-fade.patch` — `0089`'s distance fade weighs a pixel by one
+  edge for the whole frame, so a port could not fade one model at a distance of its
+  own: Verdite3 draws creatures past the game's radius, and a creature appears 16
+  tiles away, nearer than the map's edge. `RetainedScene.ModelInstance.FadeOut` (0
+  drawn in full, the default; 1 gone) is sent with each instance as `uModelKeep`
+  (`1 - FadeOut`): `WorldVs` multiplies it into a model's `vFade`, so `PrimFs`
+  dithers it with the distance fade by the same table, and `WorldNormalVs` passes it
+  to `NormalFs` (`vKeep`; `NormalVs` writes 1), which drops the same pixels, so AO
+  and the surface buffer do not see what the colour pass dithered away. The mirror
+  and the blended faces are drawn through the same instance uniforms and take it too.
+  **An instance with no `FadeOut` is the program before.** **No recompile.**
+  Measured in Verdite3's `WIDESCREEN.md` ("Render distance", "The models").
 
 ## Retained contract additions under verification (2026-10-04)
 
