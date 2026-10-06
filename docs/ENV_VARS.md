@@ -203,7 +203,10 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
   the murk, and the cosine a murked surface may lean to (0 murks any).
 - `KF3_WAVES_PROBE=1`: a line every 5 s: the water rect, the clock, rippled batches and
   the swell's free corners.
-- `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage.
+- `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage,
+  and print `[KF3] surface probe: ... behind= ahead= missing=` every 5 s. `ahead` must
+  stay 0: an opaque surface in front of the frame's depth is AO's box round a
+  billboard (see "AO's box round billboards, again" in `GPU_RENDERER.md`).
 
 Video exposes the feature controls; Testing exposes session-only scene/reference
 choices. These are implemented controls, not visual acceptance.

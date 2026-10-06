@@ -722,3 +722,32 @@ is the walk as before. Verdite2 leaves `UnderSlots` at 0.
 
 **Judged fixed by the user** (2026-10-06): the castle and the tree no longer draw
 over the walls in front of them.
+
+## AO's box round billboards, again (2026-10-06)
+
+With AO on, billboards had a faint dark, translucent box round them again. The fix
+of 2026-10-05 (runtime `0058`'s amendment) made `NormalFs` drop a textured face's
+transparent texels, but only for the table's packets: the retained map and models,
+default since `253d90d`, go into the normal and surface buffers through
+`WorldNormalVs`, which handed `NormalFs` no texel (`vTex = 0`). A transparent texel
+of a retained face then wrote its normal at its own depth over the wall the depth
+buffer holds behind it. `WorldNormalVs` now passes the texel, and the runtime
+refuses to start (`GlShaders.RequireTexel`) if a normal program stops reading it.
+
+### Measured
+
+`KF3_AO=1 KF3_GPU_SURFACE_PROBE=1`, `KF3_AUTOSTART` slots 1-5, holding Left for 40 s
+(about 1.5 turns), 12 surface checks each. `ahead` is the probe's count of opaque
+surfaces in front of the depth, on its 4-pixel grid:
+
+| save | area | `vTex = 0` put back | fixed |
+|---|---|---|---|
+| 1 | fdat17 | 0 | 0 |
+| 2 | fdat14 | 0 | 0 |
+| 3 | fdat05 | 784 | 0 |
+| 4 | fdat41 | 0 | 0 |
+| 5 | fdat05 | 1,239 | 0 |
+
+`behind` was 15 and 16 in fdat17 either way, and `missing` 0 throughout. Not yet
+judged by eye.
+

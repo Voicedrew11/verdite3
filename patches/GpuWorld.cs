@@ -145,7 +145,15 @@ public static class GpuWorld
         if (_frame) RenderDistance.AfterWalk();
         if (!_frame || Environment.TickCount64 < _reportAt) return;
         _reportAt = Environment.TickCount64 + 5000;
-        if (Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1") RetainedScene.SurfaceCheck = true;
+        if (Environment.GetEnvironmentVariable("KF3_GPU_SURFACE_PROBE") == "1")
+        {
+            RetainedScene.SurfaceCheck = true;
+            // ahead must stay near 0: an opaque surface in front of the depth is AO's
+            // box round a billboard (GlShaders.RequireTexel).
+            Console.WriteLine($"[KF3] surface probe: checks={RetainedScene.SurfaceChecks} " +
+                $"pixels={RetainedScene.SurfaceDepthPixels} behind={RetainedScene.SurfaceBehind} " +
+                $"ahead={RetainedScene.SurfaceAhead} missing={RetainedScene.SurfaceMissing}");
+        }
         Console.WriteLine($"[KF3] retained scene: mode={Mode} frames={Frames} submitted={Submissions} retained={Retained} " +
             $"meshes={RetainedAssets.MeshBuilds}/{RetainedAssets.MeshHits} rigid={RetainedAssets.RigidBuilds}/{RetainedAssets.RigidHits} " +
             $"poses={MoPose.PoseBuilds}/{MoPose.PoseHits} deferred/materialized={MoPose.Deferred}/{MoPose.Materialized} " +
@@ -169,7 +177,8 @@ public static class GpuWorld
                     RetainedScene.SkyDrawn, RetainedScene.SkyFacesDrawn, RetainedScene.ArmDraws, RetainedScene.ArmMissed,
                     RetainedScene.MainWaterTriangles, RetainedScene.MainNormalTriangles,
                     RetainedScene.MainModelNormalTriangles, RetainedScene.SurfaceChecks,
-                    RetainedScene.SurfaceDepthPixels, RetainedScene.SurfaceBehind, RetainedScene.SurfaceMissing,
+                    RetainedScene.SurfaceDepthPixels, RetainedScene.SurfaceBehind, RetainedScene.SurfaceAhead,
+                    RetainedScene.SurfaceMissing,
                     ModelMask = new
                     {
                         On = RetainedScene.ModelMask, RetainedScene.MaskFrames, RetainedScene.MaskBatches,
