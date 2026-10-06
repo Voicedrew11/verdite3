@@ -45,7 +45,8 @@ store that touches the dictionary only on the host thread.
 | file | what |
 |---|---|
 | `patches/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
-| `patches/PortSettings.cs` | the list (30 settings, 20 of them on four pages: PICTURE, MOTION, WORLD, GAMEPLAY), checked at start-up, the boot check, and the Settings window's row drawer |
+| `patches/PortSettings.cs` | the list (32 settings), the game page's ten rows on two pages (PICTURE, WORLD), five of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
+| `patches/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
 | `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
 | `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
 | `patches/MenuFont.cs` | text to the menu font's codes, and why a text cannot be drawn |
@@ -131,15 +132,42 @@ At the question, Cross chooses and Circle goes back to the page with the changes
 still staged. The page last shown is kept for the next open. A step the session
 refuses (`set by KF3_X`, `not usable`, `at the end`) makes no sound and is logged.
 
-**What is on it.** The player's settings: PICTURE (aspect, texture filter,
-mipmaps, per-pixel light, ambient occlusion, blend tile edges), MOTION (frame
-pacing, frame rate, smooth camera, smooth creatures), WORLD (fog from depth,
-render distance, its fade, reflections, murky water, waves), GAMEPLAY (reload on
-death, its slot, message fade, mouse look, instant look). The renderer's own
-switches (shading, perspective, sub-pixel, the Z-buffer, the world behind menus,
-scrolling textures), the AO normals and quality and the enhancement distance have
-no page and stay in the Settings window: they are a developer's, and turning
-perspective or the Z-buffer off drops the retained renderer.
+**What is on it** (cut to what a player chooses, on the user's word, 2026-10-06):
+
+| page | row | values | stands for |
+|---|---|---|---|
+| PICTURE | DISPLAY | WINDOWED, FULLSCREEN, BORDERLESS | the runtime's `Fullscreen` and `Borderless` |
+| | RESOLUTION | 240P … 1920P | `RenderScale` 1..8: the game's 240 lines times the scale, taken at the next present (fork `0097`), at most the context's MaxScale |
+| | ASPECT | 4/3, 16/9, 16/10, 21/9 | |
+| | FRAME RATE | ORIGINAL, 30 … 360, UNCAPPED | `kf3.pacing` and `kf3.fps`: ORIGINAL is no pacing |
+| | TEXTURE FILTER | OFF, MIPMAPS, 2X … 16X | `kf3.mipmaps` and `kf3.aniso`: the taps walk the mip chain, so any turns the mipmaps on |
+| | PER-PIXEL LIGHT | ON, OFF | |
+| WORLD | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
+| | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
+| | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the surface, FULL the reflections too |
+| | RELOAD ON DEATH | ON, OFF | |
+
+Off the page, and kept in the Settings window with their variables: the smoothers
+(on whenever pacing is), mouse look and instant look, fog from depth, blend tile
+edges (now **on by default**, the user having kept it on), the reload slot (last
+used), the message fade, and the renderer's own switches (shading, perspective,
+sub-pixel, the Z-buffer, the world behind menus, scrolling textures, the AO normals,
+the enhancement distance). A saved value of any of them still holds.
+
+**A combined row** (`PortSetting.Parts`) keeps nothing of its own. Its value is
+`Join` of its parts' shown values; a step stages each part with what `Split` gives
+it, NaN leaving a part as the page found it (ORIGINAL frame rate keeps the kept
+rate, not the 30 walked through). Parts set to no step (the Settings window, a
+variable) show as CUSTOM, or for taps without mipmaps `4X NO MIPMAPS`, valued
+between two steps so Left and Right each reach one. A part's variable locks the row.
+
+**The display mode** is two runtime keys that F11, the menu bar and the Display tab
+read on the host thread. A step is applied there (`SettingsStore.OnHost`) with the
+keys put back as they were, so it reaches the file only on Save; `WindowMode.Watch`
+follows a change made anywhere else. Windowed removes `Fullscreen` and leaves
+`Borderless`, so F11 still covers the screen the way it did. Off Windows, BORDERLESS
+is the window manager's fullscreen (`HostWindow.SetFullscreen`), so it looks the
+same as FULLSCREEN there.
 
 **Six rows a page**, not the list groups' eight: under a header at Y 32 the game's
 items are 26 apart from Y 58, so a sixth ends at Y 206 and a seventh would cross
@@ -179,6 +207,25 @@ SETTINGS row is the item that replaced it), driven with the shell's `press` and 
 
 No exception in either run. **Judged** by the user, 2026-10-06: "looks great"; the
 PORT SETTINGS item was asked for then.
+
+### The cut list, measured (2026-10-06)
+
+Isolated run directory, the player's `interface.ini` with `Fullscreen=False`, slot
+1, `fdat17`, driven with the shell's `settings`. Boot: `32 declared on 2 pages, 26
+kept in interface.ini, 0 default(s) wrong`. The `[RecompOne]` lines against the copy,
+`Panels.*` and ImGui's layout aside:
+
+| check | result |
+|---|---|
+| open | read back as the file holds: WINDOWED, 1440P, 165, 16X, ENHANCED, FULL |
+| TEXTURE FILTER Left, Right; WATER, RENDER DISTANCE Left; RESOLUTION Left; FRAME RATE Left; discard | 16X `(as it was)`; `render scale 6x -> 5x`, then back to 6x; identical, 0 writes |
+| FRAME RATE Left ×10 to ORIGINAL, save | `at the end` past ORIGINAL; one line, `kf3.pacing` removed (before the NaN fix it also wrote `kf3.fps=30`) |
+| DISPLAY Right | FULLSCREEN, the file untouched while staged |
+| DISPLAY Right, save | `Fullscreen=True`, `Borderless=True` |
+| DISPLAY Left ×2 to WINDOWED, save | `Fullscreen` removed, `Borderless=True` kept |
+
+No exception. **Not judged**: the page drawn with the new rows, and the window
+changing mode (the user's to look at).
 
 ## Next
 

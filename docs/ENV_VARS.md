@@ -174,7 +174,7 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
 - `KF3_ENHANCEDIST=tiles`: enhanced shading/filtering range; 0 everywhere.
 - `KF3_NEIGHBOUR_BLEND=1`: blend each map pixel's light and fog with the light records
   of the tiles around it, so they no longer step at a tile edge (runtime `0088`); unset
-  uses the saved choice (`kf3.neighbourblend`), default off until judged.
+  uses the saved choice (`kf3.neighbourblend`), default on (2026-10-06).
 - `KF3_RENDERDIST=<tiles>`: the retained map and models drawn out to that many tiles
   (up to 30; 0 or below the game's own edge is the game's reach); unset uses the saved
   choice (`kf3.renderdistance`), default off until judged. See "Render distance" in

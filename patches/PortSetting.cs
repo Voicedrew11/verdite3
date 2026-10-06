@@ -71,6 +71,22 @@ public sealed class PortSetting
 
     public bool IsUsable => Usable?.Invoke() ?? true;
 
+    /// <summary>A row of the game's page that stands for several settings: no key of
+    /// its own, its value <see cref="Join"/> of theirs (each read through the getter it
+    /// is handed, the live or the staged value), and a step stages each part with the
+    /// value <see cref="Split"/> gives it (NaN: as it was when the page opened). Built by
+    /// <c>PortSettings.Combine</c>.</summary>
+    public PortSetting[]? Parts { get; init; }
+    public Func<Func<PortSetting, double>, double>? Join { get; init; }
+    public Func<double, Func<PortSetting, double>, double[]>? Split { get; init; }
+
+    /// <summary>The keys and text a value is kept as, null text removing the key; one
+    /// key in <see cref="Encode"/>'s text when null. A null value is the default.</summary>
+    public Func<double?, (string Key, string? Text)[]>? Keys { get; init; }
+
+    public (string Key, string? Text)[] Texts(double? value) =>
+        Keys?.Invoke(value) ?? [(Key, value is double v ? Encode(v) : null)];
+
     public string? LockedBy =>
         Envs.FirstOrDefault(e => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(e)));
 

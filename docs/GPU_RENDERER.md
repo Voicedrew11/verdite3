@@ -578,7 +578,7 @@ every frame, 0 missed. **Not judged by eye.**
 
 Each map half is lit and fogged from its own light record, so where two records
 meet, the colour and the fog step at the tile edge. `KF3_NEIGHBOUR_BLEND=1` (Video ▸
-*Blend light across tile edges*, key `kf3.neighbourblend`, **off by default**) blends
+*Blend light across tile edges*, key `kf3.neighbourblend`, **on by default** since 2026-10-06) blends
 them, ported from the neighbour part of Verdite2's `EvenFog`. Its clipped-half fog
 fix is not ported: this game has no view-space clipper. The inputs, measured on
 this disc, are in `GAME_INTERNALS.md` ("Records across a tile edge"): 1.6% of drawn

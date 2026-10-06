@@ -34,11 +34,60 @@ public static class PortSettings
         Usable = usable, Ui = ui,
     };
 
-    // The pages, in the order the game's menu shows them. The renderer's own switches
-    // (shading, perspective, sub-pixel, the Z-buffer, the world behind menus,
-    // scrolling textures) are a developer's and stay in the Settings window.
-    public const string Picture = "PICTURE", Motion = "MOTION", World = "WORLD", Gameplay = "GAMEPLAY";
-    public static readonly string[] Pages = [Picture, Motion, World, Gameplay];
+    /// <summary>A row of the game's page standing for several settings (see
+    /// <see cref="PortSetting.Parts"/>); declared after its parts, whose defaults it reads.</summary>
+    static PortSetting Combine(string key, string page, string menu, PortSetting[] parts, double[] steps,
+        Func<double, string> text, Func<Func<PortSetting, double>, double> join,
+        Func<double, Func<PortSetting, double>, double[]> split) => new()
+    {
+        Key = key, Envs = [.. parts.SelectMany(p => p.Envs).Distinct()], Label = menu,
+        Page = page, MenuLabel = menu, Steps = steps, MenuValue = text,
+        Parts = parts, Join = join, Split = split,
+        Default = join(p => p.Default), Live = () => join(p => p.Live()),
+        Apply = v =>
+        {
+            var values = split(v, p => p.Live());
+            for (int i = 0; i < parts.Length; i++)
+                if (!double.IsNaN(values[i])) parts[i].Apply(values[i]);
+        },
+        Ui = Ui.None,
+    };
+
+    /// <summary>A combined row's value when its parts match none of its steps (set in the
+    /// Settings window or by a variable): between the first two steps, so Left and Right
+    /// both reach one.</summary>
+    const double Custom = 0.5;
+
+    /// <summary>A part a combined row's step leaves where it was when the page opened.</summary>
+    public const double Unchanged = double.NaN;
+
+    // The pages, in the order the game's menu shows them, and their rows in
+    // Menu below. Everything else (the renderer's own switches, the smoothers, the
+    // mouse, the fog, the parts of a combined row) stays in the Settings window:
+    // a player who raises the frame rate wants the smoothing, and so on.
+    public const string Picture = "PICTURE", World = "WORLD";
+    public static readonly string[] Pages = [Picture, World];
+
+    public static readonly PortSetting Display = new()
+    {
+        Key = WindowMode.FullscreenKey, Label = "Display mode",
+        Page = Picture, MenuLabel = "DISPLAY", Steps = [0, 1, 2], MenuValue = Named([0, 1, 2], "WINDOWED", "FULLSCREEN", "BORDERLESS"),
+        Default = 0, Live = () => WindowMode.Mode, Apply = v => WindowMode.Set((int)Math.Round(v)),
+        Keys = WindowMode.Keys, Ui = Ui.None,
+    };
+
+    static readonly double[] Scales = [1, 2, 3, 4, 5, 6, 7, 8];
+
+    /// <summary>The render scale, named by the lines it draws: the game's 240 times the
+    /// scale. The backend takes it at the next present (0097), at most its MaxScale.</summary>
+    public static readonly PortSetting Resolution = new()
+    {
+        Key = "RenderScale", Label = "Render scale",
+        Page = Picture, MenuLabel = "RESOLUTION", Steps = Scales, MenuValue = v => Number(v * 240) + "P",
+        Default = 4, Live = () => RecompOne.Runtime.Hle.GlVram.Requested is > 0 and var r ? r : RecompOne.Runtime.Hle.GlVram.Scale,
+        Apply = v => RecompOne.Runtime.Hle.GlVram.Requested = (int)Math.Clamp(Math.Round(v), 1, 8),
+        Ui = Ui.None,
+    };
 
     // ---- Picture: the aspect is the Testing tab's, drawn by its own code ----
 
@@ -70,23 +119,23 @@ public static class PortSettings
     // ---- Motion: also the Testing tab's ----
 
     public static readonly PortSetting Pacing = Switch("kf3.pacing", "KF3_FPS", "Frame pacing",
-        Motion, "FRAME PACING", () => FramePacing.Enabled, FramePacing.SetEnabled, false, ui: Ui.None);
+        null, null, () => FramePacing.Enabled, FramePacing.SetEnabled, false, ui: Ui.None);
 
     static readonly double[] Rates = [30, 60, 72, 75, 90, 100, 120, 144, 165, 180, 240, 360, 0];
 
     public static readonly PortSetting FrameRate = new()
     {
         Key = "kf3.fps", Envs = ["KF3_FPS"], Label = "Frame rate",
-        Page = Motion, MenuLabel = "FRAME RATE", Steps = Rates, MenuValue = v => v <= 0 ? "UNCAPPED" : Number(v),
+        Steps = Rates, MenuValue = v => v <= 0 ? "UNCAPPED" : Number(v),
         Default = FramePacing.DefaultFps, Live = () => Math.Max(0, FramePacing.TargetFps), Apply = FramePacing.SetTarget,
         Usable = () => FramePacing.Enabled, Ui = Ui.None,
     };
 
     public static readonly PortSetting SmoothCamera = Switch("kf3.smooth", "KF3_SMOOTH", "Camera, compass needle and gauges",
-        Motion, "SMOOTH CAMERA", () => ViewSmoothing.Enabled, v => ViewSmoothing.Enabled = v, true,
+        null, null, () => ViewSmoothing.Enabled, v => ViewSmoothing.Enabled = v, true,
         usable: () => FramePacing.Enabled, ui: Ui.None);
     public static readonly PortSetting SmoothModels = Switch("kf3.smooth_models", "KF3_SMOOTH_MODELS", "Creatures and objects",
-        Motion, "SMOOTH CREATURES", () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v, false,
+        null, null, () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v, true,
         usable: () => FramePacing.Enabled, ui: Ui.None);
 
     public static readonly PortSetting TexScroll = new()
@@ -102,17 +151,17 @@ public static class PortSettings
     public static readonly PortSetting PerPixel = Switch("kf3.perpixel", "KF3_PERPIXEL", "kf3scene.perpixel",
         Picture, "PER-PIXEL LIGHT", () => GteLightMap.Enabled, v => GteLightMap.Enabled = v, false, localized: true);
     public static readonly PortSetting FogDepth = Switch("kf3.fogdepth", "KF3_FOG_DEPTH", "kf3scene.fog",
-        World, "FOG FROM DEPTH", () => RetainedScene.MainFogFromZ, v => RetainedScene.MainFogFromZ = v, true, localized: true);
+        null, null, () => RetainedScene.MainFogFromZ, v => RetainedScene.MainFogFromZ = v, true, localized: true);
     public static readonly PortSetting Ao = Switch("kf3.ao", "KF3_AO", "kf3scene.ao",
-        Picture, "AMB. OCCLUSION", () => GteDepth.AmbientOcclusion, v => GteDepth.AmbientOcclusion = v, false, localized: true);
+        null, null, () => GteDepth.AmbientOcclusion, v => GteDepth.AmbientOcclusion = v, false, localized: true);
     public static readonly PortSetting AoNormals = Switch("kf3.ao.normals", "KF3_AO_NORMALS", "kf3scene.normals",
         null, null, () => AoGeometry.Enabled, v => { AoGeometry.Enabled = v; GteDepth.AoNormals = v; }, true, localized: true);
     public static readonly PortSetting Mipmaps = Switch("kf3.mipmaps", "KF3_MIPMAPS", "kf3scene.mips",
-        Picture, "MIPMAPS", () => GteDepth.Mipmaps, v => GteDepth.Mipmaps = v, false, localized: true);
+        null, null, () => GteDepth.Mipmaps, v => GteDepth.Mipmaps = v, false, localized: true);
     public static readonly PortSetting NeighbourBlend = Switch("kf3.neighbourblend", "KF3_NEIGHBOUR_BLEND", "kf3scene.blend",
-        Picture, "BLEND TILE EDGES", () => RecompOne.Runtime.NeighbourBlend.Mode != 0,
+        null, null, () => RecompOne.Runtime.NeighbourBlend.Mode != 0,
         v => RecompOne.Runtime.NeighbourBlend.Mode = v ? RecompOne.Runtime.NeighbourBlend.Fog | RecompOne.Runtime.NeighbourBlend.Light : 0,
-        false, localized: true);
+        true, localized: true);
 
     public static readonly PortSetting AoQuality = new()
     {
@@ -126,7 +175,7 @@ public static class PortSettings
     public static readonly PortSetting Anisotropy = new()
     {
         Key = "kf3.aniso", Envs = ["KF3_ANISO"], Label = "kf3scene.aniso", Localized = true,
-        Page = Picture, MenuLabel = "TEXTURE FILTER", Steps = Taps, MenuValue = v => v <= 1 ? "OFF" : Number(v) + "X",
+        Steps = Taps, MenuValue = v => v <= 1 ? "OFF" : Number(v) + "X",
         Default = 1, Live = () => GteDepth.Anisotropy, Apply = v => GteDepth.Anisotropy = (int)Math.Clamp(Math.Round(v), 1, 16),
         Stored = Stored.Float, Ui = Ui.SliderInt, Min = 1, Max = 16,
     };
@@ -144,7 +193,7 @@ public static class PortSettings
     public static readonly PortSetting RenderDist = new()
     {
         Key = "kf3.renderdistance", Envs = ["KF3_RENDERDIST"], Label = "kf3scene.fartiles", Localized = true,
-        Page = World, MenuLabel = "RENDER DISTANCE", Steps = Reaches, MenuValue = v => v <= 0 ? "GAME'S" : Number(v),
+        Steps = Reaches, MenuValue = v => v <= 0 ? "GAME'S" : Number(v),
         Default = 0, Live = () => RenderDistance.Tiles, Apply = v => RenderDistance.SetTiles((float)v),
         Stored = Stored.Float, Ui = Ui.None,
     };
@@ -154,7 +203,7 @@ public static class PortSettings
     public static readonly PortSetting RenderFade = new()
     {
         Key = "kf3.renderdistance.fade", Envs = ["KF3_RENDERDIST_FADE"], Label = "kf3scene.fadetiles", Localized = true,
-        Page = World, MenuLabel = "FADE AT THE EDGE", Steps = Bands, MenuValue = v => v <= 0 ? "OFF" : Number(v),
+        Steps = Bands, MenuValue = v => v <= 0 ? "OFF" : Number(v),
         Default = 0, Live = () => RenderDistance.FadeTiles, Apply = v => RenderDistance.SetFade((float)v),
         Stored = Stored.Float, Ui = Ui.None,
     };
@@ -162,11 +211,11 @@ public static class PortSettings
     // ---- Water: the Video tab's too, on World ----
 
     public static readonly PortSetting Planar = Switch("kf3.planar", "KF3_PLANAR", "kf3scene.planar",
-        World, "REFLECTIONS", () => PlanarMirror.Enabled, PlanarMirror.SetEnabled, false, localized: true);
+        null, null, () => PlanarMirror.Enabled, PlanarMirror.SetEnabled, false, localized: true);
     public static readonly PortSetting MurkyWater = Switch("kf3.murk", "KF3_MURK", "kf3scene.murk",
-        World, "MURKY WATER", () => Murk.Enabled, Murk.SetEnabled, false, localized: true);
+        null, null, () => Murk.Enabled, Murk.SetEnabled, false, localized: true);
     public static readonly PortSetting WaterWaves = Switch("kf3.waves", "KF3_WAVES", "kf3scene.waves",
-        World, "WAVES", () => Waves.Enabled, Waves.SetEnabled, false, localized: true);
+        null, null, () => Waves.Enabled, Waves.SetEnabled, false, localized: true);
 
     /// <summary>The Video tab's switches, in its order; it applies their saved values at boot.</summary>
     public static readonly PortSetting[] SceneSwitches = [PerPixel, FogDepth, Ao, AoNormals, Mipmaps, NeighbourBlend, Planar, MurkyWater, WaterWaves];
@@ -174,7 +223,7 @@ public static class PortSettings
     // ---- Gameplay: the Gameplay tab ----
 
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
-        Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
+        World, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
         tip: "Puts you back at your last save instead of the menus.");
 
     static readonly double[] SlotSteps = [0, 1, 2, 3, 4, 5];
@@ -183,7 +232,7 @@ public static class PortSettings
     {
         Key = AutoReload.SlotKey, Envs = ["KF3_AUTORELOAD_SLOT"], Label = "Save slot",
         Tip = "Which save to reload. \"Last used\" follows where you saved or loaded.",
-        Page = Gameplay, MenuLabel = "RELOAD SLOT", Steps = SlotSteps,
+        Steps = SlotSteps,
         MenuValue = Named(SlotSteps, "LAST USED", "SLOT 1", "SLOT 2", "SLOT 3", "SLOT 4", "SLOT 5"),
         Names = ["Last used", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"],
         Default = 0, Live = () => AutoReload.Slot, Apply = v => AutoReload.SetSlot((int)v),
@@ -194,29 +243,92 @@ public static class PortSettings
     {
         Key = Kf3.MenuWorld.FadeKey, Envs = ["KF3_MESSAGE_FADE"], Label = "Message fade length",
         Tip = "How long signs and messages take to fade in and out. x1 is the game's own speed.",
-        Page = Gameplay, MenuLabel = "MESSAGE FADE", Steps = [1, 2, 3, 4], MenuValue = v => "X" + Number(v),
+        Steps = [1, 2, 3, 4], MenuValue = v => "X" + Number(v),
         Default = 1, Live = () => Kf3.MenuWorld.FadeVBlanks, Apply = v => Kf3.MenuWorld.SetFadeVBlanks((int)v),
         Ui = Ui.SliderInt, Min = 1, Max = Kf3.MenuWorld.MaxFadeVBlanks, SliderText = v => v <= 1 ? "x1 (original)" : "x%d",
     };
 
     public static readonly PortSetting MouseLook = Switch(Mouse.OnKey, "KF3_MOUSE", "Mouse look",
-        Gameplay, "MOUSE LOOK", () => Mouse.Enabled, v => Mouse.Enabled = v, true, ui: Ui.None);
+        null, null, () => Mouse.Enabled, v => Mouse.Enabled = v, true, ui: Ui.None);
     public static readonly PortSetting InstantMouseLook = Switch(Mouse.LeadKey, "KF3_MOUSE_LEAD", "Instant mouse look",
-        Gameplay, "INSTANT LOOK", () => Mouse.Lead, v => Mouse.Lead = v, true,
+        null, null, () => Mouse.Lead, v => Mouse.Lead = v, true,
         tip: "Turns the view the frame you move the mouse, instead of on the game's next tick.", usable: () => Mouse.Enabled);
 
+    // ---- The combined rows ----
+
+    static readonly double[] RateRows = [-1, .. Rates];
+
+    /// <summary>ORIGINAL is no pacing; any rate paces, and the smoothers follow pacing.
+    /// ORIGINAL leaves the kept rate as it was, not at the 30 walked through to reach it.</summary>
+    public static readonly PortSetting FrameRateRow = Combine("row.framerate", Picture, "FRAME RATE", [Pacing, FrameRate],
+        RateRows, v => v < 0 ? "ORIGINAL" : FrameRate.MenuValue(v),
+        get => get(Pacing) == 0 ? -1 : get(FrameRate),
+        (v, _) => v < 0 ? [0, Unchanged] : [1, v]);
+
+    /// <summary>Off, or on at one of the three qualities; OFF leaves the kept quality.</summary>
+    public static readonly PortSetting AmbientOcclusion = Combine("row.ao", World, "AMB. OCCLUSION", [Ao, AoQuality],
+        [0, 1, 2, 3], v => v <= 0 ? "OFF" : AoQuality.MenuValue(v - 1),
+        get => get(Ao) == 0 ? 0 : get(AoQuality) + 1,
+        (v, _) => v <= 0 ? [0, Unchanged] : [1, v - 1]);
+
+    static readonly double[] FilterRows = [0, 1, 2, 4, 8, 16];
+
+    /// <summary>Anisotropic taps walk the mip chain, so any of them turns the mipmaps on.
+    /// Taps without mipmaps (the Settings window can still set it) show half a step below.</summary>
+    public static readonly PortSetting TextureFilter = Combine("row.texturefilter", Picture, "TEXTURE FILTER", [Mipmaps, Anisotropy],
+        FilterRows, v => v <= 0 ? "OFF" : v == 1 ? "MIPMAPS" : v % 1 != 0 ? Number(v + .5) + "X NO MIPMAPS" : Number(v) + "X",
+        get => get(Mipmaps) != 0 ? Math.Max(1, get(Anisotropy)) : get(Anisotropy) <= 1 ? 0 : get(Anisotropy) - .5,
+        (v, _) => v <= 0 ? [0, 1] : [1, v]);
+
+    /// <summary>ENHANCED is the reach and fade the user chose, 2026-10-06.</summary>
+    public const double EnhancedTiles = 16, EnhancedFade = 3;
+
+    public static readonly PortSetting RenderDistanceRow = Combine("row.renderdistance", World, "RENDER DISTANCE", [RenderDist, RenderFade],
+        [0, 1], v => v == 0 ? "ORIGINAL" : v == 1 ? "ENHANCED" : "CUSTOM",
+        get => (get(RenderDist), get(RenderFade)) switch
+        {
+            (0, 0) => 0,
+            (EnhancedTiles, EnhancedFade) => 1,
+            _ => Custom,
+        },
+        (v, _) => v >= 1 ? [EnhancedTiles, EnhancedFade] : [0, 0]);
+
+    /// <summary>ENHANCED is the surface (murk and the swell); FULL adds the reflections,
+    /// the one that costs a second view.</summary>
+    public static readonly PortSetting Water = Combine("row.water", World, "WATER", [MurkyWater, WaterWaves, Planar],
+        [0, 1, 2], v => v == 0 ? "ORIGINAL" : v == 1 ? "ENHANCED" : v == 2 ? "FULL" : "CUSTOM",
+        get => (get(MurkyWater), get(WaterWaves), get(Planar)) switch
+        {
+            (0, 0, 0) => 0,
+            (1, 1, 0) => 1,
+            (1, 1, 1) => 2,
+            _ => Custom,
+        },
+        (v, _) => v >= 2 ? [1, 1, 1] : v >= 1 ? [1, 1, 0] : [0, 0, 0]);
+
+    /// <summary>The game's page, in order.</summary>
+    public static readonly PortSetting[] Menu =
+    [
+        Display, Resolution, Aspect, FrameRateRow, TextureFilter, PerPixel,
+        AmbientOcclusion, RenderDistanceRow, Water, AutoReloadOn,
+    ];
+
+    /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
     public static readonly PortSetting[] All =
     [
-        Aspect, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
+        Display, Resolution, Aspect, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         FogDepth, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook,
     ];
 
-    public static IEnumerable<PortSetting> OnPage(string page) => All.Where(s => s.Page == page);
+    /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>
+    public static IEnumerable<PortSetting> Listed => All.Concat(Menu.Where(s => s.Parts is not null));
+
+    public static IEnumerable<PortSetting> OnPage(string page) => Menu.Where(s => s.Page == page);
 
     public static PortSetting? Find(string key) =>
-        All.FirstOrDefault(s => string.Equals(s.Key, key, StringComparison.OrdinalIgnoreCase));
+        Listed.FirstOrDefault(s => string.Equals(s.Key, key, StringComparison.OrdinalIgnoreCase));
 
     static bool _installed;
 
@@ -235,16 +347,17 @@ public static class PortSettings
     static void Validate()
     {
         var problems = new List<string>();
-        foreach (var dup in All.GroupBy(s => s.Key, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+        foreach (var dup in Listed.GroupBy(s => s.Key, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
             problems.Add($"{dup.Key} declared {dup.Count()} times");
         foreach (var page in Pages)
         {
             if (MenuFont.Check($"{page} 9/9", SettingsPage.LabelChars) is { } why) problems.Add($"page {page}: {why}");
             if (OnPage(page).Count() is var n && (n == 0 || n > MaxRows)) problems.Add($"page {page}: {n} rows, 1 to {MaxRows}");
         }
-        foreach (var s in All)
+        foreach (var s in Listed)
         {
             if (s.Page is null) continue;
+            if (!Menu.Contains(s)) problems.Add($"{s.Key}: has a page but is not in Menu");
             if (!Pages.Contains(s.Page)) problems.Add($"{s.Key}: page {s.Page} is not in Pages");
             if ((s.MenuLabel is null ? "missing" : MenuFont.Check(s.MenuLabel, SettingsPage.LabelChars)) is { } why)
                 problems.Add($"{s.Key}: label {s.MenuLabel}: {why}");

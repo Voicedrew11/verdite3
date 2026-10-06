@@ -219,7 +219,7 @@ public static class SettingsPage
                 {
                     Sound(c, m, SoundChange);
                     if (_probe) Console.WriteLine($"[KF3] settings page: {s.Key} -> {s.MenuValue(session.Shown(s))}" +
-                                                  (session.Changed.Contains(s) ? "" : " (as it was)"));
+                                                  (session.IsChanged(s) ? "" : " (as it was)"));
                 }
             }
             else if ((pad & m.ReadU32(CancelMask)) != 0)

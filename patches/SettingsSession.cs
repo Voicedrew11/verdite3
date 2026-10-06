@@ -33,7 +33,10 @@ public sealed class SettingsSession
     /// <summary>The value the page shows: the staged one, else the live one, so a
     /// change made in the Settings window meanwhile shows too.</summary>
     public double Shown(PortSetting s) =>
-        _changed.TryGetValue(s, out var v) ? v ?? s.Default : s.Live();
+        s.Join is { } join ? join(Shown) : _changed.TryGetValue(s, out var v) ? v ?? s.Default : s.Live();
+
+    /// <summary>Staged, or for a combined row, any of its parts staged.</summary>
+    public bool IsChanged(PortSetting s) => s.Parts?.Any(_changed.ContainsKey) ?? _changed.ContainsKey(s);
 
     /// <summary>Left (-1) or Right (+1); why not, or null when it moved.</summary>
     public string? Step(PortSetting s, int dir)
@@ -50,6 +53,11 @@ public sealed class SettingsSession
     public string? Reset(PortSetting s)
     {
         if (s.LockedBy is { } env) return $"set by {env}";
+        if (s.Parts is { } parts)
+        {
+            foreach (var p in parts) Reset(p);
+            return null;
+        }
         if (!s.AtBoot) s.Apply(s.Default);
         _changed[s] = null;
         return null;
@@ -57,6 +65,13 @@ public sealed class SettingsSession
 
     void Stage(PortSetting s, double value)
     {
+        if (s.Parts is { } parts)
+        {
+            var values = s.Split!(value, Shown);
+            for (int i = 0; i < parts.Length; i++)
+                Stage(parts[i], double.IsNaN(values[i]) ? _before[parts[i]] : values[i]);   // PortSettings.Unchanged
+            return;
+        }
         if (!s.AtBoot) s.Apply(value);
         if (PortSetting.Same(value, _before[s])) _changed.Remove(s);
         else _changed[s] = PortSetting.Same(value, s.Default) ? null : value;   // the default is no key

@@ -387,11 +387,11 @@ public static class AgentServer
             default: return Err($"settings: unknown '{verb}'");
         }
         session = SettingsSession.Current;
-        var rows = PortSettings.All.Select(s =>
+        var rows = PortSettings.Listed.Select(s =>
             "{\"key\":" + Q(s.Key) + ",\"page\":" + Q(s.Page ?? "") +
             ",\"live\":" + s.Live().ToString(System.Globalization.CultureInfo.InvariantCulture) +
             ",\"shown\":" + Q(session is null ? "" : s.MenuValue(session.Shown(s))) +
-            ",\"changed\":" + (session?.Changed.Contains(s) == true ? "true" : "false") +
+            ",\"changed\":" + (session?.IsChanged(s) == true ? "true" : "false") +
             ",\"locked\":" + Q(s.LockedBy ?? "") + "}");
         return "{\"ok\":" + (why is null ? "true" : "false") + ",\"cmd\":\"settings\",\"verb\":" + Q(verb) +
                (why is null ? "" : ",\"error\":" + Q(why)) + ",\"session\":" + (session is null ? "false" : "true") +
