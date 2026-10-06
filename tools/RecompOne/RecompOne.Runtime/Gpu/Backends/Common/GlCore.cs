@@ -1386,19 +1386,7 @@ public sealed partial class GlCore : IGpuBackend
         {
             if (snap != null) SnapDestroy(snap);
             snap = new VramSnap { W = w, H = h, Scale = s, Data = new ushort[n] };
-            snap.Tex = _gl.GenTexture();
-            _gl.BindTexture(TextureTarget.Texture2D, snap.Tex);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
-            _gl.TexImage2D<ushort>(TextureTarget.Texture2D, 0, InternalFormat.Rgb5A1, (uint)(w * s), (uint)(h * s), 0,
-                PixelFormat.Rgba, PixelType.UnsignedShort1555Rev, new ushort[(long)w * s * h * s].AsSpan());
-            snap.Fbo = _gl.GenFramebuffer();
-            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, snap.Fbo);
-            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
-                TextureTarget.Texture2D, snap.Tex, 0);
-            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+            SnapAlloc(snap);
             _snaps[slot] = snap;
         }
 
@@ -1455,6 +1443,43 @@ public sealed partial class GlCore : IGpuBackend
         _snapMiss++;
         if ((long)w * h > (long)_snapMissW * _snapMissH) { _snapMissW = w; _snapMissH = h; }
         return false;
+    }
+
+    void SnapAlloc(VramSnap snap)
+    {
+        int w = snap.W * snap.Scale, h = snap.H * snap.Scale;
+        snap.Tex = _gl.GenTexture();
+        _gl.BindTexture(TextureTarget.Texture2D, snap.Tex);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+        _gl.TexImage2D<ushort>(TextureTarget.Texture2D, 0, InternalFormat.Rgb5A1, (uint)w, (uint)h, 0,
+            PixelFormat.Rgba, PixelType.UnsignedShort1555Rev, new ushort[(long)w * h].AsSpan());
+        snap.Fbo = _gl.GenFramebuffer();
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, snap.Fbo);
+        _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+            TextureTarget.Texture2D, snap.Tex, 0);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+    }
+
+    /// <summary>0097. A snapshot taken at the old render scale, redrawn at the new
+    /// one, so a menu open across the change keeps restoring its scaled picture
+    /// rather than missing and uploading the 1x one.</summary>
+    void SnapRescale(VramSnap snap, int to)
+    {
+        uint oldTex = snap.Tex, oldFbo = snap.Fbo;
+        int ow = snap.W * snap.Scale, oh = snap.H * snap.Scale;
+        snap.Scale = to;
+        SnapAlloc(snap);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, oldFbo);
+        _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, snap.Fbo);
+        _gl.BlitFramebuffer(0, 0, ow, oh, 0, 0, snap.W * to, snap.H * to,
+            ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        _gl.DeleteFramebuffer(oldFbo);
+        _gl.DeleteTexture(oldTex);
     }
 
     void SnapDestroy(VramSnap snap)
@@ -2366,6 +2391,38 @@ public sealed partial class GlCore : IGpuBackend
         }
     }
 
+    void DropTargets()
+    {
+        for (int i = 0; i < _rts.Length; i++)
+            if (_rts[i] is { } rt)
+            {
+                if (rt.Dirty) Writeback(rt);
+                rt.Destroy(_gl);
+                _rts[i] = null;
+            }
+        _kTarget = null;
+        _lastZRt = null;
+    }
+
+    /// <summary>0097. Change the render scale between two frames. Everything else
+    /// sized by it -- the retained present target, the occlusion, reflection and
+    /// normal buffers, the present texture, the prim shader's uScale -- is checked
+    /// against it where it is used and follows on its own; the 24-bit present's
+    /// uniforms are the only ones set once at init.</summary>
+    void Rescale(int to)
+    {
+        DropTargets();
+        foreach (var snap in _snaps) if (snap is { Tex: not 0 }) SnapRescale(snap, to);
+        int from = GlVram.Scale;
+        GlVram.Scale = to;
+        _vram.Rescale(from);
+        _gl.UseProgram(_progPresent24);
+        SetScaleUniform(_progPresent24);
+        int uVramSize24 = _gl.GetUniformLocation(_progPresent24, "uVramSize");
+        if (uVramSize24 >= 0) _gl.Uniform2(uVramSize24, (float)GlVram.Width, GlVram.Height);
+        Console.WriteLine($"[Gpu] render scale {from}x -> {to}x");
+    }
+
     public void Present(in HleDispEnv disp) => PresentDisplay(disp.X, disp.Y, disp.W, disp.H, disp.Rgb24);
 
     public unsafe (uint tex, int w, int h, float aspect) PresentDisplay(int dispX, int dispY, int w, int h, bool rgb24 = false, int outW = 0, int outH = 0)
@@ -2389,15 +2446,18 @@ public sealed partial class GlCore : IGpuBackend
         if (_rtsTrueColor != GteDepth.TrueColor)
         {
             _rtsTrueColor = GteDepth.TrueColor;
-            for (int i = 0; i < _rts.Length; i++)
-                if (_rts[i] is { } rt)
-                {
-                    if (rt.Dirty) Writeback(rt);
-                    rt.Destroy(_gl);
-                    _rts[i] = null;
-                }
-            _kTarget = null;
-            _lastZRt = null;
+            DropTargets();
+        }
+
+        // 0097. The render scale was changed in the window. Same point and same
+        // reason as the true color toggle: the targets are written back at the old
+        // scale and dropped, then the scaled VRAM is reallocated with its picture
+        // carried across, and the next draw recreates each target at the new size.
+        if (GlVram.Requested != 0)
+        {
+            int to = Math.Clamp(GlVram.Requested, 1, GlVram.MaxScale);
+            GlVram.Requested = 0;
+            if (to != GlVram.Scale) Rescale(to);
         }
 
         for (int i = 0; i < _rts.Length; i++)

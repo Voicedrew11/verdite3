@@ -668,14 +668,6 @@
       "zh-CN": "当前状态下为 {1} 行数, 缩放后为 {3} 行数 ({4}x)",
       "fr-FR": "{1} lignes à l'origine, {3} après mise à l'échelle ({4}x)"
     },
-    "settings.display.restart_pending": {
-      "en": "restart is required",
-      "pt-BR": "é necessário reiniciar",
-      "es-419": "se requiere reiniciar",
-      "ja-JP": "再起動が必要です",
-      "zh-CN": "需要重新启动",
-      "fr-FR": "Un redémarrage est requis"
-    },
     "settings.display.backend": {
       "en": "Graphics backend",
       "pt-BR": "Backend gráfico",

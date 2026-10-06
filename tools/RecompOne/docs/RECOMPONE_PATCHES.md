@@ -1778,6 +1778,24 @@ Four files in the directory have no entry below:
   samples and those that pass, with occlusion queries. **0 is the walk as it was.**
   **No recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Far scenery over the
   world").
+- `0097-live-render-scale.patch` — the render scale was read once, when the window
+  loaded, so the slider in Settings ▸ Display said a restart was required. Now it
+  sets `GlVram.Requested`, and `GlCore.PresentDisplay` takes it after the trailing
+  flush, at the point the true colour toggle already drops its targets for the same
+  reason: each display target is written back at the old scale and dropped, the
+  scaled VRAM texture (with each backend's scaled scratch and destination copies)
+  is reallocated with its picture blitted across, `0039`'s snapshots are redrawn at
+  the new scale so a menu open across the change keeps restoring its scaled frame,
+  and the 24-bit present's `uScale`/`uVramSize`, the only scale uniforms set once at
+  init, are sent again. Everything else sized by the scale -- the retained present
+  target, the occlusion, reflection and normal buffers, the present texture, the
+  prim shader's `uScale` -- is already checked against it where it is used. A
+  request is held to `GlVram.MaxScale`, the texture size limit the GL 2.1 clamp
+  already computed. Measured in Verdite3 (2026-10-06, GL 4.5, `KF2_GLDEBUG=1`):
+  6→1→8→2→6→3→4 in an area and 7→4 in the pause menu, each taken at the next
+  present, no driver report; 144 fps held except one second at 126 (1→8) and 133
+  (2→6), the new texture's allocation. Verdite3's shell drives it (`scale`). **No
+  recompile.**
 
 ## Retained contract additions under verification (2026-10-04)
 
