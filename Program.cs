@@ -268,7 +268,7 @@ Kf3.GameplaySection.Install();
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();
 
-// The port settings as a page of the game's own menu: L2 in the in-game menu.
+// The port settings as a page of the game's own menu: PORT SETTINGS, under SYSTEM.
 // KF3_SETTINGSPAGE_PROBE=1 logs what it did. See "The port settings page" in
 // docs/GAME_INTERNALS.md.
 Kf3.SettingsPage.Configure(Environment.GetEnvironmentVariable("KF3_SETTINGSPAGE_PROBE"));

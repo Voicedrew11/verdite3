@@ -627,9 +627,17 @@ add `×`, `G`, `MP`, `EXP` or `LV`.
 Read 2026-10-06 off the recompiled code and `GAME.EXE`'s data, for
 `patches/SettingsPage.cs` (`docs/SETTINGS.md`, "The page in the game's menu").
 
+**The item.** Group 0 is drawn only by the top menu, from two calls
+(`func_800252F4(0, 6, cursor, 0)` returning to `0x8001A7D8`, the opening frames,
+and `0x8001A938`, the loop); its record 7 (`0x8007E724`) is zeros in `GAME.EXE`.
+A pre on the list writes PORT SETTINGS there at (31, 188), under SYSTEM at the
+group's spacing, and raises the count to 7; a pre on the top menu's chooser call
+raises its last index from 5 to 6. The menu's dispatch (`sel < 6` through the
+table at `0x80011448`) ignores 6, waits for the buttons up and goes on.
+
 **The hook.** A post on the chooser `func_800221E8` whose `c.RA` is `0x8001A8E4`
 is the top menu's call (the callee restores `RA`, so the post sees it), between
-the menu's frames. The menu's `sp` is `c.SP` there: `sel` at `sp+0x18` (-1),
+the menu's frames; `sel` 6 with `confirmed` set opens the page. The menu's `sp` is `c.SP` there: `sel` at `sp+0x18` (-1),
 `confirmed` `sp+0x1C`, `cancel` `sp+0x20` (`0xFFFFFF9D` until cancelled),
 checked against the generated code. The cursor is in `s3`, not memory. The pad
 word `PadRead_game(1)` returns has L2 `0x0001`, R2 `0x0002`, L1 `0x0004`, R1

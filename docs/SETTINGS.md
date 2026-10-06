@@ -1,11 +1,11 @@
 # Port settings: one list for the Settings window and the game's menu
 
-The port's settings are to be changed from inside the game too: L2 in the in-game
-menu opens pages drawn with the game's own menu routines ("The in-game menu, its
+The port's settings are to be changed from inside the game too: PORT SETTINGS,
+an item under SYSTEM in the in-game menu, opens pages drawn with the game's own menu routines ("The in-game menu, its
 lists and its font" in [GAME_INTERNALS.md](GAME_INTERNALS.md)). This file is the
 model both screens share, and the rules it keeps. **Built 2026-10-06: the list,
 the store, the session, the shell's `settings` verb and the page in the game's
-menu, all measured; how the page looks is not yet judged.**
+menu, all measured; the page judged by the user ("looks great", 2026-10-06).**
 
 ## The rules
 
@@ -49,7 +49,7 @@ store that touches the dictionary only on the host thread.
 | `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
 | `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
 | `patches/MenuFont.cs` | text to the menu font's codes, and why a text cannot be drawn |
-| `patches/SettingsPage.cs` | the page in the game's menu: the L2 hook, the loop, the drawing, SAVE CHANGES / DISCARD CHANGES |
+| `patches/SettingsPage.cs` | the page in the game's menu: the PORT SETTINGS item, the loop, the drawing, SAVE CHANGES / DISCARD CHANGES |
 
 **Every value is a double**: a switch is 0/1, a choice the chosen value itself (an
 aspect ratio, a frame rate, a slot), so the key keeps what it held.
@@ -113,9 +113,12 @@ they are the user's to look at), and a change in the window during a session.
 ## The page in the game's menu
 
 `patches/SettingsPage.cs`, built 2026-10-06 on the reading in "The port settings
-page" in [GAME_INTERNALS.md](GAME_INTERNALS.md). **L2** in the top in-game menu
-opens it (a pad's L2; no keyboard layout binds L2, and by the user's choice none
-does yet). Inside:
+page" in [GAME_INTERNALS.md](GAME_INTERNALS.md). **PORT SETTINGS**, a seventh
+item under SYSTEM in the top in-game menu, opens it, with the menu's own Cross,
+so a keyboard reaches it as a pad does. (It first opened on L2, which no keyboard
+layout binds; the item replaced that on the user's word, 2026-10-06.) The game's
+dispatch takes only items 0..5, so choosing the seventh leaves the menu as it
+was, and coming back from the page leaves the cursor on it. Inside:
 
 | button | does |
 |---|---|
@@ -157,13 +160,15 @@ written.
 ### Measured (2026-10-06)
 
 Isolated run directory (build, cards, `settings.json`, the player's
-`interface.ini`), slot 1, `fdat17`, driven with the shell's `press` and read with
+`interface.ini`), slot 1, `fdat17`, opened with L2 (the rows below; the PORT
+SETTINGS row is the item that replaced it), driven with the shell's `press` and read with
 `settings` and `KF3_SETTINGSPAGE_PROBE=1`. The `[RecompOne]` lines of
 `interface.ini` against the copy taken first, `Panels.*` aside:
 
 | check | result |
 |---|---|
 | open, all four pages with R1 round to the first, Circle | `left, nothing changed`, identical, 0 writes; the menu still open (`loop` false) |
+| PORT SETTINGS (Up from USE ITEM wraps to it), Cross; then Circle, Down, Up, Cross | the page opened both times, on the page last shown; the record in group 0's slot 7 (`0x8007E724`); Circle twice then closed the menu, the loop running |
 | ASPECT Right (16/9 to 16/10), Left, Circle | the second step `(as it was)`, no question, identical |
 | L1 to GAMEPLAY, MESSAGE FADE Right, Circle, DISCARD CHANGES | `discarded`, identical, live x1 |
 | RELOAD ON DEATH Right, Circle, SAVE CHANGES | `saved 1 change(s)`, one line: `kf3.autoreload.enabled=0` |
@@ -172,15 +177,11 @@ Isolated run directory (build, cards, `settings.json`, the player's
 | Circle at the question | back to the page, the session still open with pacing staged; then DISCARD: pacing back on, identical |
 | Circle on the top menu after the page | the menu closed, the loop running |
 
-No exception in either run. **Not judged**: everything on screen (the boxes, the
-value column, the dim shade, the hint row): the user's to look at.
+No exception in either run. **Judged** by the user, 2026-10-06: "looks great"; the
+PORT SETTINGS item was asked for then.
 
 ## Next
 
-- **The page, by eye**: the user's look at the page (above).
-- **A keyboard key for L2**: pad only for now, by choice. Binding L2 in a layout
-  would also pitch the view in play, and changing the layout migrates players'
-  bindings (`docs/SETTINGS_MENU_HANDOFF.md`, "Decide with the user first").
 - **A hint for L1/R1**: the hint row has no page icon. The 16 × 16 icons in tpage
   `0x1C` (template `0x8007E5AC`) are not mapped to buttons yet, and the hint font
   (`func_80026570`) is lower case only, no digits.

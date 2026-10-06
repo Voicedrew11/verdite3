@@ -7,8 +7,9 @@ using Game = Recompiled.KingsField3_game;
 namespace Kf3;
 
 /// <summary>
-/// The port's settings as a page of the game's own menu: L2 in the in-game menu
-/// opens it, drawn with the menu's own boxes, font, hint row and sounds. A page of
+/// The port's settings as a page of the game's own menu: PORT SETTINGS, a seventh
+/// item under SYSTEM in the in-game menu, opens it, drawn with the menu's own boxes,
+/// font, hint row and sounds. A page of
 /// <see cref="PortSettings"/>' rows, Up/Down for the row, Left/Right (or Cross) for
 /// the value, L1/R1 for the page, Circle to leave; leaving with changes asks SAVE
 /// CHANGES or DISCARD CHANGES. Everything goes through <see cref="SettingsSession"/>,
@@ -17,21 +18,34 @@ namespace Kf3;
 ///
 ///     KF3_SETTINGSPAGE_PROBE=1   a line for each open, page, step, save and discard
 ///
-/// The page is a C# loop after OPTION 2 (<c>func_8001F004</c>), run from a post on
-/// the top menu's chooser <c>func_800221E8</c>, between the menu's frames. Its
-/// records are built on the guest stack, so nothing in the game's list table is
-/// written. See "The port settings page" in docs/GAME_INTERNALS.md.
+/// The item is group 0's empty seventh record, written in the game's list table, and
+/// the top menu's two counts raised by one from pres on its own calls: the list
+/// drawn with 7 items, the chooser with a last index of 6. The game's dispatch
+/// takes only 0..5, so choosing 6 leaves the menu as it was, and a post on the
+/// chooser runs the page: a C# loop after OPTION 2 (<c>func_8001F004</c>), between
+/// the menu's frames. The page's own records are built on the guest stack. See
+/// "The port settings page" in docs/GAME_INTERNALS.md.
 /// </summary>
 public static class SettingsPage
 {
     // ---- The top menu func_8001A774 ----
     const uint Chooser = 0x800221E8;              // func_800221E8(cursor, last, &sel, &confirmed), &cancel at sp+0x10
     const uint MenuChooserReturn = 0x8001A8E4;    // its call in the top menu; the chooser has other callers
-    const uint MenuSel = 0x18, MenuCancel = 0x20; // the top menu's locals at its sp
-    const uint NoChoice = 0xFFFFFFFF, NotCancelled = 0xFFFFFF9D;
+    const uint MenuSel = 0x18, MenuConfirmed = 0x1C, MenuCancel = 0x20;   // the top menu's locals at its sp
+    const uint NotCancelled = 0xFFFFFF9D;
+
+    // ---- The top menu's list, group 0 ----
+    const uint DrawList = 0x800252F4;             // func_800252F4(group, count, cursor, mode)
+    const uint MenuListReturn1 = 0x8001A7D8;      // the menu's two opening frames
+    const uint MenuListReturn2 = 0x8001A938;      // and its loop
+    const uint MenuItems = 6, MenuLast = 5;       // USE ITEM .. SYSTEM
+    const uint OurItem = 6;                       // the seventh: PORT SETTINGS
+    const uint OurRecord = 0x8007E660 + 7 * 0x1C; // group 0's record 7, zeros in GAME.EXE
+    const int OurX = 31, OurY = 32 + 6 * 26;      // under SYSTEM, at the group's spacing
+    const string OurLabel = "PORT SETTINGS";
 
     // ---- Pad bits, as PadRead_game(1) returns them ----
-    const uint L2 = 0x0001, L1 = 0x0004, R1 = 0x0008;
+    const uint L1 = 0x0004, R1 = 0x0008;
     const uint Up = 0x1000, Right = 0x2000, Down = 0x4000, Left = 0x8000;
 
     // ---- The menu's gp words (gp = 0x8009C214) ----
@@ -85,12 +99,11 @@ public static class SettingsPage
         Id = "kf3.settingspage",
         Name = "Settings page",
         Version = "1.0",
-        Description = "The port's settings in the game's own menu, on L2.",
+        Description = "The port's settings in the game's own menu, under SYSTEM.",
     };
 
     static bool _probe;
     static bool _open;
-    static uint _lastPad;
     static int _page;                       // kept between opens
     static readonly Dictionary<string, byte[]> _encoded = [];
 
@@ -100,39 +113,55 @@ public static class SettingsPage
 
     public static void Install() =>
         HookAttach.OnOverlayLoad("settings page", Attach,
-            "L2 in the menu will do nothing. See \"The port settings page\" in docs/GAME_INTERNALS.md.");
+            "The menu will have no PORT SETTINGS. See \"The port settings page\" in docs/GAME_INTERNALS.md.");
+
+    static MethodInfo M(string name) => typeof(SettingsPage).GetMethod(name, BindingFlags.Public | BindingFlags.Static)!;
 
     static bool Attach()
     {
         SymbolRegistry.Build();
-        var target = SymbolRegistry.Resolve("game", null, Chooser);
-        if (target == null) return false;
-        var impl = typeof(SettingsPage).GetMethod(nameof(AfterChooser), BindingFlags.Public | BindingFlags.Static)!;
-        if (!HookManager.AddPost(_self, target, impl)) return false;
+        var chooser = SymbolRegistry.Resolve("game", null, Chooser);
+        var list = SymbolRegistry.Resolve("game", null, DrawList);
+        if (chooser == null || list == null) return false;
+        // All three or none: an item drawn that cannot be chosen, or chosen and not drawn, is worse than no item.
+        if (!HookManager.AddPre(_self, list, M(nameof(BeforeList)))
+            || !HookManager.AddPre(_self, chooser, M(nameof(BeforeChooser)))
+            || !HookManager.AddPost(_self, chooser, M(nameof(AfterChooser))))
+        {
+            HookManager.RemoveMod(_self);
+            return false;
+        }
         HookManager.Commit();
-        bool ok = HookAttach.Installed(target);
-        Console.WriteLine(ok ? "[KF3] settings page: on L2 in the menu"
-                             : "[KF3] settings page: the chooser hook did not install");
+        bool ok = HookAttach.Installed(chooser) && HookAttach.Installed(list);
+        Console.WriteLine(ok ? "[KF3] settings page: PORT SETTINGS under SYSTEM"
+                             : "[KF3] settings page: the menu hooks did not install");
         return ok;
     }
 
-    /// <summary>The top menu's chooser has returned: no frame is open. A new L2 with
-    /// nothing chosen and nothing cancelled opens the page.</summary>
+    /// <summary>The top menu's list: one more item, PORT SETTINGS, written into the
+    /// group's empty seventh record each time (the table comes back with GAME.EXE).</summary>
+    public static bool BeforeList(CpuContext c, IMemory m)
+    {
+        if (c.A0 != 0u || c.A1 != MenuItems || (c.RA != MenuListReturn1 && c.RA != MenuListReturn2)) return true;
+        Put(m, OurRecord, OurX, OurY, OurLabel);
+        c.A1 = MenuItems + 1u;
+        return true;
+    }
+
+    /// <summary>The top menu's chooser: Up and Down reach the seventh item.</summary>
+    public static bool BeforeChooser(CpuContext c, IMemory m)
+    {
+        if (!_open && c.RA == MenuChooserReturn && c.A1 == MenuLast) c.A1 = OurItem;
+        return true;
+    }
+
+    /// <summary>The top menu's chooser has returned: no frame is open. PORT SETTINGS
+    /// confirmed opens the page; the game's dispatch ignores the index.</summary>
     public static void AfterChooser(CpuContext c, IMemory m)
     {
         if (_open || c.RA != MenuChooserReturn) return;
-
-        var saved = c.Snapshot();
-        c.A0 = 1u;
-        Game.PadRead_game(c, m);
-        uint pad = c.V0 & 0xFFFFu;
-        c.Restore(saved);
-
-        bool fresh = (pad & L2) != 0 && (_lastPad & L2) == 0;
-        _lastPad = pad;
-        if (!fresh) return;
-        if (m.ReadU32(c.SP + MenuSel) != NoChoice || m.ReadU32(c.SP + MenuCancel) != NotCancelled) return;
-
+        if (m.ReadU32(c.SP + MenuSel) != OurItem || m.ReadU32(c.SP + MenuConfirmed) == 0
+            || m.ReadU32(c.SP + MenuCancel) != NotCancelled) return;
         Run(c, m);
     }
 
@@ -146,7 +175,6 @@ public static class SettingsPage
         {
             c.RA = 0u;                      // not the top menu's call, for the hook above
             c.SP -= Frame;
-            Sound(c, m, SoundChange);
             Game.func_80027A40(c, m);       // every button up, as the game waits before a page
             if (_probe) Console.WriteLine($"[KF3] settings page: open on {PortSettings.Pages[_page]}");
             Loop(c, m, session);
@@ -157,7 +185,6 @@ public static class SettingsPage
             // Never leave the session open, whatever happened.
             if (SettingsSession.Current == session) session.Discard();
             c.Restore(saved);
-            _lastPad = L2;
             _open = false;
         }
     }
