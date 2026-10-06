@@ -242,6 +242,8 @@ public static class AgentServer
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
+                 ",\"underTriangles\":" + RetainedScene.UnderTriangles +
+                 ",\"underSamples\":" + RetainedScene.UnderSamples + ",\"underShown\":" + RetainedScene.UnderShown +
                  ",\"instances\":" + RetainedScene.InstancesDrawn + ",\"maskOn\":" + (RetainedScene.ModelMask ? "true" : "false") +
                  ",\"maskFrames\":" + RetainedScene.MaskFrames + ",\"maskBatches\":" + RetainedScene.MaskBatches +
                  ",\"maskSamples\":" + RetainedScene.MaskSamples + ",\"maskBehind\":" + RetainedScene.MaskBehind +

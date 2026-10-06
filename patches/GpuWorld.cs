@@ -49,6 +49,11 @@ public static class GpuWorld
         RetainedScene.ModelMask = Environment.GetEnvironmentVariable("KF3_GPU_MODEL_MASK") != "0";
         RetainedScene.ModelMaskProbe = Environment.GetEnvironmentVariable("KF3_GPU_MASK_PROBE") == "1";
         RetainedScene.ToleranceProbe = Environment.GetEnvironmentVariable("KF3_GPU_TOLERANCE_PROBE") == "1";
+        // The swap (func_80035700) links the eight-entry front table in after the main
+        // table's entry 8190, the slot the retained world is drawn at: what the game put
+        // there (the sky, and the objects func_8003F304 submits) is behind everything.
+        RetainedScene.UnderSlots = Environment.GetEnvironmentVariable("KF3_GPU_UNDER") == "0" ? 0 : 8;
+        RetainedScene.UnderProbe = Environment.GetEnvironmentVariable("KF3_GPU_UNDER_PROBE") == "1";
         // The slope term's ceiling, in game pixels; KF3_GPU_DEPTH_CAP=0 leaves it unbounded.
         RetainedScene.DepthCapPixels = float.TryParse(Environment.GetEnvironmentVariable("KF3_GPU_DEPTH_CAP"),
             System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cap) && cap >= 0f ? cap : 1f;
@@ -148,6 +153,7 @@ public static class GpuWorld
             $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} " +
             $"mask={(RetainedScene.ModelMask ? "on" : "off")} frames/batches={RetainedScene.MaskFrames}/{RetainedScene.MaskBatches} " +
             $"samples/behind={RetainedScene.MaskSamples}/{RetainedScene.MaskBehind} " +
+            $"under-world-triangles={RetainedScene.UnderTriangles} samples/shown={RetainedScene.UnderSamples}/{RetainedScene.UnderShown} " +
             $"blend={NeighbourBlend.Mode} mixed-halves fog/light={RetainedMap.FogMixed}/{RetainedMap.LightMixed} " +
             $"record/half-uploads={RetainedScene.RecordUploads}/{NeighbourBlend.Uploads} blocker={Blocker ?? "none"}");
         if (Environment.GetEnvironmentVariable("KF3_GPU_CENSUS_FILE") is { Length: > 0 } path)

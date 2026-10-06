@@ -35,7 +35,9 @@ near fallback left. The depth tolerance's slope term is bounded in the main view
    1.36 ms of GPU a frame (`world` 0.92). Measure Retained GPU against packets
    (`KF3_GPU_WORLD=0`) at fixed views with it before optimising.
 3. Front-table submits (`front-table-policy-pending`) and the orthographic branch
-   are the retained world's remaining fallbacks.
+   are the retained world's remaining fallbacks. The front table's packets are drawn
+   under the retained world since `0092` (2026-10-06, "Far scenery over the world" in
+   `GPU_RENDERER.md`), judged fixed by the user.
 
 ## Earlier status (2026-10-05, second session)
 

@@ -688,7 +688,10 @@ About 650-800 packets a frame here, of which the map and the model walk add abou
 
 The front table: `func_80035630` clears a second, 8-entry table (pointer
 `0x801A91B8`, `0x801A9178 + 32 * buffer`), and the swap links it in at slot 8190
-of the main one, so it is drawn first, behind everything. The sky (object kind
+of the main one, so it is drawn first, behind everything: entry 8190's link goes to
+the front table's entry 7, and the front table's entry 0 to what entry 8190 linked,
+so walked from the head it is entry 8191, entry 8190, the front table's eight entries,
+then entry 8190's own packets and the rest. The sky (object kind
 `0xF0`, below) is drawn into it: 45 packets (39 `POLY_GT4`, 6 `POLY_GT3`) at
 front slot 7.
 
@@ -902,7 +905,10 @@ with the map's fog weight, or (`fp` clear) an orthographic `MVMVA` with a fixed
 depth, Verdite2's `func_8002E910`.
 
 `func_8003F304` is a second submitter into the front table, through
-`func_80038844` (the lit assembler on `+0x0C`); not called in this scene.
+`func_80038844` (the lit assembler on `+0x0C`); not called in this scene. The model
+walk calls it (`0x80041440`) for an object whose flag byte has `0x08` set: far
+scenery, such as area 4's castle, kept behind everything. In the 28-area census only
+fdat14 (area 4) submits through it.
 
 **`func_800400AC`, the sky** (Verdite2's `func_80032AC4`): reached from object
 kind `0xF0` with the same arguments (`u16[+0xA]`, `u8[+0x3C]`, `u8[+0x3B]`,

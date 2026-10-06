@@ -675,3 +675,50 @@ across tile edges, in place of a step; no new seam between near and far floor, o
 doorways and between levels; tiles keeping their own look at their centres; and any
 edge where the blend looks wrong. Area 13 (398 mixed halves), area 3 (289) and
 area 11 (127) have the most blended edges; area 4's are mostly fog alone.
+
+## Far scenery over the world (2026-10-06)
+
+Reported with a screenshot: the "LODs" (a distant castle and a pale tree) drawn over
+the stone walls of a room in front of them.
+
+**What they are.** The model walk (`func_80040AE4`) sends an object whose flag byte
+has `0x08` set to `func_8003F304`, the front-table submitter (call at `0x80041440`),
+instead of the main submitter. The front table is linked to be drawn first, behind
+everything ("The frame's tables" in `GAME_INTERNALS.md`), so these are far scenery the
+game never depth-sorts: painter's order hides them behind any nearer surface. The
+front submit is still a packet fallback (`front-table-policy-pending`), and in the
+28-area census it happens only in **fdat14 (area 4)**: 5,408 submits from that one
+call site.
+
+**Why they drew on top.** The swap (`func_80035700`) points the main table's entry
+8190 at the front table's entry 7 and the front table's entry 0 at what entry 8190
+pointed to. Walked from the head: entry 8191 (slot 0), entry 8190 (slot 1), the front
+table's eight entries (slots 2-9), then the rest. The retained main view is drawn at
+slot 1, so it went in *before* the front table, and the front table's packets, with no
+depth record, were then drawn with no depth test (zMode 0, or 3 with AO), over the
+finished world.
+
+**Fix** (runtime `0092`). `RetainedScene.UnderSlots`, which this port sets to 8: for
+that many slots after a main view that drew, the walk sets `RetainedScene.UnderWorld`,
+and a packet there with no recovered depth takes zMode 5: at the far plane, tested
+`LEQUAL`, writing nothing, so it shows only where the main view left the far plane.
+That is where painter's order would have left it showing (the retained sky writes no
+depth, or the far plane with AO, so the castle still draws over the sky). The map's
+water is not drawn ahead of such a packet, and a sprite there is not an overlay for
+the reflection pass. A packet with a depth record keeps its own test. `KF3_GPU_UNDER=0`
+is the walk as before. Verdite2 leaves `UnderSlots` at 0.
+
+### Measured
+
+- **Live, all 28 areas** (scene driver, eight guest and render headings at each
+  arrival): 0 missed of about 26,400 main draws; triangles drawn under the world
+  **only in area 4** (35,787), 0 elsewhere.
+- **Occlusion** (`KF3_GPU_UNDER_PROBE=1`, area 4, guest and view yaw 0 and 512): from
+  the arrival point the castle stands against open sky and all of its samples show,
+  as before. With the eye moved 8,192 units in −X and −Z and 1,500 lower, **9.4% and
+  10.0%** show: the world in front hides the rest, which before the fix was all drawn.
+- The source probe passes 5,632,542 assertions; the shader probe links the four
+  programs on the Radeon with every case exact.
+
+**Judged fixed by the user** (2026-10-06): the castle and the tree no longer draw
+over the walls in front of them.
