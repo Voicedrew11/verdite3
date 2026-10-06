@@ -203,7 +203,9 @@ public static class RetainedScene
     public static long MainNormalTriangles;
     /// <summary>0085's probe: read the surface buffer back against the frame's depth
     /// when set, and clear it. Of the pixels with a depth: those whose surface lies
-    /// behind it, and those with no surface at all.</summary>
+    /// behind it, those whose opaque surface lies in front of it (a face the colour
+    /// pass drew no depth for, as a billboard's transparent texels: AO's box round a
+    /// sprite), and those with no surface at all.</summary>
     public static bool SurfaceCheck;
     /// <summary>Whether the map drawn on the GPU goes into the normal and surface
     /// buffers; off is the comparison (the map missing from both).</summary>
@@ -214,7 +216,7 @@ public static class RetainedScene
     /// <summary>The main view's per-pixel fog from each pixel's own depth; off is the
     /// screen-affine corner value, which a face clipped at the eye gets wrong.</summary>
     public static bool MainFogFromZ = true;
-    public static long SurfaceDepthPixels, SurfaceBehind, SurfaceMissing, SurfaceChecks;
+    public static long SurfaceDepthPixels, SurfaceBehind, SurfaceAhead, SurfaceMissing, SurfaceChecks;
     /// <summary>The probe's readback by surface id: none, opaque, water, overlay, an
     /// authored id, a blended one.</summary>
     public static readonly long[] SurfaceIds = new long[6];

@@ -758,6 +758,20 @@ Four files in the directory have no entry below:
   normal, so AO shaded the wall behind at that normal: a faint box round every
   sprite with AO on. A texture window or an image keeps the whole face (the decode
   has no window). The normal pass now always binds sample VRAM on unit 0.
+  *Amended again (2026-10-06):* the box came back with the retained renderer, which
+  draws the map and its models into the same buffers through a second vertex
+  program, `WorldNormalVs`, and that one wrote `vTex = 0`, so `NormalFs` never
+  dropped a retained face's transparent texels. It now passes the corner's UV and
+  texpage/CLUT in `VeilTex`'s packing (`WorldVs`'s attributes 2-4), and
+  `DrawWorldNormals` binds sample VRAM on unit 0 first. **The guard:**
+  `GlShaders.RequireTexel` throws at GL setup if either program linked with
+  `NormalFs` (`aonormal`, `worldnormal`) leaves the texel attributes unread, as a
+  `vTex = 0` does after the link; and 0085's surface probe counts `SurfaceAhead`,
+  an opaque surface nearer than the frame's depth, which is the box itself.
+  Measured with `KF3_AO=1 KF3_GPU_SURFACE_PROBE=1`, five saves, 12 checks each while
+  turning: with `vTex = 0` put back, fdat05 read 784 and 1,239 ahead (fdat17, 14 and
+  41 read 0); fixed, all five read 0 ahead, with ~2.75M depth pixels each. With the
+  guard in, `vTex = 0` stops the window at setup: `worldnormal: 'inUV' is unread`.
 
 - `0059-world-space-occlusion.patch` — the occlusion pass also marches the area's own
   80x80 tile grid, so a wall behind the camera occludes as one in front of it does,

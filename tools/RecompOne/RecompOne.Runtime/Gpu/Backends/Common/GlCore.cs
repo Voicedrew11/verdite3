@@ -383,6 +383,7 @@ public sealed partial class GlCore : IGpuBackend
                 [(0, "inPos"), (1, "inZ"), (2, "inM"), (3, "inUv"), (4, "inTex")]);
             if (_progNormal != 0)
             {
+                GlShaders.RequireTexel(_gl, _progNormal, "aonormal", "inUv", "inTex");
                 _uNrmPosBias = _gl.GetUniformLocation(_progNormal, "uPosBias");
                 _uNrmFbInv = _gl.GetUniformLocation(_progNormal, "uFbInv");
                 _uNrmProjH = _gl.GetUniformLocation(_progNormal, "uProjH");

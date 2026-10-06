@@ -820,6 +820,11 @@ internal static class GlShaders
     public static readonly string WorldNormalVs = """
         #version 330 core
         layout(location = 0) in vec3  inWorld;
+        // The corner's texel, as WorldVs reads it: NormalFs drops a transparent one,
+        // so a billboard's box lays no normal over the wall behind it.
+        layout(location = 2) in float inClutF;
+        layout(location = 3) in float inTexpageF;
+        layout(location = 4) in vec2  inUV;
         layout(location = 5) in vec3  inCue;
         layout(location = 7) in uint  inFlags;
         layout(location = 8) in uint  inRgbc;
@@ -911,8 +916,12 @@ internal static class GlShaders
             vDepth = z > 0.0 ? z * (1.0 / 65536.0) : 0.0;
             uint m = flags & 255u;
             vM = semi ? float(uModel != 0 ? m : 2u) + 256.0 : float(m == 0u ? 1u : m);
-            vUv = vec2(0.0);
-            vTex = 0u;
+            // GlCore.VeilTex's packing: bit 31 textured, the CLUT above the texpage.
+            // GlShaders.RequireTexel fails the program if these go unread.
+            int tp = int(inTexpageF + 0.5);
+            vUv = inUV;
+            vTex = (tp & 0x8000) != 0 ? 0u
+                 : 0x80000000u | (uint(int(inClutF + 0.5)) & 0x7FFFu) << 16 | (uint(tp) & 0x7FFFu);
         }
         """.Replace("//@model", ModelGlsl);
 
@@ -3226,6 +3235,23 @@ internal static class GlShaders
             return 0;
         }
         return sh;
+    }
+
+    /// <summary>
+    /// A program drawing into <c>NormalFs</c> must hand it each corner's texel, or a
+    /// textured face's transparent texels -- which drew no depth -- write its normal,
+    /// and AO shades the wall behind a billboard at the billboard's camera-facing
+    /// normal: a faint dark box round every sprite with AO on. It came back once,
+    /// when the retained map's <c>WorldNormalVs</c> wrote <c>vTex = 0</c>. An attribute
+    /// a program does not read is inactive after the link, so this throws at setup
+    /// rather than leave the box to be seen.
+    /// </summary>
+    public static void RequireTexel(GL gl, uint prog, string name, params string[] attribs)
+    {
+        foreach (var a in attribs)
+            if (gl.GetAttribLocation(prog, a) < 0)
+                throw new InvalidOperationException(
+                    $"{name}: '{a}' is unread, so NormalFs cannot drop transparent texels (a box round every billboard with AO on)");
     }
 
     public static uint Build(GL gl, string vsSrc, string fsSrc, string name, (uint Index, string Name)[]? attribs = null)

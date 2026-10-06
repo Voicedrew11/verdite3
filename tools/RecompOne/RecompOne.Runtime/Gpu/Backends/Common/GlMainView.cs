@@ -1264,6 +1264,7 @@ public sealed partial class GlCore
             if (_uNrmDepthCull >= 0) _gl.Uniform1(_uNrmDepthCull, 0);
         }
         if (_progWorldNrm == 0) return;
+        GlShaders.RequireTexel(_gl, _progWorldNrm, "worldnormal", "inUV", "inTexpageF", "inClutF");
         int L(string n) => _gl.GetUniformLocation(_progWorldNrm, n);
         _uwnR = L("uR"); _uwnCam = L("uCam"); _uwnT = L("uT"); _uwnH = L("uH"); _uwnC = L("uC"); _uwnFb = L("uFb");
         _uwnNear = L("uNear"); _uwnHalfGate = L("uHalfGate"); _uwnSnap = L("uWorldSnap");
@@ -1291,7 +1292,9 @@ public sealed partial class GlCore
         if (geo.WorldSerial == 0 || src.Depth == 0 || !RetainedScene.MainSurfaces) return false;
         _gl.ActiveTexture(TextureUnit.Texture0 + FrameDepthUnit);
         _gl.BindTexture(TextureTarget.Texture2D, src.Depth);
+        // NormalFs reads a textured face's texel from sample VRAM, as for the table's.
         _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
         float stepX = (float)src.TexW / Math.Max(1, src.NormalW), stepY = (float)src.TexH / Math.Max(1, src.NormalH);
 
         var f = RetainedScene.Find(geo.WorldSerial);
@@ -1467,6 +1470,8 @@ public sealed partial class GlCore
             RetainedScene.SurfaceIds[id < 0.5f ? 0 : id < 1.5f ? 1 : id < 2.5f ? 2 : id < 3.5f ? 3 : id < 255.5f ? 4 : 5]++;
             if (id < 0.5f || z <= 0f) { if (id < 2.5f || id > 3.5f) RetainedScene.SurfaceMissing++; continue; }
             if (z > dz + 64f + dz / 64f) RetainedScene.SurfaceBehind++;
+            // Water and blended faces wrote no depth by right; an opaque one did.
+            else if ((id < 1.5f || id > 3.5f && id < 255.5f) && z < dz - 64f - dz / 64f) RetainedScene.SurfaceAhead++;
         }
         RetainedScene.SurfaceChecks++;
     }
