@@ -698,7 +698,7 @@ slot 1, so it went in *before* the front table, and the front table's packets, w
 depth record, were then drawn with no depth test (zMode 0, or 3 with AO), over the
 finished world.
 
-**Fix** (runtime `0092`). `RetainedScene.UnderSlots`, which this port sets to 8: for
+**Fix** (runtime `0096`). `RetainedScene.UnderSlots`, which this port sets to 8: for
 that many slots after a main view that drew, the walk sets `RetainedScene.UnderWorld`,
 and a packet there with no recovered depth takes zMode 5: at the far plane, tested
 `LEQUAL`, writing nothing, so it shows only where the main view left the far plane.

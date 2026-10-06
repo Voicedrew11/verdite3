@@ -10,7 +10,7 @@ namespace Kf3;
 /// The dither state is bit 9 of a GP0(E1) word, and it reaches the GPU two ways:
 /// PutDrawEnv's <c>dtd</c> byte at <c>DRAWENV+0x16</c>, and E1 words linked into the
 /// ordering table. Both end in the GPU's draw-mode decode, which the runtime's
-/// <c>Gpu.SuppressDither</c> (0090) masks, so the game's memory is never touched.
+/// <c>Gpu.SuppressDither</c> (0094) masks, so the game's memory is never touched.
 /// It used to clear the bit in RAM around each call, which walked the whole
 /// ordering table a second time before every DrawOTag (0.05 ms a frame, measured
 /// 2026-10-06); the walk now runs only for the probe. Off until judged.

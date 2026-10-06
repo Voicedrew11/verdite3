@@ -394,9 +394,9 @@ reads well is the user's to say.
 
 **Two costs taken off since** (2026-10-06), slot 5 (`fdat05`, standing), uncapped,
 the user's settings: `NoDither`'s second walk of the ordering table before each
-DrawOTag, **0.047 ms → gone** (runtime `0090`; "Unit 1" in `PICTURE.md`), and
+DrawOTag, **0.047 ms → gone** (runtime `0094`; "Unit 1" in `PICTURE.md`), and
 stage 15's table clear, `func_80035630`'s two `ClearOTagR`s, whose DMA was 8192
-calls down the full store path, **0.055 → 0.018 ms** (runtime `0091`). CPU work
+calls down the full store path, **0.055 → 0.018 ms** (runtime `0095`). CPU work
 there about 0.94-1.01 ms a frame after. The largest left are `post GpuWorld.Begin`,
 0.25 ms, almost all `RetainedMap.Update` re-hashing the map to see whether it
 changed, and the retained world's draw inside DrawOTag, 0.17 ms.

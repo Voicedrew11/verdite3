@@ -101,7 +101,7 @@ screenshots.
 - 144.0 fps drawn at 15.0 ticks/s both ways.
 - **Not judged by eye**: None's bands and Smooth's gradient.
 - **Since 2026-10-06 the bit is masked in the GPU, not cleared in RAM**: runtime
-  `0090`'s `Gpu.SuppressDither`, which `NoDither.Enabled` sets, takes every E1 word
+  `0094`'s `Gpu.SuppressDither`, which `NoDither.Enabled` sets, takes every E1 word
   as asking for no dither where the GPU decodes it. The pre/post pairs no longer
   write guest memory, and the table walk runs only for `KF3_NODITHER_PROBE=1`; it
   had been walking the whole ordering table a second time before every DrawOTag,

@@ -46,8 +46,9 @@ drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
-of the shared fork `Voicedrew11/verdite-recompone` at `f02f484` (this repo's
-retained-scene work, `0085`-`0089`, pushed; Verdite2 pins the same commit), with
+of the shared fork `Voicedrew11/verdite-recompone` at `005334d` (this repo's
+retained-scene work through `0096` pushed, merged with the fork's `0090`-`0093`;
+Verdite2 pinned `f02f484`), with
 retained-runtime checkpoints on the fork's `checkpoint/retained-depth-probes`,
 and `tools/verdite-core` of Verdite Core at `91f4a4a`, which Verdite2 pins too.
 **A release can be built** (2026-10-05): `Verdite3.Launcher/` is Verdite Core's

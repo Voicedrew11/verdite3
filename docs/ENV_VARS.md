@@ -157,7 +157,7 @@ See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
   compare. Default 1.
 - `KF3_GPU_UNDER=0`: under `KF3_GPU_WORLD=1`, draw the front table's packets (the
   objects `func_8003F304` submits) over the retained world again, as before runtime
-  `0092`, to compare. On by default.
+  `0096`, to compare. On by default.
 - `KF3_GPU_UNDER_PROBE=1`: count, with two occlusion queries per batch (a stall
   each), the samples of packets drawn under the world and those that show; the
   shell's `gpu` command (`underTriangles`, `underSamples`, `underShown`).
