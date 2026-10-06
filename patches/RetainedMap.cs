@@ -13,7 +13,7 @@ public static class RetainedMap
     static readonly RetainedAssets.Mesh?[] Models = new RetainedAssets.Mesh[240];
     static readonly ulong[] ModelSignatures = new ulong[240];
     static readonly int[] Records = new int[RetainedScene.RecordCount * RetainedScene.RecordInts];
-    static ulong _lights;
+    static ulong _lights, _water;
     // Each half's record plus one, 0 for none, as NeighbourBlend takes them.
     static readonly byte[] Halves = new byte[RetainedScene.HalvesW * RetainedScene.HalvesH];
     static int _mixedHalves = -1; static long _mixedRecords = -1;
@@ -52,10 +52,22 @@ public static class RetainedMap
             if (signature != ModelSignatures[i]) Bounds(m, (int)i, address, vertices);
             ModelSignatures[i] = signature;
         }
+        // The water's free corners (WaterSwell) are worked out over the whole map, from
+        // what places a half's mesh and which faces are water, before any chunk is built.
+        ulong water = WaterRects.Key * 1099511628211;
+        for (uint i = 0; i < 12800; i++)
+        {
+            uint half = Map + i * 5; byte kind = m.ReadU8(half);
+            if (kind >= 240) continue;
+            water = (water ^ (i << 8 | kind | (uint)m.ReadU8(half + 1) << 24 | (uint)(m.ReadU8(half + 2) & 3) << 22)) * 1099511628211;
+            water = (water ^ ModelSignatures[kind]) * 1099511628211;
+        }
+        if (water != _water) { _water = water; WaterSwell.Build(m, Map, table, Models); }
         bool dirty = false;
         for (int chunk = 0; chunk < 100; chunk++)
         {
-            ulong hash = 14695981039346656037;
+            // A chunk's corners carry which faces are water and which corners swell.
+            ulong hash = (14695981039346656037 ^ WaterRects.Key ^ (ulong)WaterSwell.Generation << 48) * 1099511628211;
             int x0 = chunk % 10 * 8, z0 = chunk / 10 * 8;
             for (int z = z0; z < z0 + 8; z++)
                 for (int x = x0; x < x0 + 8; x++)
@@ -108,17 +120,23 @@ public static class RetainedMap
                         // The bulk assembler deliberately ignores GT4; near uses a
                         // different subdivision policy and stays an explicit route.
                         if ((face.Command & 0xFD) == 0x3C) continue;
+                        // Water (WaterRects) is flagged for the murk, the ripples, the
+                        // surface buffer and the plane finder; its free corners swell.
+                        bool water = WaterRects.IsWater(face.Semi, (uint)store[face.Corner].Texpage, store[face.Corner].Rect);
                         for (int j = 0; j < face.Corners; j++)
                         {
                             var v = store[face.Corner + j]; uint p = vertices + (uint)v.X * 8;
                             int px = (short)m.ReadU16(p), py = (short)m.ReadU16(p + 2), pz = (short)m.ReadU16(p + 4);
                             (px, pz) = rot switch { 1 => (pz, -px), 2 => (-px, -pz), 3 => (-pz, px), _ => (px, pz) };
-                            v.X = x * 2048 + 1024 + px; v.Y = -(m.ReadU8(half + 1) << 7) + py; v.Z = z * 2048 + 1024 + pz;
+                            int wx = x * 2048 + 1024 + px, wy = -(m.ReadU8(half + 1) << 7) + py, wz = z * 2048 + 1024 + pz;
+                            v.X = wx; v.Y = wy; v.Z = wz;
                             v.Dqa = v.Dqb = v.Curve = 0; v.Light = light; v.Rgbc = 0x808080;
                             // recordLit returns a colour, whereas a model mesh carries
                             // raw light dots. Keeping FlagDots here lights it twice.
                             v.Flags = (v.Flags & ~(RetainedScene.FlagQuadTail | RetainedScene.FlagDots))
-                                | RetainedScene.HalfFlag(x, z, (int)upper);
+                                | RetainedScene.HalfFlag(x, z, (int)upper)
+                                | (water ? RetainedScene.FlagWater : 0)
+                                | (water && WaterSwell.IsFree(wx, wy, wz) ? RetainedScene.FlagSwell : 0);
                             list.Add(v);
                         }
                     }

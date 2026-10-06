@@ -68,6 +68,13 @@ so are a render distance past the game's radius and a fade at the edge of what i
 drawn (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, runtime `0089`; `docs/WIDESCREEN.md`).
 No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
+**Water** (2026-10-06): Verdite2's murky water, water waves (the swell and the
+ripples) and planar reflections, on the retained renderer, from the runtime's
+existing passes with no runtime change. Water is the averaging blended faces on the
+scrolling texture's rect, and the mirror is the retained frame seen from a mirrored
+camera, not a second walk. Measured in all nine areas with water, off until judged
+(`KF3_PLANAR`, `KF3_MURK`, `KF3_WAVES`, Video); see `docs/WATER.md`.
+
 ## The documents
 
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run and diagnose.
@@ -82,6 +89,8 @@ No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`
   smoothers, all built and judged.
 - [docs/PICTURE.md](docs/PICTURE.md) — 24-bit colour, perspective, sub-pixel and the
   Z-buffer: the plan and its work, built and awaiting judgement.
+- [docs/WATER.md](docs/WATER.md) — murky water, the swell and ripples, planar
+  reflections: which faces are water, the mirror, measured and awaiting judgement.
 - [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone,
   the primitive buffer and the world behind menus and messages, ported from Verdite2.
 - [docs/MODS.md](docs/MODS.md) — the mods under `mods/`: the debug tools (noclip,

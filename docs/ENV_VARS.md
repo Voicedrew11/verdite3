@@ -179,6 +179,24 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
   deepest box, the walk's halves outside the predicted reach, which must be 0) and
   every change of the radius byte. Also the `renderdist <tiles> [fade]` shell verb
   and the `rd*` members of `gpu`.
+- `KF3_PLANAR=1`, `KF3_MURK=1`, `KF3_WAVES=1`: the water (`docs/WATER.md`): planar
+  reflections from a mirrored camera, murky water, the swell and ripples. Video ▸
+  World enhancements, kept as `kf3.planar`, `kf3.murk`, `kf3.waves`; off by default.
+  Retained renderer only.
+- `KF3_PLANAR_TOLERANCE=48`, `KF3_PLANAR_RIPPLE=4`, `KF3_PLANAR_BIAS=8`: how far off the
+  plane a surface takes the mirror, how far the water's texture bends it, and how far
+  above the plane geometry must be to be mirrored (Verdite2's values).
+- `KF3_PLANAR_FOG=0`: fog the mirror at its own view depth, not the level depth.
+- `KF3_PLANAR_MIPS=1`: filter the mirror through the mip atlas, as the main view (off:
+  the atlas's lookups cost the mirror 1.6 ms of CPU a frame over a pool).
+- `KF3_PLANAR_WATER=0`: leave the map's blended faces out of the mirror (a comparison).
+- `KF3_PLANAR_PROBE=1`: a line every 5 s: the plane, the mirror's halves, instances and
+  CPU by part, its draws, and the reflection pass's readback; also turns on the
+  readback the `planar` shell verb reports.
+- `KF3_MURK_DISTANCE=1886`, `KF3_MURK_TILT=0.75`: the distance through water to 63% of
+  the murk, and the cosine a murked surface may lean to (0 murks any).
+- `KF3_WAVES_PROBE=1`: a line every 5 s: the water rect, the clock, rippled batches and
+  the swell's free corners.
 - `KF3_GPU_SURFACE_PROBE=1`: periodically request numerical surface/depth coverage.
 
 Video exposes the feature controls; Testing exposes session-only scene/reference

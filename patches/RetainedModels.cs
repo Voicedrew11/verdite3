@@ -39,6 +39,8 @@ public static class RetainedModels
             Far = sky ? 1e30f : 8192 - bias, Near = sky ? -1e30f : -bias,
             Rgbc = m.ReadU32(Pad + 0x64) & 0xFFFFFF, Sky = sky, ViewSpace = arm,
             TwinMode = forced ? (int)(flags & 3) + 1 : 0, Tile = near && !sky && !arm,
+            // Placed in the world, so the planar mirror draws it too (PlanarMirror).
+            Mirrored = !sky && !arm,
         };
         ReadMatrix(ref instance);
         Place(ref instance, RetainedScene.Find(RetainedScene.Serial)!.View);

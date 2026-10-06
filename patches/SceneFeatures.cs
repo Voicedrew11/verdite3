@@ -20,6 +20,10 @@ public static class SceneFeatures
         new("kf3.mipmaps", "KF3_MIPMAPS", "mips", () => GteDepth.Mipmaps, v => GteDepth.Mipmaps = v),
         new("kf3.neighbourblend", "KF3_NEIGHBOUR_BLEND", "blend", () => NeighbourBlend.Mode != 0,
             v => NeighbourBlend.Mode = v ? NeighbourBlend.Fog | NeighbourBlend.Light : 0),
+        // The water (docs/WATER.md): Verdite2's three switches, off until judged here.
+        new("kf3.planar", "KF3_PLANAR", "planar", () => PlanarMirror.Enabled, PlanarMirror.SetEnabled),
+        new("kf3.murk", "KF3_MURK", "murk", () => Murk.Enabled, Murk.SetEnabled),
+        new("kf3.waves", "KF3_WAVES", "waves", () => Waves.Enabled, Waves.SetEnabled),
     ];
     const string Names = """
     {"strings": {
@@ -30,6 +34,9 @@ public static class SceneFeatures
       "kf3scene.normals": {"en":"Geometry normals", "pt-BR":"Normais da geometria", "es-419":"Normales de la geometría"},
       "kf3scene.mips": {"en":"Mipmaps", "pt-BR":"Mipmaps", "es-419":"Mipmaps"},
       "kf3scene.blend": {"en":"Blend light across tile edges", "pt-BR":"Misturar a luz entre as bordas dos blocos", "es-419":"Mezclar la luz entre los bordes de los bloques"},
+      "kf3scene.planar": {"en":"Planar reflections", "pt-BR":"Reflexos planares", "es-419":"Reflejos planares"},
+      "kf3scene.murk": {"en":"Murky water", "pt-BR":"Água turva", "es-419":"Agua turbia"},
+      "kf3scene.waves": {"en":"Water waves", "pt-BR":"Ondas na água", "es-419":"Olas en el agua"},
       "kf3scene.aniso": {"en":"Texture filtering", "pt-BR":"Filtragem de texturas", "es-419":"Filtrado de texturas"},
       "kf3scene.quality": {"en":"Occlusion quality", "pt-BR":"Qualidade da oclusão", "es-419":"Calidad de la oclusión"},
       "kf3scene.low": {"en":"Low", "pt-BR":"Baixa", "es-419":"Baja"},

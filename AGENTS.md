@@ -40,6 +40,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/GEOMETRY.md` | the polygon assemblers in C#: the plan and its work |
 | `docs/SMOOTHING.md` | drawing between ticks: stage 15 in C#, the smoothers |
 | `docs/PICTURE.md` | 24-bit colour, perspective, sub-pixel, the Z-buffer: the next work |
+| `docs/WATER.md` | murky water, the swell and ripples, planar reflections |
 | `docs/WIDESCREEN.md` | the margin, the tints, the cull cone, the primitive buffer |
 | `docs/MODS.md` | the runtime-loaded mods: the debug tools |
 | `docs/PACKAGING.md` | the shipped launcher, the release, the window icon off the disc |

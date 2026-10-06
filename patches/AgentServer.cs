@@ -64,6 +64,9 @@ public static class AgentServer
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
         "gpu - the retained renderer's cumulative draw and model-mask counters",
+        "murk [on|off|tilt X|distance X] - murky water, unsaved",
+        "waves [on|off|swell|swellsize|ripple|ripplesize|shade|speed <value>] - water waves, unsaved",
+        "planar [on|off] - planar reflections, unsaved, and the mirror's cumulative counters",
         "kill - kill the player through the game's death latch (tests auto reload)",
         "hurt <amount> - damage the player through the game's take-damage routine (the damage flash)",
     ];
@@ -186,7 +189,7 @@ public static class AgentServer
         switch (cmd.Name)
         {
             case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
-                or "renderdist":
+                or "renderdist" or "murk" or "waves" or "planar":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -233,6 +236,9 @@ public static class AgentServer
         "poke" => DoPoke(cmd.Arg1, cmd.Arg2),
         "warp" => SceneDriver.Warp(cmd.Arg1),
         "renderdist" => RenderDistance.Shell(cmd.Arg1, cmd.Arg2),
+        "murk" => Murk.Shell(cmd.Args),
+        "waves" => Waves.Shell(cmd.Args),
+        "planar" => DoPlanar(cmd.Arg1),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
@@ -247,6 +253,16 @@ public static class AgentServer
                  "," + RenderDistance.Counters() + "}",
         _ => Err($"unknown command '{cmd.Name}'; try help"),
     };
+
+    // The planar mirror's switch, unsaved, and its cumulative counters.
+    static string DoPlanar(string arg)
+    {
+        if (arg is "on" or "off") PlanarMirror.SetEnabled(arg == "on");
+        else if (arg.Length > 0) return Err("planar [on|off]");
+        // The next reflection pass reads its map back (with KF3_PLANAR_PROBE=1).
+        ScreenReflections.WantMap = true;
+        return "{\"ok\":true,\"cmd\":\"planar\",\"rects\":" + Q(WaterRects.Describe()) + "," + PlanarMirror.Counters() + "}";
+    }
 
     static string DoPress(string name, string msArg)
     {

@@ -297,9 +297,9 @@ public static class RenderDistance
     static int Sin12(int a) => (int)Math.Round(4096 * Math.Sin(a * Math.PI / 2048));
     static int Cos12(int a) => (int)Math.Round(4096 * Math.Cos(a * Math.PI / 2048));
 
-    /// <summary>The main view's frustum in world space, from the frame's view: the eye's
+    /// <summary>A view's frustum in world space (the main view's, or PlanarMirror's mirror): the eye's
     /// plane and the four sides of the widened screen, a few pixels wide of it.</summary>
-    readonly struct Frustum
+    internal readonly struct Frustum
     {
         readonly RetainedScene.View _v;
         readonly float _l, _r, _t, _b;

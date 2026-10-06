@@ -92,6 +92,8 @@ public static class GpuWorld
     {
         _frame = false;
         if (Mode == 0 || _scene == 0 || NativeScene.Verifying || m is not PSMemory mem) return;
+        // Which faces are water, before the map's chunks are checked.
+        WaterRects.Read(mem);
         RetainedMap.Update(mem);
         // The projection is published from Gte.Rtp, which retained drawing never
         // reaches, so it kept its 320 default against the game's 200 and narrowed
@@ -109,6 +111,10 @@ public static class GpuWorld
         RetainedScene.DepthStageProbe = _surfaceProbe && RetainedScene.MainView;
         RetainedScene.MainSerial = RetainedScene.MainView ? RetainedScene.Serial : 0;
         if (RetainedScene.MainView) RenderDistance.Frame(mem, view);
+        // The water's clock, swell and camera, the murk's vertical, the plane finder's camera.
+        Waves.Frame(view);
+        Murk.Frame(view);
+        PlanarMirror.Frame(view);
         _frame = true; Frames++;
     }
     public static RetainedScene.View ReadView(IMemory m)

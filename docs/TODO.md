@@ -43,6 +43,13 @@ recompiled and running, following Verdite2's method but applied to this disc.
   flood/cone pops, models past the radius. See "Render distance" in
   `WIDESCREEN.md`.
 
+- **Water: murk, waves and planar reflections** (Verdite2's, 2026-10-06): built and
+  measured in all nine areas with water, off by default (`KF3_PLANAR`, `KF3_MURK`,
+  `KF3_WAVES`, Video). **To judge by eye**: the mirror's placement and fog, the
+  murk's depth, the swell and ripples, and what the additive liquid of areas 1 and 17
+  is. Open: mirror-only models, the sky in the mirror, the mip atlas in the mirror at
+  one view's cost (a runtime memo). See `WATER.md`.
+
 - **Twin-stick control and the Input pane** (2026-10-03, `docs/INPUT.md`):
   built and measured with a synthetic stick; **to judge on a real pad**: the
   pitch direction, the left stick's leak into turning, the feel, and whether the

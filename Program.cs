@@ -176,6 +176,20 @@ Kf3.CullCone.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL")
                        Environment.GetEnvironmentVariable("KF3_WIDESCREEN_CULL_PROBE"));
 Kf3.CullCone.Install();
 Kf3.RenderDistance.Configure();
+// The water, Verdite2's: which faces are water, the murk, the waves and the planar
+// mirror, all on the retained renderer; the three switches are SceneFeatures'. See
+// docs/WATER.md.
+Kf3.WaterRects.Install();
+Kf3.Murk.Configure(Environment.GetEnvironmentVariable("KF3_MURK_DISTANCE"),
+                   Environment.GetEnvironmentVariable("KF3_MURK_TILT"));
+Kf3.Waves.Configure(Environment.GetEnvironmentVariable("KF3_WAVES_PROBE"));
+Kf3.Waves.Install();
+Kf3.PlanarMirror.Configure(Environment.GetEnvironmentVariable("KF3_PLANAR_TOLERANCE"),
+                           Environment.GetEnvironmentVariable("KF3_PLANAR_RIPPLE"),
+                           Environment.GetEnvironmentVariable("KF3_PLANAR_BIAS"),
+                           Environment.GetEnvironmentVariable("KF3_PLANAR_FOG"),
+                           Environment.GetEnvironmentVariable("KF3_PLANAR_PROBE"));
+Kf3.PlanarMirror.Install();
 // The near divisions' screen block widened to the aspect. See patches/NearScreen.cs.
 Kf3.NearScreen.Configure(Environment.GetEnvironmentVariable("KF3_NEARSCREEN"),
                          Environment.GetEnvironmentVariable("KF3_NEARSCREEN_PROBE"));
