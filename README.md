@@ -7,7 +7,7 @@
 [![Downloads](https://img.shields.io/github/downloads/Voicedrew11/verdite3/total)](https://github.com/Voicedrew11/verdite3/releases)
 [![Discord](https://img.shields.io/discord/1553561882843947149?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/R4EKCs8RWH)
 
-Verdite3 is a PC port of King's Field (US) built atop of the [RecompOne](https://github.com/BlackLabelHQ/RecompOne) project. 
+Verdite3 is a PC port of King's Field II (US) built atop of the [RecompOne](https://github.com/BlackLabelHQ/RecompOne) project. 
 
 ## Features
 
