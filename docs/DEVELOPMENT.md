@@ -129,7 +129,8 @@ pad from SDL for a scripted run:
   auto reload: wait until the beacon's `loop` has been true for a few seconds
   first), `hurt <amount>` (the player through the take-damage routine
   `func_8002A6F4`, as a blow: the damage flash, the knockback, and the death
-  latch at HP 0), `help`. Everything runs
+  latch at HP 0), `scale [1..8]` (the render scale, taken at the next present,
+  unsaved: fork `0097`), `help`. Everything runs
   from the vblank on the game thread. There is no `load`; `warp` needs
   `KF3_SCENE_DRIVER=1`.
 - **`KF3_AUTOSTART=<1..15>|new`** (`patches/AutoStart.cs`): Start is pulsed

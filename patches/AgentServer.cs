@@ -61,6 +61,7 @@ public static class AgentServer
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "renderdist <tiles> [fadeTiles] - the retained render distance and its fade (0 the game's, none)",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
+        "scale [1..8] - the render scale, taken at the next present, unsaved; alone, the current one",
         "warp <area 0..27> - opt-in scene corpus driver; confirm loaded area with state",
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
         "gpu - the retained renderer's cumulative draw and model-mask counters",
@@ -189,7 +190,7 @@ public static class AgentServer
         switch (cmd.Name)
         {
             case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
-                or "renderdist" or "murk" or "waves" or "planar":
+                or "renderdist" or "murk" or "waves" or "planar" or "scale":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -239,6 +240,7 @@ public static class AgentServer
         "murk" => Murk.Shell(cmd.Args),
         "waves" => Waves.Shell(cmd.Args),
         "planar" => DoPlanar(cmd.Arg1),
+        "scale" => DoScale(cmd.Arg1),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
@@ -264,6 +266,17 @@ public static class AgentServer
         // The next reflection pass reads its map back (with KF3_PLANAR_PROBE=1).
         ScreenReflections.WantMap = true;
         return "{\"ok\":true,\"cmd\":\"planar\",\"rects\":" + Q(WaterRects.Describe()) + "," + PlanarMirror.Counters() + "}";
+    }
+
+    static string DoScale(string arg)
+    {
+        if (arg.Length > 0)
+        {
+            if (!int.TryParse(arg, out int s) || s < 1 || s > 8) return Err("scale [1..8]");
+            RecompOne.Runtime.Hle.GlVram.Requested = s;
+        }
+        return "{\"ok\":true,\"cmd\":\"scale\",\"scale\":" + RecompOne.Runtime.Hle.GlVram.Scale + ",\"requested\":" + RecompOne.Runtime.Hle.GlVram.Requested +
+               ",\"max\":" + RecompOne.Runtime.Hle.GlVram.MaxScale + "}";
     }
 
     static string DoPress(string name, string msArg)
