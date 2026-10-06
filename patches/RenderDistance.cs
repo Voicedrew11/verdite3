@@ -5,10 +5,10 @@ using RecompOne.Runtime.Memory;
 namespace Kf3;
 
 /// <summary>
-/// The retained map drawn past the game's own draw radius, and the edge of what is
-/// drawn faded in by distance rather than popping. Both are the main view's only: the
-/// guest's grid is never changed, the reflections and the packet path keep the game's
-/// reach, and so do the models (the model walk only submits what the grid lit).
+/// The retained map and models drawn past the game's own draw radius, and the edge of
+/// what is drawn faded in by distance rather than popping. Both are the main view's
+/// only: the guest's grid is never changed, and the reflections and the packet path
+/// keep the game's reach.
 ///
 /// <para>**The game's reach** (func_80034BF4, see "Render distance" in
 /// docs/WIDESCREEN.md): a tile is drawn when it lies in the 25x25 window round the eye's
@@ -24,6 +24,17 @@ namespace Kf3;
 /// <c>RetainedScene.CurrentMainHalves</c>). Inside the game's radius its grid decides,
 /// occlusion flood included. Nothing is added below the game's own edge.</para>
 ///
+/// <para>**The models** (<see cref="ModelBits"/>): the C# model walk (ModelWalk) asks the
+/// grid whether a model's tile is lit; past the game's reach the same rule as the map's
+/// answers instead, so creatures, objects, effects and billboards are drawn out to the
+/// distance too, and their far limit (the ordering table's end, about 16 tiles of view
+/// depth) is lifted. They ask the game's on-demand loader for nothing: only a model
+/// already in memory with its texture pages loaded is drawn there (ModelWalk). A creature exists only while it is active, within about 17 tiles of
+/// the player, and it becomes active 16 to 17 tiles away (func_8004C1F0, "Creatures wake
+/// and sleep by distance" in docs/GAME_INTERNALS.md), so one would appear out of nothing
+/// there; it is faded out at its own spawn distance instead (<see cref="CreatureFadeOut"/>,
+/// runtime 0098's per-model weight).</para>
+///
 /// <para>**The fade** (<see cref="FadeTiles"/>): runtime 0089's DistanceFade, weight 0
 /// at the edge (the render distance, or the game's edge with it off) and 1 a band
 /// nearer, by horizontal distance, on the map and the models alike.</para>
@@ -31,6 +42,7 @@ namespace Kf3;
 ///     KF3_RENDERDIST=&lt;tiles&gt;        draw out to this many tiles (0/unset: the game's)
 ///     KF3_RENDERDIST_FADE=&lt;tiles&gt;   fade over this band at the edge (0/unset: none)
 ///     KF3_RENDERDIST_PROBE=1          a line every five seconds, and the radius byte's changes
+///     KF3_RENDERDIST_MODELS=0         the models kept at the game's reach
 /// </summary>
 public static class RenderDistance
 {
@@ -51,7 +63,7 @@ public static class RenderDistance
     public static void SetTiles(float tiles) => Tiles = float.IsFinite(tiles) && tiles > 0 ? Math.Clamp(tiles, 1, MaxTiles) : 0;
     public static void SetFade(float tiles) => FadeTiles = float.IsFinite(tiles) && tiles > 0 ? Math.Clamp(tiles, 0.25f, MaxFade) : 0;
 
-    static bool _probe;
+    static bool _probe, _models = true;
     static long _reportAt, _frames, _added, _addedMax, _gameMiss, _overlap, _deep, _checked, _walked;
     static float _maxDepth, _edge, _gameEdge;
     static int _radius = -1, _t5;
@@ -60,7 +72,11 @@ public static class RenderDistance
 
     /// <summary>The probe; the distance and the band are SceneFeatures' (the Video tab,
     /// KF3_RENDERDIST and KF3_RENDERDIST_FADE).</summary>
-    public static void Configure() => _probe = Environment.GetEnvironmentVariable("KF3_RENDERDIST_PROBE") == "1";
+    public static void Configure()
+    {
+        _probe = Environment.GetEnvironmentVariable("KF3_RENDERDIST_PROBE") == "1";
+        _models = Environment.GetEnvironmentVariable("KF3_RENDERDIST_MODELS") != "0";
+    }
 
     /// <summary>From GpuWorld.Begin, the frame begun and before the walk: the halves
     /// past the game's reach and the frame's fade.</summary>
@@ -70,6 +86,7 @@ public static class RenderDistance
         foreach (int i in _walkList) _walk[i] = false;
         _walkList.Clear();
         _checkPending = false;
+        _modelSerial = 0;
         int radius = m.ReadU8(RadiusAddr);
         if (_probe && radius != _radius)
         {
@@ -101,6 +118,12 @@ public static class RenderDistance
         float band = Math.Min(FadeTiles * Tile, edge);
         RetainedScene.SetFade(edge, band, DistanceFade.DepthLimit);
         _edge = edge;
+        if (extend && _models)
+        {
+            _modelSerial = RetainedScene.Serial;
+            _frustum = new Frustum(v);
+            _camX = (float)v.CamX; _camZ = (float)v.CamZ;
+        }
         _frames++; _allFrames++;
     }
 
@@ -177,19 +200,24 @@ public static class RenderDistance
         Console.WriteLine($"[KF3] renderdistance: tiles={Tiles:0.##} fade={FadeTiles:0.##} radius={_radius} T5={_t5} " +
                           $"edge={_edge / Tile:0.00} game-edge={_gameEdge / Tile:0.00} frames={_frames} " +
                           $"added/frame={_added / frames:0.0} max={_addedMax} max-depth={_maxDepth:0} deep-frames={_deep} " +
-                          $"walked/frame={_walked / checkedFrames:0.0} game-outside-reach={_gameMiss} overlap={_overlap}");
+                          $"walked/frame={_walked / checkedFrames:0.0} game-outside-reach={_gameMiss} overlap={_overlap} " +
+                          $"models-past-reach/frame={_modelsPast / frames:0.0} refused-unloaded={_modelsRefused} " +
+                          $"creatures-faded/out={_creaturesFaded}/{_creaturesOut} " +
+                          $"model-max-depth={_modelDepth:0}");
         _frames = _added = _addedMax = _deep = _checked = _walked = 0; _maxDepth = 0;
+        _modelsPast = _modelsRefused = _creaturesFaded = _creaturesOut = 0; _modelDepth = 0;
     }
 
     // Since the start, for the shell's gpu command.
-    static long _allFrames, _allAdded, _allChecked, _allWalked;
+    static long _allFrames, _allAdded, _allChecked, _allWalked, _allModels, _allRefused, _allCreaturesFaded;
     static float _allDepth;
 
     /// <summary>The shell's: cumulative counts as JSON members, for a tour to difference.</summary>
     public static string Counters() => FormattableString.Invariant(
         $"\"rdTiles\":{Tiles},\"rdFade\":{FadeTiles},\"rdRadius\":{_radius},\"rdT5\":{_t5},\"rdEdge\":{_edge:0},\"rdGameEdge\":{_gameEdge:0},") +
         FormattableString.Invariant($"\"rdFrames\":{_allFrames},\"rdAdded\":{_allAdded},\"rdMaxDepth\":{_allDepth:0},\"rdChecked\":{_allChecked},") +
-        FormattableString.Invariant($"\"rdWalked\":{_allWalked},\"rdOutsideReach\":{_gameMiss},\"rdOverlap\":{_overlap}");
+        FormattableString.Invariant($"\"rdWalked\":{_allWalked},\"rdOutsideReach\":{_gameMiss},\"rdOverlap\":{_overlap},") +
+        FormattableString.Invariant($"\"rdModels\":{_allModels},\"rdRefused\":{_allRefused},\"rdCreaturesFaded\":{_allCreaturesFaded}");
 
     /// <summary>The shell's <c>renderdist &lt;tiles&gt; [fade]</c>: set both, unsaved.</summary>
     public static string Shell(string tiles, string fade)
@@ -218,6 +246,83 @@ public static class RenderDistance
     {
         int tile = index >> 1, x = tile % 80, z = tile / 80, i = z - _cz, j = x - _cx;
         return (uint)(x - _ox) <= 24u && (uint)(z - _oz) <= 24u && i * i + j * j < _t5;
+    }
+
+    // ---- the models -----------------------------------------------------------------
+
+    // The frame whose models are drawn past the game's reach (0: none), its frustum and
+    // the camera's X and Z.
+    static int _modelSerial;
+    static Frustum _frustum;
+    static float _camX, _camZ;
+    static long _modelsPast, _modelsRefused, _creaturesFaded, _creaturesOut;
+    static float _modelDepth;
+
+    /// <summary>func_80034BF4's value for a tile in the cone and inside the radius, not
+    /// near: what a model past the game's reach is told its tile holds.</summary>
+    public const uint Lit = 0x1A;
+
+    // A model's box round its position: half a tile wider than its tile each way, 4 tiles
+    // above it (Y is down) and one below.
+    const float ModelWide = Tile / 2, ModelAbove = 4 * Tile, ModelBelow = Tile;
+
+    /// <summary>Whether this frame's models are drawn past the game's reach: the render
+    /// distance past the game's edge, on the retained renderer's main view.</summary>
+    public static bool ModelsExtended => _modelSerial != 0 && _modelSerial == RetainedScene.Serial && GpuWorld.Drawing;
+
+    /// <summary>Set by ModelWalk while the C# walk runs, for RetainedModels: a model it
+    /// submits keeps its faces past the ordering table's end.</summary>
+    public static bool InWalk;
+
+    /// <summary>Set by ModelWalk around a creature's submit, for RetainedModels (runtime
+    /// 0098's <c>FadeOut</c>); 0 for every other model.</summary>
+    public static float ModelFadeOut;
+
+    /// <summary>From the model walk, after func_80040694 (<paramref name="cells"/> 0) or
+    /// func_80040708 (the square of that many tiles each way round it): <see cref="Lit"/>
+    /// when a tile the query covers is past the game's reach and would be drawn by the map's
+    /// rule (within the distance, its box in the frustum), else 0. The game's own tiles
+    /// keep the grid's answer, its flood included.</summary>
+    public static uint ModelBits(PSMemory m, uint pos, int cells)
+    {
+        if (!ModelsExtended) return 0;
+        int x = (int)m.ReadU32(pos), y = (int)m.ReadU32(pos + 4), z = (int)m.ReadU32(pos + 8);
+        int tx = x >> 11, tz = z >> 11;
+        for (int row = tz - cells; row <= tz + cells; row++)
+            for (int col = tx - cells; col <= tx + cells; col++)
+            {
+                int i = row - _cz, j = col - _cx;
+                if ((uint)(col - _ox) <= 24u && (uint)(row - _oz) <= 24u && i * i + j * j < _t5) continue;
+                double nx = Math.Clamp(_camX, col * Tile, col * Tile + Tile) - _camX, nz = Math.Clamp(_camZ, row * Tile, row * Tile + Tile) - _camZ;
+                if (nx * nx + nz * nz >= (double)_edge * _edge) continue;
+                if (!_frustum.Meets(col * Tile - ModelWide, col * Tile + Tile + ModelWide, y - ModelAbove, y + ModelBelow,
+                        row * Tile - ModelWide, row * Tile + Tile + ModelWide, out float depth)) continue;
+                _modelsPast++; _allModels++;
+                _modelDepth = Math.Max(_modelDepth, depth);
+                return Lit;
+            }
+        return 0;
+    }
+
+    /// <summary>From the model walk: a model past the game's reach left undrawn because a
+    /// texture page of its is not loaded (the walk asks the game's loader for nothing).</summary>
+    public static void ModelRefused() { _modelsRefused++; _allRefused++; }
+
+    /// <summary>From the model walk, before creature <paramref name="rec"/>'s submit: how
+    /// far it is faded out at its own spawn distance, the definition's <c>+0xA</c> in
+    /// tiles (16 for all but a few), over the fade's band (none: cut there). 0 when that
+    /// is at or past the edge, where the frame's own fade covers it.</summary>
+    public static float CreatureFadeOut(PSMemory m, uint rec, uint def)
+    {
+        if (!ModelsExtended) return 0;
+        float wake = m.ReadU8(def + 0xA) * Tile;
+        if (wake >= _edge) return 0;
+        float dx = (int)m.ReadU32(rec + 0x2C) - _camX, dz = (int)m.ReadU32(rec + 0x34) - _camZ;
+        float d = MathF.Sqrt(dx * dx + dz * dz), band = Math.Min(FadeTiles * Tile, wake);
+        float keep = band > 0 ? Math.Clamp((wake - d) / band, 0f, 1f) : d < wake ? 1f : 0f;
+        if (keep < 1) { _creaturesFaded++; _allCreaturesFaded++; }
+        if (keep <= 0) _creaturesOut++;
+        return 1 - keep;
     }
 
     // ---- the game's edge ------------------------------------------------------------

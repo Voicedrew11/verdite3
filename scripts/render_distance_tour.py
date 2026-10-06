@@ -20,7 +20,8 @@ FADE = sys.argv[4] if len(sys.argv) > 4 else "3"
 # Level at four headings, then looking down and up (pitch is 0x1000 a turn).
 VIEWS = [(0, 0), (0, 1024), (0, 2048), (0, 3072), (0x300, 512), (0xD00, 1536)]
 SETTLE, SAMPLE = 0.6, 1.0
-DELTAS = ("mainDraws", "mainMissed", "rdFrames", "rdAdded", "rdChecked", "rdWalked", "rdOutsideReach", "rdOverlap")
+DELTAS = ("mainDraws", "mainMissed", "rdFrames", "rdAdded", "rdChecked", "rdWalked", "rdOutsideReach", "rdOverlap",
+          "rdModels", "rdRefused", "rdCreaturesFaded")
 LEVELS = ("rdRadius", "rdT5", "rdEdge", "rdGameEdge", "rdMaxDepth")
 
 
@@ -52,7 +53,8 @@ def main():
             print(f"area {area:02d}: radius {ar[0]['rdRadius']}, game edge {ar[0]['rdGameEdge'] / 2048:.2f} tiles, "
                   f"draws {tot('mainDraws')} missed {tot('mainMissed')}, added/frame {tot('rdAdded') / frames:.0f}, "
                   f"walked/frame {tot('rdWalked') / max(1, tot('rdChecked')):.0f}, outside reach {tot('rdOutsideReach')}, "
-                  f"overlap {tot('rdOverlap')}, max depth {max(r['rdMaxDepth'] for r in ar)}", flush=True)
+                  f"overlap {tot('rdOverlap')}, max depth {max(r['rdMaxDepth'] for r in ar)}, "
+                  f"models past reach/frame {tot('rdModels') / frames:.1f}, refused {tot('rdRefused')}, creatures faded {tot('rdCreaturesFaded')}", flush=True)
         except (OSError, RuntimeError) as e:
             print(f"area {area:02d} failed: {e}", flush=True)
             rows.append({"area": area, "error": str(e)})

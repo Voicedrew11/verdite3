@@ -336,6 +336,45 @@ root-motion delta `0x801B266C/6E/70` and writes X, Y and Z. The explicit floor
 snap on area or event entry is `func_8002B760`. A mod hooks stage 4 and
 overwrites the committed position rather than touching the shared queries.
 
+### Creatures wake and sleep by distance
+
+Read 2026-10-06 from stage 5 and checked against the 28-area RAM corpus. **A
+creature is ticked and drawn only while it is awake, and it wakes and sleeps by its
+horizontal distance from the player.**
+
+- **Stage 5 `func_80052E5C`** walks all 200 creature records (`0x80185DA8`, `0x88`
+  apart; `u8[+0] == 0xFF` is an empty slot). Per record: `func_8004DA2C` points the
+  globals at it (`0x8018FAB4` the record, `0x8018FAB0` its definition, `0x8018FAC4`
+  its type), then **`func_8004C1F0`, the waker**, but only on one tick in four
+  (`(0x8018FACC & 3) == (index & 3)`), or every tick while `0x801B24F2` is set or the
+  player's action byte `0x801B25E5` is 1. Then, if the state byte `u8[+9]` is 1, its
+  tick `func_800500A8` (and `func_8004C01C` one tick in four, staggered by the count
+  of awake ones at `0x8018FAC8`).
+- **The state byte `u8[+9]`**: 0 asleep, 1 awake (the AI runs, and the model walk
+  draws it: its live test is this byte), 2 asleep and not to wake until the player
+  has gone away again.
+- **The distances are per type**, in the 120-byte definition at `0x8018C7E8 + type ·
+  120` (`type = u8[+2]`): **`+0xA` the wake distance and `+0xB` the sleep distance, in
+  tiles**. `func_80016EC8(pos, x, 0xFFFF, z, range)` is the test: a square
+  pre-check, then the horizontal distance from `>> 3` coordinates, returned, or -1
+  past `range`.
+  - Asleep (0): if the player is within `(+0xA + 1)` tiles, the kind `u8[+0]`
+    decides. Kinds 3 and 4 follow a leader record (`s16[+0x22]`) and wake when it
+    is awake. Kind 2 wakes on a random draw against the record's `u8[+0xA]` (0xFF:
+    always). Any other kind: **nearer than `+0xA` tiles (and `0x801B24F2` clear) it
+    goes to 2 instead of waking**; between `+0xA` and `+0xA + 1` kind 1 wakes, kind 0
+    wakes on a random draw against the record's `u8[+0xA]` and goes to 2 when it
+    fails, and the rest go to 2. Waking needs the spot free of other creatures
+    (`func_8004D644`), or it goes to 2.
+  - Awake (1): past `+0xB` tiles it sleeps (0) and is reset (`func_8004B560`).
+  - Waiting (2): past `+0xB` tiles it goes back to 0.
+- **Values**: every type in the corpus is **16/17** but one in area 17 (18/19)
+  and the single creature of areas 25 and 27 (48/50). So **creatures exist only
+  within about 17 tiles of the player and appear 16 to 17 tiles away**: past the
+  draw radius (13, or 9 in areas 3 and 12-27), which is why the game never shows one
+  appearing. With the render distance past 16 tiles they would; `RenderDistance`
+  fades a creature out at its own `+0xA` (see "Render distance" in `WIDESCREEN.md`).
+
 ### Damage and death
 
 `func_8002A6F4(sourcePos, amount, flags)` is the take-damage routine. It returns
@@ -1039,6 +1078,29 @@ identical to Verdite2's `func_80037810`; `0xF0` the sky; and `0xF2`, `0xE5`,
 rather than the stack. The queries and helpers match Verdite2's at 0.92-1.00
 (`func_80040694` the point query, `func_80040708` the volume one, `func_800407CC`
 identical to `func_80032EAC`, `func_8004EEE0` the placement, 0.95).
+
+**The queries read the grid's copy**: the cull grid's epilogue copies the 25x25 grid
+from the scratchpad to `0x801AEC84` (`func_80018F5C`, `0x9C` words) after the flood,
+and `func_80040694` reads the byte at `0x801AEC84 + 25·((z >> 11) + s32[0x801AEC70]) +
+(x >> 11) + s32[0x801AEC6C]` (the negated window origin), 0 outside the window;
+`func_80040708` ORs a square of them. The walk draws a record when that byte ANDs its
+mask (a creature's `u8[+3]`, with `0x10` added for flag `0x2000`; an object's `u8[+0]`,
+or its flag `0x08` for far scenery).
+
+**The page bitmaps are the game's on-demand loader** (2026-10-06). A model the walk
+draws marks its model in the bitmap at `+0x124` and its texture pages at `+0x270`;
+after the creatures and again after the objects, `func_800409C8` goes through the
+model bitmap against the slot table at `0x801A92B0` (4 bytes a model): a marked model
+with no slot is **requested from the CD** (`func_80040830`), a loaded one is pinned
+(status byte at slot pointer `-0xC` set to 2), an unmarked one released (1).
+`func_800408D0` does the same for texture pages against `0x801B0A2C` (8 bytes a page,
+the status at record `+4`; `func_80015CE0` loads one): a creature's pages (definition
+`+7`, `+8`) from entry `0x33`, an object's (`+2`) from `0x93`. The walk's residency
+test `func_800405E8` passes a model below `0x68` always (the fixed ones effects and
+billboards use) and any other only with status 1 or 2. **Marking models the game would
+not draw makes it stream them**: the first version of the render distance's models did,
+and the first warp crashed in the CD loader's checksum `func_80019B68`, reading
+`0x80800000`.
 
 **The billboard clock `0x80182964` is bumped by this walk**, once a walk, as
 Verdite2's `0x80195170` is by its own; see "What still runs at the render rate".

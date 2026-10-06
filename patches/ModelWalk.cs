@@ -22,6 +22,14 @@ namespace Kf3;
 /// rotation the walk writes to the scratchpad at 0x1F800114/116/118 -- are marked
 /// <c>// carry seam</c>.
 ///
+/// With the render distance past the game's edge, each visibility query is also asked of
+/// <see cref="RenderDistance.ModelBits"/>, so a model past the game's reach is drawn
+/// (C# only: the verify mode and the recompiled routine keep the game's reach). The
+/// page bitmaps are the game's on-demand loader (func_800409C8 loads a marked model from
+/// the CD and pins it, func_800408D0 a marked texture page, and both release what is
+/// unmarked), so such a model marks nothing: it is drawn only if its model is already
+/// resident (the walk's own test) and its texture pages already loaded.
+///
 /// See "The models" in docs/GAME_INTERNALS.md and
 /// <c>scratch/u3a-notes.md</c> for what each submit is handed.
 /// </summary>
@@ -47,6 +55,10 @@ public static class ModelWalk
     /// <summary>The scratchpad, the two page bitmaps and the rotation lane.</summary>
     const uint Pad = 0x1F800000;
     const uint Pages = Pad + 0x124, Cluts = Pad + 0x270;
+
+    /// <summary>func_800408D0's texture pages, 8 bytes each: 0 while a page is not
+    /// loaded. A creature's pages are from 0x33, an object's from 0x93.</summary>
+    const uint PageTable = 0x801B0A2C;
 
     /// <summary>The billboard clock, bumped once per walk.</summary>
     const uint Clock = 0x80182964;
@@ -183,6 +195,24 @@ public static class ModelWalk
         _callees![(int)fn](c, mem);
     }
 
+    /// <summary>A visibility query, func_80040694 (<paramref name="cells"/> -1) or
+    /// func_80040708, its answer widened past the game's reach by the render distance;
+    /// the game's own answer is left in <see cref="_game"/>.</summary>
+    static void Query(CpuContext c, PSMemory mem, uint pos, int cells, uint ra)
+    {
+        c.A0 = pos;
+        if (cells >= 0) c.A1 = (uint)cells;
+        Call(c, mem, cells < 0 ? Fn.PointQuery : Fn.VolumeQuery, ra);
+        _game = c.V0;
+        if (_mode == Mode.On) c.V0 |= RenderDistance.ModelBits(mem, pos, Math.Max(cells, 0));
+    }
+    static uint _game;
+
+    /// <summary>Whether texture page <paramref name="index"/> of <see cref="PageTable"/> is
+    /// loaded; a page past the loader's <paramref name="count"/> is none to wait for.</summary>
+    static bool PageLoaded(PSMemory mem, uint first, uint page, uint count) =>
+        page >= count || mem.ReadU32(PageTable + (first + page) * 8u) != 0u;
+
     // ---- the walk ------------------------------------------------------------
 
     static void Run(CpuContext c, PSMemory mem)
@@ -191,6 +221,7 @@ public static class ModelWalk
         _carry = _mode == Mode.On && ModelSmoothing.Active;
         uint frame = _carry ? CarryFrame : Frame;
         uint sp = entry - frame;
+        RenderDistance.InWalk = _mode == Mode.On;
         c.SP = sp;
         mem.WriteU32(sp + 0x7Cu, c.S5);
         mem.WriteU32(sp + 0x84u, c.S7);
@@ -266,6 +297,7 @@ public static class ModelWalk
         c.S1 = mem.ReadU32(sp + 0x6Cu);
         c.S0 = mem.ReadU32(sp + 0x68u);
         c.SP = sp + frame;
+        RenderDistance.InWalk = false;
         if (_carry) ModelSmoothing.ProbeFrame();
     }
 
@@ -275,6 +307,7 @@ public static class ModelWalk
     {
         uint s2 = Creatures, s0 = s2 + 3u, s3 = s2 + 0x2Cu;
         int s7 = 199;
+        bool far;
     L80040B9C:
         Interrupts.Poll(c, mem);
         if (mem.ReadU8(s0 + 6u) != 1u) goto L80040D9C;
@@ -283,13 +316,21 @@ public static class ModelWalk
             uint s1 = (flags & 0x2000u) != 0u ? mem.ReadU8(s0) | 0x10u : mem.ReadU8(s0);
             if ((mem.ReadU32(s0 + 0x25u) & 0x80000u) != 0u)
             {
-                c.A0 = s3; c.A1 = 3; Call(c, mem, Fn.VolumeQuery, 0x80040D88u);
-                if ((c.V0 & mem.ReadU8(s0)) == 0u) goto L80040D9C;
+                Query(c, mem, s3, 3, 0x80040D88u);
+                s1 = mem.ReadU8(s0);
             }
-            else
+            else Query(c, mem, s3, -1, 0x80040BECu);
+            if ((c.V0 & s1) == 0u) goto L80040D9C;
+            // Past the game's reach: drawn only with its pages loaded, and marking none.
+            far = (_game & s1) == 0u;
+            if (far)
             {
-                c.A0 = s3; Call(c, mem, Fn.PointQuery, 0x80040BECu);
-                if ((c.V0 & s1) == 0u) goto L80040D9C;
+                uint def = CreatureDefs + (uint)mem.ReadU8(s0 - 1u) * 120u;
+                if (!PageLoaded(mem, 0x33u, mem.ReadU8(def + 7u), 0x60u) || !PageLoaded(mem, 0x33u, mem.ReadU8(def + 8u), 0x60u))
+                {
+                    RenderDistance.ModelRefused();
+                    goto L80040D9C;
+                }
             }
         }
         Interrupts.Poll(c, mem);
@@ -299,6 +340,8 @@ public static class ModelWalk
         if (mem.ReadU32(sp + 0x48u) == 0u) goto L80040D2C;
         c.A0 = s2; c.A1 = sp + 0x38u;
         Call(c, mem, Fn.Place, 0x80040C20u);
+        if (_mode == Mode.On)
+            RenderDistance.ModelFadeOut = RenderDistance.CreatureFadeOut(mem, s2, CreatureDefs + mem.ReadU8(s2 + 2u) * 120u);
         if ((mem.ReadU32(s0 + 0x25u) & 0x20u) != 0u)
         {
             // Placed at its own record with a fixed matrix and no rotation.
@@ -329,6 +372,8 @@ public static class ModelWalk
                 s30: (sbyte)mem.ReadU8(s0 + 0x12u));
         }
     L80040D2C:
+        RenderDistance.ModelFadeOut = 0;
+        if (!far)
         {
             uint def = CreatureDefs + (uint)mem.ReadU8(s0 - 1u) * 120u;
             mem.WriteU8(Pad + 0x270u + mem.ReadU8(def + 7u), 1);
@@ -346,6 +391,7 @@ public static class ModelWalk
     {
         uint s4 = Objects, s0 = s4 + 3u, s6 = s4 + 0x14u, fp = s4 + 0x34u, s1 = 0, s3 = 0, seen = 0, t0 = 0, kind;
         int s7 = ObjectCount - 1;
+        bool far = false;
         mem.WriteU16(Pad + 0x84u, 0);
     L80040E3C:
         Interrupts.Poll(c, mem);
@@ -489,17 +535,25 @@ public static class ModelWalk
 
     L800412AC:
         if ((mem.ReadU32(s4) & 0x0A000000u) == 0x02000000u) goto L800414C0;
-        c.A0 = s6;
-        Call(c, mem, Fn.PointQuery, 0x800412CCu);
+        Query(c, mem, s6, -1, 0x800412CCu);
         seen = c.V0;
+        far = (_game & mem.ReadU8(s4)) == 0u && (mem.ReadU8(s0) & 8u) == 0u;
         if ((seen & mem.ReadU8(s4)) != 0u) goto L800412F4;
         if ((mem.ReadU8(s0) & 8u) == 0u) goto L80041514;
     L800412F4:
         s1 = ObjectDefs + (uint)mem.ReadU16(s0 + 3u) * 24u;
     L80041314:
         Interrupts.Poll(c, mem);
-        mem.WriteU8(Pad + 0x124u + mem.ReadU16(s0 + 3u), 1);
-        mem.WriteU8(Pad + 0x270u + mem.ReadU8(s1 + 2u), 1);
+        if (far)
+        {
+            // Past the game's reach: drawn only with its page loaded, and marking none.
+            if (!PageLoaded(mem, 0x93u, mem.ReadU8(s1 + 2u), 0x20u)) { RenderDistance.ModelRefused(); goto L80041514; }
+        }
+        else
+        {
+            mem.WriteU8(Pad + 0x124u + mem.ReadU16(s0 + 3u), 1);
+            mem.WriteU8(Pad + 0x270u + mem.ReadU8(s1 + 2u), 1);
+        }
         c.A0 = mem.ReadU16(s0 + 3u);
         s3 = s4 + 0x2Cu;
         Call(c, mem, Fn.ModelDef, 0x80041340u);
@@ -549,9 +603,9 @@ public static class ModelWalk
 
     L800414C0:
         s1 = ObjectDefs + (uint)mem.ReadU16(s0 + 3u) * 24u;
-        c.A1 = mem.ReadU8(s1 + 0xCu); c.A0 = s6;
-        Call(c, mem, Fn.VolumeQuery, 0x800414ECu);
+        Query(c, mem, s6, mem.ReadU8(s1 + 0xCu), 0x800414ECu);
         seen = c.V0;
+        far = (_game & mem.ReadU8(s4)) == 0u && (mem.ReadU8(s0) & 8u) == 0u;
         if ((seen & mem.ReadU8(s4)) != 0u) goto L80041314;
         if ((mem.ReadU8(s0) & 8u) == 0u) goto L80041514;
         goto L80041314;
@@ -578,8 +632,7 @@ public static class ModelWalk
             if (v1 == 0u) goto L800418C0;
             if (v1 != 2u)
             {
-                c.A0 = s1;
-                Call(c, mem, Fn.PointQuery, 0x800416B0u);
+                Query(c, mem, s1, -1, 0x800416B0u);
                 if ((c.V0 & mem.ReadU8(s0 + 1u)) == 0u) goto L800418C0;
             }
         }
@@ -662,8 +715,7 @@ public static class ModelWalk
                     s20: 0, s24: 0x3C, s28: (int)s3, s2c: 7, s30: 0);
                 goto L800419F4;
             }
-            c.A0 = s2;
-            Call(c, mem, Fn.PointQuery, 0x80041990u);
+            Query(c, mem, s2, -1, 0x80041990u);
             if ((c.V0 & mem.ReadU8(s0 - 3u)) == 0u) goto L800419F4;
             SubmitWorld(c, mem, sp, 0x800419F4u,
                 a0: mem.ReadU8(s0 - 3u), a1: (mem.ReadU16(s1) + 0x28u) & 0xFFFFu, pos: s2, rot: Pad + 0x114u,

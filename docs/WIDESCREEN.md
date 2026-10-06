@@ -182,13 +182,15 @@ walls still pop in is the user's to look at.
 ## Render distance, and a fade where things pop in
 
 `patches/RenderDistance.cs` with runtime `0089` (`DistanceFade`). Built
-2026-10-05 from `RENDER_DISTANCE_HANDOFF.md`. **Measured, not judged; both off by
-default.** The retained renderer only: the packet path, the reflections and the
-models keep the game's reach, and the guest's grid is never changed.
+2026-10-05 from `RENDER_DISTANCE_HANDOFF.md`; the models since 2026-10-06, with
+runtime `0098` (a model's own fade). **Measured, not judged; both off by default.**
+The retained renderer only: the packet path and the reflections keep the game's
+reach, and the guest's grid is never changed.
 
 - `KF3_RENDERDIST=<tiles>` (Video ▸ "Draw past the game's distance",
-  `kf3.renderdistance`): draw the map out to that many tiles, up to 30. Below the
-  game's own edge it does nothing.
+  `kf3.renderdistance`): draw the map and the models out to that many tiles, up to
+  30. Below the game's own edge it does nothing. `KF3_RENDERDIST_MODELS=0` keeps
+  the models at the game's reach.
 - `KF3_RENDERDIST_FADE=<tiles>` (Video ▸ "Fade in at the edge of the view",
   `kf3.renderdistance.fade`): fade the map and the models out over that band
   before the edge, which is the render distance when it is on and the game's edge
@@ -237,6 +239,43 @@ and the same in `NormalFs` for AO and the surface buffer. Past 62,976 of view de
 it also falls to 0 by 65,024, so nothing drawn reaches the 16-bit depth limit.
 The sky and the arm never fade.
 
+### The models
+
+The model walk (`func_80040AE4`, in C# as `ModelWalk`) draws a creature, object,
+effect or billboard when the grid byte under it, through `func_80040694` or
+`func_80040708` ("The models" in `GAME_INTERNALS.md`), ANDs its mask. With the render
+distance past the game's edge, `RenderDistance.ModelBits` answers too: a tile the
+query covers that is outside the game's window and radius, within the distance, with
+the model's box (its tile half a tile wider each way, four tiles above its position
+and one below) meeting the frustum, reads `0x1A`, the classifier's "in the cone,
+inside the radius, not near". Inside the game's reach its grid decides, flood
+included, as for the map. The submitter's far limit (an instance's `Far`, the
+ordering table's end: a face at 32,768 or more of view depth was dropped) is lifted
+for the walk's models while this is on; it only ever cut models past the game's
+reach. Only the C# walk does this (`KF3_MODELWALK=1`, the default).
+
+- **Nothing is loaded for them.** The walk's page bitmaps are the game's on-demand
+  loader: a marked model or texture page is requested from the CD if missing and
+  pinned if present, and the rest are released. A model admitted only by the render
+  distance marks nothing, and is drawn only when its model is resident (the walk's
+  own test) and its texture pages are loaded (`0x801B0A2C`); otherwise it is
+  refused. Marking them made the game stream far models: the first warp crashed in
+  the CD loader. So a far object whose model or texture is not in memory still
+  appears at the game's edge, once the game itself asks for it.
+- **Creatures fade at their spawn distance.** A creature exists only while awake,
+  within its type's sleep distance of the player (17 tiles for nearly all), and
+  wakes 16 to 17 tiles away ("Creatures wake and sleep by distance" in
+  `GAME_INTERNALS.md`). With the distance past that, one would appear out of nothing.
+  So when its wake distance (definition `+0xA`) is nearer than the edge, a creature
+  is faded out at it, over the fade's band (or cut there with no band), by its
+  horizontal distance from the camera, through runtime `0098`'s per-model weight
+  (`ModelInstance.FadeOut`, dithered as the distance fade is, in the colour and
+  normal passes). Creatures past 16 tiles are rare: they wake there and either come
+  nearer or go back to sleep at 17.
+- **The drawn bit**: the walk sets `0x80` in an object's `u8[+3]` when it draws it,
+  and stage 3 reads it to turn some objects towards the player; a far object drawn
+  now gets that turn as a near one does.
+
 ### Measured
 
 - **Fixtures** (`tools/scene-probe/RenderDistanceFixtures.cs`): the classifier as
@@ -268,6 +307,18 @@ The sky and the arm never fade.
   The fade alone costs nothing measurable. Area 0 looking back over the map is the
   heaviest: 30 tiles halves its frame rate there, still over 500 fps. The runtime's
   GPU timers (`0084`) have no reader in this port, so no per-pass split.
+- **The models** (2026-10-06): the source probe still passes 5,632,542 assertions,
+  and `scripts/shader_probe.py` links all four programs (RX 9070 XT) with every
+  cue, pose, light, neighbour, fade and dither case unchanged. The tour at 30
+  tiles, fade 3, in all 28 areas: **0 missed** of 28,039 retained draws, no crash
+  through 28 warps; **0-37 models a frame drawn past the game's reach** by area (0
+  in 21 and 25, 37 in area 8); 0-1,677
+  refusals for a texture page not loaded over an area's six views (areas 15 and 18
+  the most); creatures faded in area 17 (154 times). Off (areas 3, 12, 13, 17, 21, 25): no model
+  admitted, no draw missed.
+- **Cost of the models**, uncapped, 30 tiles, level at four headings at arrival:
+  area 12 971-1,054 fps with `KF3_RENDERDIST_MODELS=0`, 825-951 with the models;
+  area 8 605-981 against 489-864. 5-27% of the frame rate, over 480 fps.
 
 ### Not covered
 
@@ -277,16 +328,19 @@ The sky and the arm never fade.
 - **Pops a distance fade cannot cover**: cells the flood or the cone change as you
   turn or round a corner still pop. A time-based fade (Verdite2's `ReflectionReach`)
   would be the next step.
-- **Models stay at the game's reach**: with the render distance on, creatures and
-  objects past the game's radius are not drawn (the model walk submits only what the
-  grid lit); the fade at the game's edge applies to them only with the render
-  distance off.
+- **Models past the reach that are not in memory**: refused, not loaded (above), so
+  they still appear at the game's edge. Loading them is the game's loader's job and
+  it was not built for more than its radius.
+- **The packet path and `KF3_MODELWALK=0`/`verify`** keep the models at the game's
+  reach.
 - **Reflections** keep the game's halves.
 
 ### For the user to judge
 
 Distant land and skylines instead of sky; the edge fading rather than popping,
-walking towards it and away; creatures fading in; gaps or backs of geometry the
+walking towards it and away; creatures fading in, at the edge and (past 16 tiles)
+at their spawn distance; far objects, and whether any pop in at the game's edge
+for a texture not loaded; gaps or backs of geometry the
 designers never meant to be seen; caves and doorways (far land through walls);
 performance outdoors; the fade pulling in when looking down.
 

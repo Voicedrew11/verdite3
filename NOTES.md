@@ -65,8 +65,10 @@ descriptor fixtures, shader probes and measured retained-depth coverage. The nea
 map and near models are retained (no near fallback); front-table and exceptional
 contexts remain open. Light and fog blended across tile edges
 (`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built and measured, off until judged, and
-so are a render distance past the game's radius and a fade at the edge of what is
-drawn (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, runtime `0089`; `docs/WIDESCREEN.md`).
+so are a render distance past the game's radius, for the map and (since 2026-10-06)
+the models, creatures fading at the 16 tiles where they wake, and a fade at the edge
+of what is drawn (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, runtime `0089` and `0098`;
+`docs/WIDESCREEN.md`).
 No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
 **Water** (2026-10-06): Verdite2's murky water, water waves (the swell and the

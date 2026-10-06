@@ -31,16 +31,20 @@ public static class RetainedModels
         // its depth the true one, where the near packets' corners at or behind the eye
         // had no depth and drew in painter's order over everything.
         bool arm = GpuWorld.Domain == "arm", near = (flags & 0x40) != 0, forced = !near && (flags & 4) != 0;
+        // The model walk's, with the render distance past the game's edge: the ordering
+        // table's end (about 16 tiles of view depth) no longer drops a face.
+        bool far = !sky && !arm && RenderDistance.InWalk && RenderDistance.ModelsExtended;
         var instance = new RetainedScene.ModelInstance
         {
             MeshStart = mesh.Start, MeshCount = forced ? 0 : mesh.Opaque, MeshAll = mesh.Total,
             Pose = pose, PoseWeight = weight, PoseMorph = morph,
             Dqa = m.ReadU32(0x801AEC7C), Dqb = m.ReadU32(0x801AEC80), Curve = sky ? 0 : LinearDepthCue.Curve,
-            Far = sky ? 1e30f : 8192 - bias, Near = sky ? -1e30f : -bias,
+            Far = sky || far ? 1e30f : 8192 - bias, Near = sky ? -1e30f : -bias,
             Rgbc = m.ReadU32(Pad + 0x64) & 0xFFFFFF, Sky = sky, ViewSpace = arm,
             TwinMode = forced ? (int)(flags & 3) + 1 : 0, Tile = near && !sky && !arm,
             // Placed in the world, so the planar mirror draws it too (PlanarMirror).
             Mirrored = !sky && !arm,
+            FadeOut = sky || arm ? 0 : RenderDistance.ModelFadeOut,
         };
         ReadMatrix(ref instance);
         Place(ref instance, RetainedScene.Find(RetainedScene.Serial)!.View);
@@ -63,6 +67,7 @@ public static class RetainedModels
                 if (face.Corners == 0) continue;
                 if (!forced && !face.Semi) continue;
                 int key = Key(face, instance, bias);
+                if (far && key >= 8192) key = 8191;
                 if ((uint)key >= 8192) continue;
                 // Bounds are conservative; all faces retain table ordering. The
                 // backend can narrow intersections without changing the contract.
