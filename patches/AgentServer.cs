@@ -35,6 +35,10 @@ public static class AgentServer
     static volatile ushort _pressBits;
     static long _pressUntil;
 
+    /// <summary>Whether a <c>press</c> is being held, for a loop that reads the host
+    /// pad rather than <c>PAD_dr</c> (<see cref="EndingHold"/>).</summary>
+    public static bool Pressing => _pressBits != 0 && Environment.TickCount64 < _pressUntil;
+
     public static readonly Dictionary<string, ushort> Buttons = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Select"] = Controller.Select, ["Start"] = Controller.Start,
@@ -52,6 +56,7 @@ public static class AgentServer
         "state - the player/area snapshot as JSON",
         "press <button> [holdMs=150] - press a pad button; one press at a time, replaced by the next",
         "peek <addr> [bytes=16] - read guest memory, hex",
+        "poke <addr> <hex bytes> - write guest memory, up to 64 bytes (e.g. poke 8009C3F8 03000000)",
         "dump <file> - write the 2 MB of guest RAM to a file",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "renderdist <tiles> [fadeTiles] - the retained render distance and its fade (0 the game's, none)",
@@ -60,6 +65,7 @@ public static class AgentServer
         "scene-yaw <0..4095|off> - opt-in scene corpus driver; hold the guest view yaw the front submit reads, while physics is held",
         "gpu - the retained renderer's cumulative draw and model-mask counters",
         "kill - kill the player through the game's death latch (tests auto reload)",
+        "hurt <amount> - damage the player through the game's take-damage routine (the damage flash)",
     ];
 
     public static void Configure(string? spec)
@@ -179,7 +185,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill"
+            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
                 or "renderdist":
                 Enqueue(_fast, cmd);
                 break;
@@ -223,6 +229,8 @@ public static class AgentServer
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "kill" => "{\"ok\":true,\"cmd\":\"kill\",\"status\":" + Q(AutoReload.Simulate()) + "}",
+        "hurt" => DoHurt(cmd.Arg1),
+        "poke" => DoPoke(cmd.Arg1, cmd.Arg2),
         "warp" => SceneDriver.Warp(cmd.Arg1),
         "renderdist" => RenderDistance.Shell(cmd.Arg1, cmd.Arg2),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
@@ -252,6 +260,31 @@ public static class AgentServer
         return "{\"ok\":true,\"cmd\":\"press\",\"button\":" + Q(name) + ",\"holdMs\":" + hold + "}";
     }
 
+    // The take-damage routine func_8002A6F4(sourcePos, amount, flags), called as
+    // "Damage and death" in docs/GAME_INTERNALS.md measured it: a null source, no
+    // flags. HP falls, the hurt countdown and the knockback are written, and HP 0
+    // calls the death latch, all as a blow would.
+    static string DoHurt(string amountArg)
+    {
+        if (!int.TryParse(amountArg, out int amount) || amount <= 0 || amount > 0xFFFF)
+            return Err("usage: hurt <amount 1..65535>");
+        var cpu = RecompOne.Runtime.Runtime.Cpu;
+        var mem = RecompOne.Runtime.Runtime.Mem;
+        if (cpu == null || mem == null) return Err("not running");
+        if (mem.ReadU16(0x801B24FAu) == 0) return Err("no area running; load a save first");
+
+        uint before = mem.ReadU16(0x801B24FCu);
+        var saved = cpu.Snapshot();
+        cpu.SP -= 0x20u;
+        cpu.A0 = 0;
+        cpu.A1 = (uint)amount;
+        cpu.A2 = 0;
+        Recompiled.KingsField3_game.func_8002A6F4(cpu, mem);
+        cpu.Restore(saved);
+        uint after = mem.ReadU16(0x801B24FCu);
+        return "{\"ok\":true,\"cmd\":\"hurt\",\"hpBefore\":" + before + ",\"hpAfter\":" + after + "}";
+    }
+
     static string DoPeek(string addrArg, string lenArg)
     {
         var m = RecompOne.Runtime.Runtime.Mem;
@@ -264,6 +297,20 @@ public static class AgentServer
         var sb = new StringBuilder();
         for (int i = 0; i < n; i++) sb.Append(m.ReadU8(addr + (uint)i).ToString("x2"));
         return "{\"ok\":true,\"cmd\":\"peek\",\"addr\":" + Q($"0x{addr:X8}") + ",\"hex\":" + Q(sb.ToString()) + "}";
+    }
+
+    static string DoPoke(string addrArg, string hexArg)
+    {
+        var m = RecompOne.Runtime.Runtime.Mem;
+        if (m == null) return Err("not running");
+        if (!uint.TryParse(addrArg.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber, null, out uint addr)
+            || hexArg.Length == 0 || hexArg.Length % 2 != 0 || hexArg.Length > 128)
+            return Err("poke <hex addr> <hex bytes, 1..64>");
+        byte[] bytes;
+        try { bytes = Convert.FromHexString(hexArg); }
+        catch (FormatException) { return Err("poke <hex addr> <hex bytes, 1..64>"); }
+        for (int i = 0; i < bytes.Length; i++) m.WriteU8(addr + (uint)i, bytes[i]);
+        return "{\"ok\":true,\"cmd\":\"poke\",\"addr\":" + Q($"0x{addr:X8}") + ",\"bytes\":" + bytes.Length + "}";
     }
 
     static string DoDump(string path)

@@ -60,6 +60,14 @@ Kf3.AgentServer.Configure(Environment.GetEnvironmentVariable("KF3_SHELL"));
 Kf3.AgentServer.Install();
 Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
+// The ending: straight into END.EXE for a diagnostic, and its last frame held with
+// a button back to the title instead of a spin no frame leaves. See "The ending"
+// in docs/GAME_INTERNALS.md.
+Kf3.BootExe.Configure(Environment.GetEnvironmentVariable("KF3_BOOTEXE"));
+Kf3.BootExe.Install();
+Kf3.EndingHold.Configure(Environment.GetEnvironmentVariable("KF3_ENDINGHOLD"),
+                         Environment.GetEnvironmentVariable("KF3_ENDINGEXIT"));
+Kf3.EndingHold.Install();
 
 // A full card: both executables' card check fails when it cannot create a
 // scratch file, which five saves guarantee, so the title leaves Continue off and
@@ -93,6 +101,9 @@ Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
                           Environment.GetEnvironmentVariable("KF3_FPS_PROBE"));
 Kf3.FramePacing.Install();
 Kf3.RateCensus.Install();
+// Whether the full-screen tints are drawn between ticks: "The tints between
+// ticks" in docs/SMOOTHING.md.
+Kf3.TintProbe.Install();
 
 // VSync calls outside stage 15 wait a real vblank, as the console's did. On by
 // default; KF3_VBLANKPACING=0 compares against the runtime's clock. See "Menus and

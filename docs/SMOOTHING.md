@@ -475,6 +475,30 @@ gate gave it. The slide steps at 15 Hz; nothing is carried between ticks.
 **Not measured by a run (no scripted pickup) and not judged.**
 
 
+## The tints between ticks
+
+Verdite2's tints strobed above the tick rate: its stage 1 reset the screen-tint
+request every drawn frame while the stages that ask for a tint ran only on a
+tick, so a death fade or a damage flash showed one frame in seven (its
+`TintHold`). Asked of this game on 2026-10-06 with `patches/TintProbe.cs`
+(`KF3_TINTPROBE=1`): per drawn frame, whether a tint was drawn (flat,
+semi-transparent, the clip rectangle's full width and at least half its height,
+the shape `Widescreen.Stretch` widens), and whether a tick built the frame.
+
+Measured, slot 1 (`fdat17`), `KF3_FPS=144`, the shell's `hurt 5`, `hurt 5`,
+`hurt 20` four seconds apart, then `kill`:
+
+- **Each damage flash is drawn on every frame for its whole length**, ticked or
+  not: 88 tinted frames, 10 of them ticked and 78 idle, for each `hurt 5`; the
+  strip reads `TtttttttttTttttttttt…` (`T` a tinted tick frame, `t` a tinted
+  idle one). `hurt 20` ran three ticks longer.
+- The death fade and the reload's fade-in are tinted on every frame too.
+
+**No strobe, and nothing to port.** This port gates stages 1-14 together, so the
+reset and the requests always agree, and the tint is drawn by stage 15 from what
+they left. The flash steps at the tick rate, as on the console. **To judge by
+eye**: nothing new; the flash and the fades are as they were.
+
 ## Handoff: what is left
 
 **The next work is `docs/PICTURE.md`** (24-bit colour, perspective, sub-pixel,

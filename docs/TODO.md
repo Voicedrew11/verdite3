@@ -99,8 +99,12 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - **The fork reads seven `KF2_*` switches by name** (see `docs/ENV_VARS.md`).
   Taking the prefix from the game is a fork change, and Verdite2's acceptance
   test must pass after it.
-- The intro and ending movies are played but were never looked at closely; the
-  ending (`END.EXE`) has not been reached.
+- The intro and ending movies are played but were never looked at closely. The
+  ending is reached by `KF3_BOOTEXE=end` or the shell's `poke 8009C3F8 03000000`,
+  and held with a way back to the title since 2026-10-06 ("The ending" in
+  `docs/GAME_INTERNALS.md`); **to judge by eye**: the held frame and the title
+  after the button. Verdite2's unload of the `fdat*` overlays at `open`/`end` is
+  not ported.
 - 47 duplicate entry points from the recompiler's escape scan in `game` (see
   "The function maps" in `docs/RECOMPILATION.md`).
 

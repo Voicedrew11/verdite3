@@ -123,10 +123,13 @@ pad from SDL for a scripted run:
 - **`KF3_SHELL=1`** (or a port), the command channel (`patches/AgentServer.cs`):
   TCP `127.0.0.1:27903` (Verdite2 uses 27900, so both can run), one request a
   line, one JSON line back: `state`, `press <button> [ms]`, `peek <hex addr>
-  [bytes]`, `dump <file>` (the 2 MB of RAM, for diffing), `gpu` (the retained
-  renderer's cumulative draw and model-mask counters), `kill` (the player
-  through the game's death latch, for auto reload: wait until the beacon's
-  `loop` has been true for a few seconds first), `help`. Everything runs
+  [bytes]`, `poke <hex addr> <hex bytes>` (up to 64), `dump <file>` (the 2 MB
+  of RAM, for diffing), `gpu` (the retained renderer's cumulative draw and
+  model-mask counters), `kill` (the player through the game's death latch, for
+  auto reload: wait until the beacon's `loop` has been true for a few seconds
+  first), `hurt <amount>` (the player through the take-damage routine
+  `func_8002A6F4`, as a blow: the damage flash, the knockback, and the death
+  latch at HP 0), `help`. Everything runs
   from the vblank on the game thread. There is no `load`; `warp` needs
   `KF3_SCENE_DRIVER=1`.
 - **`KF3_AUTOSTART=<1..15>|new`** (`patches/AutoStart.cs`): Start is pulsed

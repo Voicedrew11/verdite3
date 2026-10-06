@@ -563,8 +563,84 @@ Load passes the same. **A script must wait for the loop before `kill`**: after
 a death the patch never saw the player alive for is not armed, so a `kill` sent
 then is the game's own death (the first try ran to 65 and a New Game). A death
 in play cannot come first, since the world runs in the same loop as stage 4.
-Not measured: the DRAGON CRYSTAL deferral, and a death by damage rather than
-the latch.
+A death by damage, measured 2026-10-06 at `KF3_FPS=144`: the shell's `hurt 500`
+took HP 108 to 0 through `func_8002A6F4`, whose latch call armed the same reload
+(`death (LV 12, max HP 134)`, then `reloaded slot 1 into area 5 (HP 108/134, …)`).
+Not measured: the DRAGON CRYSTAL deferral.
+
+## The ending
+
+Read 2026-10-06 off the recompiled code; Verdite2's "The ending" in its
+`docs/RUNTIME.md` is the same shape on its own addresses.
+
+**The boot stub.** `SLUS_002.55`'s loader loop is `func_80010038`, run with the
+stub's `gp` = `0x80010260` (set by its entry `func_80010120`). It loads the file
+named by the index word at `[gp]` from the table at `0x8001024C` (`0` =
+`OPEN.EXE`, `1` = `GAME.EXE`, `2` = `END.EXE`) into the header at `0x8001026C`,
+`Exec`s it as a call, and when it returns takes the next index from the byte
+`[gp+4]` points to, which is `0x800102F0` (read in play: `[gp]` = 1, `[gp+4]` =
+`0x800102F0`). Verdite2's stub is the same loop with
+absolute addresses instead of `gp`.
+
+**GAME.EXE's hand-over.** The main loop's exit word `0x8009C3F8` (`gp+0x1E4`,
+"The session and the main loop") picks the next executable after
+`func_80015064`:
+
+| exit word | `0x800102F0` (next) | `0x800102F8` | what follows |
+|---|---|---|---|
+| 2 | 0 | (unchanged) | the title |
+| 3 | 2 | 2 | `END.EXE`, all three movies |
+| 4 | 2 | 3 | `END.EXE`, the last movie only |
+
+Which of 3 and 4 the game's own ending writes, and when 4 is used, is not read.
+
+**`END.EXE`'s main, `func_800119B8`**, after its setup: when `0x800102F8` is 2,
+`func_80011D14(0)` and `func_80011D14(1)` then 60 `VSync`s; then
+`func_80011D14(2)`; then it clears both stub bytes, `PadStop`, `CdControl(8)`
+(stop), and **`while(1);` at `0x80011AB8`, with no `VSync`**. `func_80011D14(n)`
+is the movie player, one movie a call; Start does not skip them. Measured
+lengths: about 110 s, 62 s and 120 s.
+
+**In the port the spin is a dead window.** A frame reaches the window only from
+`VSync`. Measured 2026-10-06 with the hold off (`KF3_BOOTEXE=end
+KF3_ENDINGHOLD=0`): once the last movie returned, the main thread sat in
+`func_800119B8` → `Interrupts.PollSlow` → `TickVBlank`, the process at 104% of a
+core, and the beacon (which runs off the `VSync` event) silent.
+
+**`patches/EndingHold.cs`** (Verdite2's `EndingHold`, on by default;
+`KF3_ENDINGHOLD=0` compares): a post on `func_80011D14` that, after movie 2, makes
+the tail's two writes and then `VSync(0)`s instead of spinning. A button seen going
+*down* (not still held from the movies) returns to the title the stub's way: index
+0 at `[0x80010260]` and `0x800102F0`, then `func_80010038` entered with the stub's
+`gp`, on the ending's stack a few words down. `KF3_ENDINGEXIT=0` holds for good, as
+the console did (its only way out was the reset button). The shell's `press`
+counts as a button.
+
+**`patches/BootExe.cs`** gets there without finishing the game:
+`KF3_BOOTEXE=end` skips the first `OPEN.EXE` at its entry `0x800136C8` with the
+bytes exit word 3 writes (`end3`: exit word 4's), once, so the title reached
+later runs.
+
+Measured 2026-10-06:
+
+- **`KF3_BOOTEXE=end`**: `OPEN.EXE` skipped, `overlay open overwritten by end`,
+  movies 0, 1, 2, the hold. The thread then in `EndingHold.AfterMovie` →
+  `LibEtc.VSync` → `Present` → `FrameClock.Throttle`, the process at 15% of a
+  core, the beacon a line a second. The shell's `press Cross`: `returning to the
+  title`, `overlay end overwritten by open`, `loaded overlay: open`.
+- **Through GAME.EXE**, slot 1 at `KF3_FPS=144`, the shell's `poke 8009C3F8
+  03000000`: `overlay game overwritten by end`, movies 0, 1 and 2, the hold, Cross,
+  then `OPEN.EXE` playing its intro (`func_80013EBC` under the stub's
+  `func_80010038` under `func_800119B8`) with the beacon running, and Start
+  presses took the title back into `GAME.EXE`.
+- **`KF3_BOOTEXE=end3`**: only movie 2, then the hold.
+
+**Not ported**: Verdite2's `Program.cs` unloads every `fdat*` overlay when `open`
+or `end` loads, because area modules do not overlap any executable and so
+survive the swap in the dispatcher. They survive here too: through `GAME.EXE`,
+`fdat17` was never reported overwritten while `END.EXE` ran. Nothing in the run
+called into it. **To judge by eye**: the held frame is the last movie's last
+picture, and the title comes up after the button.
 
 ## The geometry path
 

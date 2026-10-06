@@ -17,6 +17,9 @@ kept.
 | `KF3_AGENT` | `1`: the `[KF3-AGENT]` state beacon on stdout | off |
 | `KF3_SHELL` | `1` or a port: the command channel on `127.0.0.1:27903` | off |
 | `KF3_AUTOSTART` | `1`..`15`: load that card A slot at boot; `new`: a New Game | off |
+| `KF3_BOOTEXE` | `end`: skip the first `OPEN.EXE` straight into `END.EXE`, as `GAME.EXE`'s exit word 3 hands over (all three movies); `end3`: as exit word 4 does (the last movie only). A diagnostic: the ending without finishing the game | off |
+| `KF3_ENDINGHOLD` | `0`: leave `END.EXE` to spin after its last movie, which here is a window that is neither redrawn nor closable; a comparison only | on |
+| `KF3_ENDINGEXIT` | `0`: hold the ending's last frame for good, as the console did, instead of returning to the title on a button | on |
 | `KF3_AUTOPAD` | `seconds:button:holdMs,…` from the first area load | none |
 | `KF3_FULLCARD` | `0`: the games' own card checks, which on a full card (five saves) leave Continue off at the title and make the in-game Save offer a format instead; a comparison only | on |
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
@@ -32,6 +35,7 @@ kept.
 | `KF3_LOOPPACING_PROBE` | `1`: a line a second while a modal loop runs: modal stage-15 calls a second (the loop body's rate), redraws each, and the last call's `a0`/`a1` and caller | off |
 | `KF3_STAGEPROBE` | `1`: which main-loop stages write the ordering table, every 5 s | off |
 | `KF3_RATECENSUS` | seconds: which words change on frames no stage ran on (needs `KF3_FPS`) | off |
+| `KF3_TINTPROBE` | `1`: every 2 s that drew a full-screen tint, the frames and tinted frames, each split by whether a tick built it, and a strip a character a frame | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
 | `KF3_GEOPROBE_FUNCS` | `hex,hex,...` (up to 16): more functions for `KF3_GEOPROBE`, reported per call site | none |
 | `KF3_PRIMBUF_PROBE` | `1`: every 2 s, the primitive buffer's capacity, peak and mean frame use, frames, frames that ran out (cursor past or within one `0x34`-byte packet of end), and half-tiles that set the near bit `0x04` but had under 10 KB left and got the bulk assembler; measures only, moves nothing | off |
