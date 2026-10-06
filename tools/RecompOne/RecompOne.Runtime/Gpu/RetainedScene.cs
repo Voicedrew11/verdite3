@@ -1088,6 +1088,27 @@ public static class RetainedScene
     /// those, the ones behind the model's true depth, which the mask holds back.</summary>
     public static long MaskFrames, MaskBatches, MaskSamples, MaskBehind;
 
+    /// <summary>0092. How many table slots the walk passes after the slot the main view
+    /// is drawn at (1) that the game linked to be drawn before its world: a second table
+    /// spliced in there, such as Verdite3's eight-entry front table. A packet in them
+    /// with no recovered depth is drawn only where the main view left the far plane
+    /// (<see cref="UnderWorld"/>), as painter's order put it behind everything. 0, the
+    /// default, is the walk as it was.</summary>
+    public static int UnderSlots;
+
+    /// <summary>0092. Set by the table walk while it is in <see cref="UnderSlots"/> after
+    /// a main view that drew; false outside a walk.</summary>
+    public static bool UnderWorld;
+
+    /// <summary>0092. Triangles drawn under the world (cumulative).</summary>
+    public static long UnderTriangles;
+
+    /// <summary>0092. Counts each batch drawn under the world twice more with occlusion
+    /// queries (a stall each): its samples untested, and those that pass, which are the
+    /// ones painter's order would have left showing. Off by default; cumulative.</summary>
+    public static bool UnderProbe;
+    public static long UnderSamples, UnderShown;
+
     /// <summary>0086, with the probe: samples of the blended ones in front of the model
     /// by less than the tolerance, which still draw (an opaque batch's own depth is
     /// already in the buffer when it is probed). Then, before each model list's

@@ -1004,12 +1004,17 @@ public sealed partial class GlCore : IGpuBackend
         // because a death fade or a damage flash is something you see the world
         // *through* and must not erase its depth. 4 = 2 on a packet the port
         // called solid (a blended model, the secret door): the occlusion pass
-        // sees all of it.
+        // sees all of it. 5 (0092) = linked to be drawn before the world the
+        // retained main view already drew: at the far plane, tested, so it shows
+        // only where the world left none.
         int zMode = 0;
         if (a.HasGteZ && b.HasGteZ && c.HasGteZ)
             zMode = !f.SemiTrans ? 1 : a.Solid && GteDepth.SurfacesWanted ? 4 : 2;
+        else if (RetainedScene.UnderWorld && GteDepth.DepthWanted)
+            zMode = 5;
         else if (GteDepth.SurfacesWanted && !f.SemiTrans)
             zMode = 3;
+        if (zMode == 5) RetainedScene.UnderTriangles++;
         // 0048. A directional triangle needs its batch's BK and LCM to be the ones
         // it was lit with.
         int lightGen = (a.Light & (GteLightMap.Directional << 24)) != 0 ? a.LightGen : -1;
@@ -1177,10 +1182,12 @@ public sealed partial class GlCore : IGpuBackend
     bool CoversTarget(float x0, float y0, float x1, float y1) =>
         _kTarget != null && x1 - x0 >= _kTarget.W * 0.9f && y1 - y0 >= _kTarget.H * 0.9f;
 
-    /// <summary>The zMode a primitive with no recovered depth takes: 3 (stamp the
-    /// far plane) while the occlusion pass is on and the primitive is opaque, 0 --
-    /// which is what everything did before this existed -- otherwise.</summary>
-    static int FarMask(in PrimFlags f) => GteDepth.SurfacesWanted && !f.SemiTrans ? 3 : 0;
+    /// <summary>The zMode a primitive with no recovered depth takes: 5 under the
+    /// retained world (0092), 3 (stamp the far plane) while the occlusion pass is on
+    /// and the primitive is opaque, 0 -- which is what everything did before this
+    /// existed -- otherwise.</summary>
+    static int FarMask(in PrimFlags f) =>
+        RetainedScene.UnderWorld && GteDepth.DepthWanted ? 5 : GteDepth.SurfacesWanted && !f.SemiTrans ? 3 : 0;
 
     public void DrawRect(in HleRect r, in PrimFlags f)
     {
@@ -1197,7 +1204,7 @@ public sealed partial class GlCore : IGpuBackend
         _verts[_count++] = V(a, f, false); _verts[_count++] = V(b, f, false); _verts[_count++] = V(c, f, false);
         _verts[_count++] = V(b, f, false); _verts[_count++] = V(d, f, false); _verts[_count++] = V(c, f, false);
         // 0067. A sprite is 2D: the HUD's, as far as the reflection pass is concerned.
-        if (GteDepth.Reflections && _kTarget is { IsPlanar: false } && AoGeometry.Active
+        if (GteDepth.Reflections && _kTarget is { IsPlanar: false } && AoGeometry.Active && !RetainedScene.UnderWorld
             && !CoversTarget(r.X, r.Y, r.X + r.W, r.Y + r.H))
         {
             float m = SurfaceMaterial.Overlay;
@@ -1704,6 +1711,14 @@ public sealed partial class GlCore : IGpuBackend
             _gl.DepthFunc(DepthFunction.Always);
             _gl.DepthMask(true);
         }
+        else if (_kZMode == 5)
+        {
+            // 0092. Under the world: its fragments are at the far plane, so LEQUAL
+            // passes only where nothing nearer was drawn; nothing is written.
+            _gl.Enable(EnableCap.DepthTest);
+            _gl.DepthFunc(DepthFunction.Lequal);
+            _gl.DepthMask(false);
+        }
         else if (_kZMode != 0)
         {
             if (rt != null) { GteDepth.ZBatchRt++; if (!rt.IsPlanar) _lastZRt = rt; } else GteDepth.ZBatchVram++;
@@ -2024,6 +2039,8 @@ public sealed partial class GlCore : IGpuBackend
             GteDepth.ZPrepasses++;
         }
 
+        if (_kZMode == 5 && RetainedScene.UnderProbe) ProbeUnder(first, _count);
+
         if (_legacy)
         {
             _gl.Disable(EnableCap.Blend);
@@ -2060,7 +2077,7 @@ public sealed partial class GlCore : IGpuBackend
 
             // Texels without the semi-transparency bit draw opaque, so they must hide what is behind them from the occlusion pass.
             // A solid packet (zMode 4) hides it with every texel.
-            if (GteDepth.SurfacesWanted && _uOpaqueDepth >= 0)
+            if (GteDepth.SurfacesWanted && _uOpaqueDepth >= 0 && _kZMode != 5)
             {
                 _gl.Disable(EnableCap.Blend);
                 _gl.ColorMask(false, false, false, false);
@@ -2268,6 +2285,27 @@ public sealed partial class GlCore : IGpuBackend
         RetainedScene.MaskBehind += tolerant - held;
         // An opaque batch's own depth went in first, so only a blended one's tells.
         if (_kZMode != 1) RetainedScene.MaskAhead += held - clear;
+    }
+
+    /// <summary>0092. A batch under the world: its samples, and those its far-plane
+    /// test passes. Writes nothing.</summary>
+    void ProbeUnder(int first, int count)
+    {
+        _gl.ColorMask(false, false, false, false);
+        long Count(DepthFunction func)
+        {
+            _gl.DepthFunc(func);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        RetainedScene.UnderSamples += Count(DepthFunction.Always);
+        RetainedScene.UnderShown += Count(DepthFunction.Lequal);
+        _gl.ColorMask(true, true, true, true);
     }
 
     void SetDepthBias(bool on)

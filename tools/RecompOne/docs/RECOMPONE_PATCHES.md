@@ -1706,6 +1706,20 @@ Four files in the directory have no entry below:
   uncapped, with the vertex map active: 343,606,352 words over 83,870 clears, every
   one equal to the loop's, none falling back; the clear 0.055 → 0.018 ms a frame.
   **No recompile.**
+- `0092-retained-under-world.patch` — the walk draws the retained main view at slot
+  1, and a game can splice a second table in right after it that it meant to be drawn
+  first (Verdite3's eight-entry front table, linked after the main table's entry
+  8190). Those packets carry no depth record, so they were drawn over the finished
+  world. `RetainedScene.UnderSlots`, which the port sets: for that many slots after a
+  main view (or mirror) that drew, the walk sets `RetainedScene.UnderWorld`, and
+  `GlCore` gives a packet there with no recovered depth zMode 5, at the far plane,
+  tested `LEQUAL` and writing nothing, so it shows only where the world left the far
+  plane, as painter's order would have it. The water is not drawn ahead of such a
+  packet; a sprite there is not an overlay to the reflection pass, and the
+  opaque-texel depth pass skips it. `UnderTriangles` counts; `UnderProbe` counts its
+  samples and those that pass, with occlusion queries. **0 is the walk as it was.**
+  **No recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Far scenery over the
+  world").
 
 ## Retained contract additions under verification (2026-10-04)
 
