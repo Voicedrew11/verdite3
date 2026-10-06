@@ -36,7 +36,7 @@ Game is playable from start to finish. There may still be some intermittent issu
 
 ## Requirements
 
-A dump of the North American PlayStation release (`SLUS-00158`) in `.cue` / `.bin`, or `.chd` format.
+A dump of the North American PlayStation release (`SLUS-00255`) in `.cue` / `.bin`, or `.chd` format.
 
 ## Credits
 
