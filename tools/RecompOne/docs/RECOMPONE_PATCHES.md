@@ -1698,6 +1698,50 @@ Four files in the directory have no entry below:
   normal program. `NormalFs` is now a `static readonly` composed string. **A frame
   with no fade and no added half is the program before.** **No recompile.**
   Measured in Verdite3's `WIDESCREEN.md` ("Render distance").
+- `0090-no-system-cnf.patch` — a disc with no `SYSTEM.CNF` could not be recompiled:
+  `SystemCfg.Parse` read it unconditionally. With none, the BIOS boots `PSX.EXE`
+  with TCB 4, EVENT 16 and the stack at `0x801FFF00`, the class's own defaults, so
+  `Parse` now returns them; `DiscProbe.SystemCfgBoot` answers `PSX.EXE` the same
+  way, so `--autoconfigure` names the boot file rather than guessing the first
+  executable. King's Field (`SLPS-00017`, Verdite1) has no `SYSTEM.CNF`. A disc
+  with one reads it as before. **Forces a recompile** only for such a disc.
+
+- `0091-vblank-from-the-poll.patch` — on `0021`'s timeline the vblank is delivered
+  only from inside `LibEtc.VSync`, so a game that waits for its own vblank handler
+  without calling `VSync` waits forever: King's Field (`SLPS-00017`) spins in its
+  frame gate on a counter its `RCntCNT3` handler bumps, and drew four frames after
+  the first area loaded. `LibEtc.VBlankFromPoll` (off by default; the port sets it)
+  has `Interrupts.PollSlow` deliver the vblanks that are due on the same wall-clock
+  grid, inside the poll's register snapshot and exception stack, before draining
+  pending IRQs. `AdvanceVBlanks` marks itself running, and a poll that arrives from
+  inside a delivery (a handler is recompiled code, and polls too) does not deliver
+  again. With the switch off the only change is that mark, so a game that does not
+  set it runs as before. Measured in Verdite1: about 20 frames a second in the first
+  area, the gate's three vblanks a frame. **No recompile.**
+
+- `0092-wrapped-image-load.patch` — an image load (GP0 `A0`) that runs past VRAM's
+  right or bottom edge wraps on the console, and `StoreImageHalfword` wraps it into
+  the shadow, but `HleLoadFlush` handed the backend the whole rectangle, and every
+  GL backend's `WriteRect` is one `TexSubImage2D`, which refuses a rectangle past
+  the texture with `GL_INVALID_VALUE`: the backend received none of it. King's
+  Field (`SLPS-00017`) loads its HUD and menu palettes as 16x16 TIM CLUT blocks at
+  rows 497-500, so the backend's palettes read zero, every texel transparent, and
+  the HUD and every menu were drawn and invisible. A wrapping load now goes to the
+  backend as up to four pieces, each at its wrapped position; a load that fits is
+  passed as before, so a game that never wraps one is unchanged. Measured in
+  Verdite1: 35 palette words differed between the backend's VRAM and the shadow,
+  and 0 after, with all of VRAM outside the display buffers equal through the boot,
+  the first area and the in-game menu. Fills and VRAM copies that wrap are not
+  split. **No recompile.**
+
+- `0093-disc-image-decorator.patch` — `DiscImage.Decorate`, a
+  `Func<IDiscImage, string, IDiscImage>` that `DiscImage.Open` hands each image it
+  opens, with its path, and returns the result of. Null, the default, passes the
+  image through, so a game that does not set it is unchanged. The disc is opened
+  inside the generated `Entry.Run`, so a port had no other place to stand between
+  the image and the runtime's reads. King's Field (`SLPS-00017`) lays the English
+  fan translation's PPF over the sectors this way, leaving its executable's
+  records out. **No recompile.**
 - `0094-gpu-suppress-dither.patch` — a port that turned the GPU's ordered dither
   off had to clear bit 9 of every draw-mode word in RAM before the GPU saw it and
   put it back after: PutDrawEnv's `dtd` byte, and every E1 word in the ordering
