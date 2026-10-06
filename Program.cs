@@ -268,6 +268,16 @@ Kf3.GameplaySection.Install();
 // The Testing tab in Settings: every switch above, live.
 Kf3.TestingSection.Install();
 
+// The port settings as a page of the game's own menu: L2 in the in-game menu.
+// KF3_SETTINGSPAGE_PROBE=1 logs what it did. See "The port settings page" in
+// docs/GAME_INTERNALS.md.
+Kf3.SettingsPage.Configure(Environment.GetEnvironmentVariable("KF3_SETTINGSPAGE_PROBE"));
+Kf3.SettingsPage.Install();
+
+// The port settings both screens draw from, and the one writer of interface.ini's
+// kf3.* keys (docs/SETTINGS.md). Last, so its boot check follows every start-up.
+Kf3.PortSettings.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200

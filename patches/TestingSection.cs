@@ -133,9 +133,9 @@ public sealed class TestingSection : ISettingsSection
     }
 
     // Dither (the console), None (15-bit, no crosshatch), Smooth (24-bit, no crosshatch).
-    static int Shading => TrueColor.Enabled ? 2 : NoDither.Enabled ? 1 : 0;
+    internal static int Shading => TrueColor.Enabled ? 2 : NoDither.Enabled ? 1 : 0;
 
-    static void SetShading(int v)
+    internal static void SetShading(int v)
     {
         NoDither.Enabled = v != 0;
         TrueColor.Enabled = v == 2;

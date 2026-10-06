@@ -10,21 +10,6 @@ namespace Kf3;
 /// <summary>Game settings for the existing retained lighting/normal/filter passes.</summary>
 public static class SceneFeatures
 {
-    sealed record Switch(string Key, string Env, string Label, Func<bool> Get, Action<bool> Set);
-    static readonly Switch[] Switches =
-    [
-        new("kf3.perpixel", "KF3_PERPIXEL", "perpixel", () => GteLightMap.Enabled, v => GteLightMap.Enabled = v),
-        new("kf3.fogdepth", "KF3_FOG_DEPTH", "fog", () => RetainedScene.MainFogFromZ, v => RetainedScene.MainFogFromZ = v),
-        new("kf3.ao", "KF3_AO", "ao", () => GteDepth.AmbientOcclusion, v => GteDepth.AmbientOcclusion = v),
-        new("kf3.ao.normals", "KF3_AO_NORMALS", "normals", () => AoGeometry.Enabled, v => { AoGeometry.Enabled = v; GteDepth.AoNormals = v; }),
-        new("kf3.mipmaps", "KF3_MIPMAPS", "mips", () => GteDepth.Mipmaps, v => GteDepth.Mipmaps = v),
-        new("kf3.neighbourblend", "KF3_NEIGHBOUR_BLEND", "blend", () => NeighbourBlend.Mode != 0,
-            v => NeighbourBlend.Mode = v ? NeighbourBlend.Fog | NeighbourBlend.Light : 0),
-        // The water (docs/WATER.md): Verdite2's three switches, off until judged here.
-        new("kf3.planar", "KF3_PLANAR", "planar", () => PlanarMirror.Enabled, PlanarMirror.SetEnabled),
-        new("kf3.murk", "KF3_MURK", "murk", () => Murk.Enabled, Murk.SetEnabled),
-        new("kf3.waves", "KF3_WAVES", "waves", () => Waves.Enabled, Waves.SetEnabled),
-    ];
     const string Names = """
     {"strings": {
       "kf3scene.title": {"en":"World enhancements", "pt-BR":"Melhorias do mundo", "es-419":"Mejoras del mundo"},
@@ -59,6 +44,7 @@ public static class SceneFeatures
     }}
     """;
     static int _quality = 1;
+    public static int Quality => _quality;
     static string T(string key) => Localization.T("kf3scene." + key);
     static string? Env(string key) => Environment.GetEnvironmentVariable(key);
     public static void Install()
@@ -66,9 +52,9 @@ public static class SceneFeatures
         Event.AddListener<RuntimeReadyEvent>(_ =>
         {
             Localization.Merge(Names);
-            foreach (var s in Switches)
-                s.Set(Env(s.Env) is { Length: > 0 } forced ? forced is not ("0" or "off")
-                    : Rt.View.GetInt(s.Key, s.Label is "fog" or "normals" ? 1 : 0) != 0);
+            foreach (var s in PortSettings.SceneSwitches)
+                s.Apply(Env(s.Envs[0]) is { Length: > 0 } forced ? (forced is not ("0" or "off") ? 1 : 0)
+                    : Rt.View.GetInt(s.Key, (int)s.Default) != 0 ? 1 : 0);
             SetQuality(Env("KF3_AO_QUALITY")?.ToLowerInvariant() switch
                 { "low" => 0, "medium" => 1, "high" => 2, _ => Rt.View.GetInt("kf3.ao.quality", 1) });
             GteDepth.Anisotropy = (int)Math.Clamp(Number("KF3_ANISO", "kf3.aniso", 1), 1, 16);
@@ -83,7 +69,6 @@ public static class SceneFeatures
     static float Number(string env, string key, float fallback) =>
         float.TryParse(Env(env), NumberStyles.Float, CultureInfo.InvariantCulture, out float value) && float.IsFinite(value)
             ? value : Rt.View.GetFloat(key, fallback);
-    static void Save(string key, float value) { Rt.View.SetFloat(key, value); Rt.SaveView(); }
     public static void SetQuality(int quality)
     {
         _quality = Math.Clamp(quality, 0, 2);
@@ -91,41 +76,39 @@ public static class SceneFeatures
         GteDepth.AoSamples = _quality == 0 ? 8 : 16;
     }
     public static void SetDistance(float tiles) => GteDepth.PlainDepth = float.IsFinite(tiles) && tiles > 0 ? Math.Clamp(tiles, 2, 16) * 2048 : 0;
+    // The rows are declared in PortSettings, which the game's own menu draws from
+    // too. The distances are two controls each, so they keep their own drawing, and
+    // their sliders are written once, when let go (docs/SETTINGS.md).
     static void Draw()
     {
         ImGui.SeparatorText(T("title"));
-        foreach (var s in Switches)
-        {
-            bool value = s.Get();
-            if (ImGui.Checkbox(T(s.Label), ref value)) { s.Set(value); Rt.View.SetInt(s.Key, value ? 1 : 0); Rt.SaveView(); }
-        }
-        int quality = _quality;
-        if (ImGui.Combo(T("quality"), ref quality, new[] { T("low"), T("medium"), T("high") }, 3))
-        { SetQuality(quality); Rt.View.SetInt("kf3.ao.quality", _quality); Rt.SaveView(); }
-        int taps = GteDepth.Anisotropy;
-        if (ImGui.SliderInt(T("aniso"), ref taps, 1, 16)) { GteDepth.Anisotropy = taps; Save("kf3.aniso", taps); }
+        foreach (var s in PortSettings.SceneSwitches) PortSettings.Draw(s);
+        PortSettings.Draw(PortSettings.AoQuality);
+        PortSettings.Draw(PortSettings.Anisotropy);
         bool everywhere = GteDepth.PlainDepth <= 0;
         float tiles = everywhere ? 8 : GteDepth.PlainDepth / 2048;
-        if (ImGui.Checkbox(T("everywhere"), ref everywhere)) { SetDistance(everywhere ? 0 : tiles); Save("kf3.enhancedistance", everywhere ? 0 : tiles); }
+        if (ImGui.Checkbox(T("everywhere"), ref everywhere)) Keep(PortSettings.EnhanceDistance, everywhere ? 0 : tiles);
         ImGui.BeginDisabled(everywhere);
-        if (ImGui.SliderFloat(T("distance"), ref tiles, 2, 16, "%.1f")) { SetDistance(tiles); Save("kf3.enhancedistance", tiles); }
+        if (ImGui.SliderFloat(T("distance"), ref tiles, 2, 16, "%.1f")) SetDistance(tiles);
+        if (ImGui.IsItemDeactivatedAfterEdit()) Keep(PortSettings.EnhanceDistance, tiles);
         ImGui.EndDisabled();
         // The retained renderer's reach and the fade at its edge (RenderDistance).
         bool far = RenderDistance.Tiles > 0;
         float reach = far ? RenderDistance.Tiles : 16;
-        if (ImGui.Checkbox(T("far"), ref far)) { RenderDistance.SetTiles(far ? reach : 0); Save("kf3.renderdistance", RenderDistance.Tiles); }
+        if (ImGui.Checkbox(T("far"), ref far)) Keep(PortSettings.RenderDist, far ? reach : 0);
         ImGui.BeginDisabled(!far);
-        if (ImGui.SliderFloat(T("fartiles"), ref reach, 8, RenderDistance.MaxTiles, "%.0f"))
-        { RenderDistance.SetTiles(reach); Save("kf3.renderdistance", RenderDistance.Tiles); }
+        if (ImGui.SliderFloat(T("fartiles"), ref reach, 8, RenderDistance.MaxTiles, "%.0f")) RenderDistance.SetTiles(reach);
+        if (ImGui.IsItemDeactivatedAfterEdit()) Keep(PortSettings.RenderDist, reach);
         ImGui.EndDisabled();
         bool fade = RenderDistance.FadeTiles > 0;
         float band = fade ? RenderDistance.FadeTiles : 3;
-        if (ImGui.Checkbox(T("fadein"), ref fade)) { RenderDistance.SetFade(fade ? band : 0); Save("kf3.renderdistance.fade", RenderDistance.FadeTiles); }
+        if (ImGui.Checkbox(T("fadein"), ref fade)) Keep(PortSettings.RenderFade, fade ? band : 0);
         ImGui.BeginDisabled(!fade);
-        if (ImGui.SliderFloat(T("fadetiles"), ref band, 0.5f, RenderDistance.MaxFade, "%.1f"))
-        { RenderDistance.SetFade(band); Save("kf3.renderdistance.fade", RenderDistance.FadeTiles); }
+        if (ImGui.SliderFloat(T("fadetiles"), ref band, 0.5f, RenderDistance.MaxFade, "%.1f")) RenderDistance.SetFade(band);
+        if (ImGui.IsItemDeactivatedAfterEdit()) Keep(PortSettings.RenderFade, band);
         ImGui.EndDisabled();
     }
+    static void Keep(PortSetting s, float value) { s.Apply(value); SettingsStore.Write(s, s.Live()); }
     static void DrawTesting()
     {
         int mode = GpuWorld.Setting;

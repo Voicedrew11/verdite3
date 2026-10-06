@@ -124,7 +124,10 @@ pad from SDL for a scripted run:
   TCP `127.0.0.1:27903` (Verdite2 uses 27900, so both can run), one request a
   line, one JSON line back: `state`, `press <button> [ms]`, `peek <hex addr>
   [bytes]`, `poke <hex addr> <hex bytes>` (up to 64), `dump <file>` (the 2 MB
-  of RAM, for diffing), `gpu` (the retained renderer's cumulative draw and
+  of RAM, for diffing), `vram <file>` (the 1024 × 512 16-bit VRAM shadow, row by
+  row: textures and fonts without a screenshot), `settings [open|step <key>
+  <-1|1>|reset <key>|save|discard]` (the game menu's settings session without its
+  page, `docs/SETTINGS.md`), `gpu` (the retained renderer's cumulative draw and
   model-mask counters), `kill` (the player through the game's death latch, for
   auto reload: wait until the beacon's `loop` has been true for a few seconds
   first), `hurt <amount>` (the player through the take-damage routine

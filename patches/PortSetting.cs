@@ -1,0 +1,104 @@
+using System.Globalization;
+
+namespace Kf3;
+
+/// <summary>How a setting's value is kept in interface.ini: the text
+/// <c>ViewConfig.SetInt</c> or <c>SetFloat</c> writes, so a key keeps the format it
+/// had before the model existed and no player's file needs migrating.</summary>
+public enum Stored { Int, Float }
+
+/// <summary>How the Settings window draws a setting; <see cref="None"/> leaves it
+/// to a section's own code (a compound control, or a developer tab).</summary>
+public enum Ui { None, Checkbox, Combo, SliderInt, SliderFloat }
+
+/// <summary>
+/// One port setting, declared once for both screens: the Settings window (ImGui)
+/// and the page drawn with the game's own menu routines. See docs/SETTINGS.md.
+///
+/// Every value is a double. A switch is 0/1, a choice is the chosen value itself
+/// (an aspect ratio, a frame rate, a slot), so the key keeps what it held before.
+/// <see cref="Steps"/> is what Left/Right in the game's menu moves through; a live
+/// value that is none of them (a slider's 137 fps, a variable's 1.85:1) is shown as
+/// it is and never rounded onto a step until the player moves it.
+/// </summary>
+public sealed class PortSetting
+{
+    public required string Key { get; init; }
+
+    /// <summary>The <c>KF3_*</c> variables that set this at boot. One set locks the
+    /// setting in game: a saved change would be overridden again at the next boot.</summary>
+    public string[] Envs { get; init; } = [];
+
+    /// <summary>The Settings window's label: a localization key when
+    /// <see cref="Localized"/>, else the text itself.</summary>
+    public required string Label { get; init; }
+    public bool Localized { get; init; }
+    public string? Tip { get; init; }
+
+    /// <summary>The in-game page and row, in <see cref="MenuFont"/>'s characters;
+    /// no page keeps a setting to the Settings window.</summary>
+    public string? Page { get; init; }
+    public string? MenuLabel { get; init; }
+
+    public required double[] Steps { get; init; }
+
+    /// <summary>A value as the game's font shows it.</summary>
+    public required Func<double, string> MenuValue { get; init; }
+
+    /// <summary>The Settings window's names of <see cref="Steps"/>, for a combo.</summary>
+    public string[]? Names { get; init; }
+
+    /// <summary>What the setting is with no key kept and no variable set. Checked
+    /// against the live value at boot (<see cref="PortSettings"/>).</summary>
+    public required double Default { get; init; }
+
+    public required Func<double> Live { get; init; }
+    public required Action<double> Apply { get; init; }
+
+    public Stored Stored { get; init; } = Stored.Int;
+    public Ui Ui { get; init; } = Ui.Checkbox;
+    public double Min { get; init; }
+    public double Max { get; init; }
+
+    /// <summary>A slider's text for its value; ImGui's own format when null.</summary>
+    public Func<double, string>? SliderText { get; init; }
+
+    /// <summary>Takes effect at the next boot: a change is kept but not applied.</summary>
+    public bool AtBoot { get; init; }
+
+    /// <summary>Dims the setting (another one it needs is off); null is always usable.</summary>
+    public Func<bool>? Usable { get; init; }
+
+    public bool IsUsable => Usable?.Invoke() ?? true;
+
+    public string? LockedBy =>
+        Envs.FirstOrDefault(e => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(e)));
+
+    public static bool Same(double a, double b) => Math.Abs(a - b) < 1e-4;
+
+    public int StepIndex(double value)
+    {
+        for (int i = 0; i < Steps.Length; i++)
+            if (Same(Steps[i], value)) return i;
+        return -1;
+    }
+
+    /// <summary>Left (-1) or Right (+1) from <paramref name="value"/>. A switch flips
+    /// either way. A value off the steps goes to the nearest one on that side.</summary>
+    public double Next(double value, int dir)
+    {
+        int i = StepIndex(value);
+        if (Steps.Length == 2 && i >= 0) return Steps[1 - i];
+        if (i >= 0) return Steps[Math.Clamp(i + Math.Sign(dir), 0, Steps.Length - 1)];
+        var side = dir > 0 ? Steps.Where(s => s > value) : Steps.Where(s => s < value);
+        return side.Any() ? (dir > 0 ? side.Min() : side.Max()) : value;
+    }
+
+    public string Encode(double value) => Stored switch
+    {
+        Stored.Float => ((float)value).ToString(CultureInfo.InvariantCulture),
+        _ => ((int)Math.Round(value)).ToString(CultureInfo.InvariantCulture),
+    };
+
+    public string ImGuiLabel => Localized ? RecompOne.Runtime.Host.Window.Localization.T(Label) : Label;
+}

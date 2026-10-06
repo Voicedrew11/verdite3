@@ -58,6 +58,8 @@ public static class AgentServer
         "peek <addr> [bytes=16] - read guest memory, hex",
         "poke <addr> <hex bytes> - write guest memory, up to 64 bytes (e.g. poke 8009C3F8 03000000)",
         "dump <file> - write the 2 MB of guest RAM to a file",
+        "vram <file> - write the 1024x512 16-bit VRAM shadow to a file, row by row",
+        "settings [open|save|discard|step <key> <-1|1>|reset <key>] - the game menu's settings session without its page; alone, every setting",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "renderdist <tiles> [fadeTiles] - the retained render distance and its fade (0 the game's, none)",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
@@ -189,7 +191,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
+            case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
                 or "renderdist" or "murk" or "waves" or "planar" or "scale":
                 Enqueue(_fast, cmd);
                 break;
@@ -230,6 +232,8 @@ public static class AgentServer
         "help" => "{\"ok\":true,\"cmd\":\"help\",\"commands\":[" + string.Join(',', HelpCommands.Select(Q)) + "]}",
         "peek" => DoPeek(cmd.Arg1, cmd.Arg2),
         "dump" => DoDump(cmd.Arg1),
+        "vram" => DoVram(cmd.Arg1),
+        "settings" => DoSettings(cmd.Args),
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "kill" => "{\"ok\":true,\"cmd\":\"kill\",\"status\":" + Q(AutoReload.Simulate()) + "}",
@@ -350,6 +354,48 @@ public static class AgentServer
         if (path.Length == 0) return Err("dump <file>");
         File.WriteAllBytes(path, m.Ram[..0x200000].ToArray());
         return "{\"ok\":true,\"cmd\":\"dump\",\"file\":" + Q(Path.GetFullPath(path)) + "}";
+    }
+
+    static string DoVram(string path)
+    {
+        if (RecompOne.Runtime.Runtime.Gpu is not { } gpu) return Err("not running");
+        if (path.Length == 0) return Err("vram <file>");
+        File.WriteAllBytes(path, System.Runtime.InteropServices.MemoryMarshal.AsBytes(gpu.Vram.AsSpan()).ToArray());
+        return "{\"ok\":true,\"cmd\":\"vram\",\"file\":" + Q(Path.GetFullPath(path)) + "}";
+    }
+
+    /// <summary>A <see cref="SettingsSession"/> driven from the game thread, as the menu
+    /// page drives it, so the rules in docs/SETTINGS.md can be checked against the file.</summary>
+    static string DoSettings(string[] args)
+    {
+        string verb = args.Length > 0 ? args[0] : "list";
+        var session = SettingsSession.Current;
+        string? why = null;
+        switch (verb)
+        {
+            case "list": break;
+            case "open": SettingsSession.Open(); break;
+            case "save" or "discard" or "step" or "reset" when session is null: return Err("no session; settings open");
+            case "save": session!.Save(); break;
+            case "discard": session!.Discard(); break;
+            case "step" or "reset":
+                if (args.Length < 2 || PortSettings.Find(args[1]) is not { } s) return Err($"settings {verb} <key>: no such key");
+                if (verb == "reset") why = session!.Reset(s);
+                else if (args.Length < 3 || !int.TryParse(args[2], out int dir) || dir == 0) return Err("settings step <key> <-1|1>");
+                else why = session!.Step(s, dir);
+                break;
+            default: return Err($"settings: unknown '{verb}'");
+        }
+        session = SettingsSession.Current;
+        var rows = PortSettings.All.Select(s =>
+            "{\"key\":" + Q(s.Key) + ",\"page\":" + Q(s.Page ?? "") +
+            ",\"live\":" + s.Live().ToString(System.Globalization.CultureInfo.InvariantCulture) +
+            ",\"shown\":" + Q(session is null ? "" : s.MenuValue(session.Shown(s))) +
+            ",\"changed\":" + (session?.Changed.Contains(s) == true ? "true" : "false") +
+            ",\"locked\":" + Q(s.LockedBy ?? "") + "}");
+        return "{\"ok\":" + (why is null ? "true" : "false") + ",\"cmd\":\"settings\",\"verb\":" + Q(verb) +
+               (why is null ? "" : ",\"error\":" + Q(why)) + ",\"session\":" + (session is null ? "false" : "true") +
+               ",\"writes\":" + SettingsStore.Writes + ",\"settings\":[" + string.Join(',', rows) + "]}";
     }
 
     static string DoView(string[] args)

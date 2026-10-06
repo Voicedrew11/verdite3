@@ -94,6 +94,11 @@ camera, not a second walk. Measured in all nine areas with water, off until judg
   reflections: which faces are water, the mirror, measured and awaiting judgement.
 - [docs/WIDESCREEN.md](docs/WIDESCREEN.md) — the margin, the screen tints, the cull cone,
   the primitive buffer and the world behind menus and messages, ported from Verdite2.
+- [docs/SETTINGS.md](docs/SETTINGS.md) — the port settings one list feeds to the Settings
+  window and the game's own menu: the rules that keep a player's file, the store,
+  the staged session.
+- [docs/SETTINGS_MENU_HANDOFF.md](docs/SETTINGS_MENU_HANDOFF.md) — the slice that built the page in the
+  game's own menu (done 2026-10-06; what it found is in SETTINGS.md and GAME_INTERNALS.md).
 - [docs/MODS.md](docs/MODS.md) — the mods under `mods/`: the debug tools (noclip,
   invincibility, the character, item and spell editors, area warp).
 - [docs/PACKAGING.md](docs/PACKAGING.md) — the shipped launcher, the release, the card icon off the disc.

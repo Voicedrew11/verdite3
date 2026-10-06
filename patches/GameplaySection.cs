@@ -60,81 +60,23 @@ public sealed class GameplaySection : ISettingsSection
         });
     }
 
-    // interface.ini, saved on the spot: a setting is changed once and then the
-    // player goes back to the game, and there is no later moment to write it.
-
-    static void Set(string key, bool value)
-    {
-        Rt.View.SetInt(key, value ? 1 : 0);
-        Rt.SaveView();
-    }
+    // Each row is declared in PortSettings, which the game's own menu draws from
+    // too; SettingsStore writes the one key a control changed (docs/SETTINGS.md).
 
     public void Draw()
     {
         // Dimmed rather than hidden while mouse look is off, as Verdite2's
         // AutoReloadPage dims its slot.
-        ImGui.BeginDisabled(!Mouse.Enabled);
+        PortSettings.Draw(PortSettings.InstantMouseLook);
 
-        bool lead = Mouse.Lead;
-        if (ImGui.Checkbox("Instant mouse look", ref lead))
-        {
-            Mouse.Lead = lead;
-            Set(Mouse.LeadKey, lead);
-        }
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Turns the view the frame you move the mouse, instead of on the game's next tick.");
-
-        ImGui.EndDisabled();
-
-        DrawAutoReload();
-        DrawMessageFade();
-    }
-
-    /// <summary>How long a sign's or a message's fade takes (MenuWorld.FadeVBlanks).</summary>
-    static void DrawMessageFade()
-    {
-        int vblanks = MenuWorld.FadeVBlanks;
-        ImGui.SetNextItemWidth(260);
-        if (ImGui.SliderInt("Message fade length", ref vblanks, 1, MenuWorld.MaxFadeVBlanks, vblanks == 1 ? "x1 (original)" : "x%d"))
-        {
-            MenuWorld.SetFadeVBlanks(vblanks);
-            Rt.View.SetInt(MenuWorld.FadeKey, MenuWorld.FadeVBlanks);
-            Rt.SaveView();
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("How long signs and messages take to fade in and out. x1 is the game's own speed.");
-    }
-
-    static readonly string[] Slots = ["Last used", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"];
-
-    /// <summary>Verdite2's AutoReloadPage: the switch, and the slot dimmed and
-    /// indented under it while it is off.</summary>
-    static void DrawAutoReload()
-    {
-        bool on = AutoReload.Enabled;
-        if (ImGui.Checkbox("Reload the last save on death", ref on))
-        {
-            AutoReload.SetEnabled(on);
-            Set(AutoReload.OnKey, on);
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Puts you back at your last save instead of the menus.");
-
+        // Verdite2's AutoReloadPage: the switch, and the slot dimmed and indented
+        // under it while it is off.
+        PortSettings.Draw(PortSettings.AutoReloadOn);
         ImGui.Indent();
-        ImGui.BeginDisabled(!AutoReload.Enabled);
-
-        int slot = AutoReload.Slot;
-        ImGui.SetNextItemWidth(260);
-        if (ImGui.Combo("Save slot", ref slot, Slots, Slots.Length))
-        {
-            AutoReload.SetSlot(slot);
-            Rt.View.SetInt(AutoReload.SlotKey, AutoReload.Slot);
-            Rt.SaveView();
-        }
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Which save to reload. \"Last used\" follows where you saved or loaded.");
-
-        ImGui.EndDisabled();
+        PortSettings.Draw(PortSettings.AutoReloadSlot);
         ImGui.Unindent();
+
+        // How long a sign's or a message's fade takes (MenuWorld.FadeVBlanks).
+        PortSettings.Draw(PortSettings.MessageFade);
     }
 }

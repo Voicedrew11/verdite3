@@ -17,6 +17,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
 
 ## Next
 
+- ~~**The port settings page in the game's menu** (L2).~~ Built and measured
+  2026-10-06 (`docs/SETTINGS.md`, "The page in the game's menu"). **Awaiting the
+  user's look**: the dim rows, the value column, the hint row. Open: a keyboard
+  key for L2 (pad only for now, by choice), a hint for L1/R1.
 - **Complete retained GPU rendering** is the active implementation objective
   (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
   near map and near models are now retained, so no near packet draws in painter's

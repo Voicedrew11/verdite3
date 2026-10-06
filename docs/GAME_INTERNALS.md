@@ -530,6 +530,150 @@ values are written up in "Menus and messages draw the world live" in
 [WIDESCREEN.md](WIDESCREEN.md), where `patches/MenuWorld.cs` replaces the paste
 and the fade.
 
+### The in-game menu, its lists and its font
+
+Read 2026-10-06 off the recompiled code and `GAME.EXE`'s data, for a port
+settings page drawn with the game's own menu routines; the font and the masks
+were measured in play.
+
+**The menu `func_8001A774`** (called from examine's `func_800305D8`; the menu
+button is preset 3's Circle) enters the framework, then loops: the chooser
+`func_800221E8(cursor, 5, &sel, &confirmed)` with `&cancel` at `sp+0x10`,
+`PadRead_game(1)`, and two frames of head, `func_800227EC` (status page 1),
+`func_800252F4(0, 6, cursor, 0)` (the list) and the presenter. A choice
+(`sel` 0..5) goes through the jump table at `0x80011448` to the six pages:
+`func_8001AA84`, `func_8001C48C`, `func_8001C7A8`, `func_8001D784`,
+`func_8001DD94`, and **`func_8001E484`, SYSTEM**. `cancel` starts at -99
+(`0xFFFFFF9D`); the chooser writes -1 there on the cancel button, and the menu
+leaves. Its return goes to the caller as in "Saves and the start menu".
+
+**The chooser `func_800221E8`** writes `*sel = -1` and `*confirmed = 0`, then
+reads the pad through the repeat gate `func_800279D8` (when the flag
+`gp+0x34` = `0x8009C248` is set it clears it and waits up to 8 `VSync(0)`s
+while any button is held) and `func_800279A4` (`PadRead_game(1)`, setting the
+flag on any button). Up (`0x1000`) moves the cursor back and wraps to the
+count, Down (`0x4000`) forward and wraps to 0, both with sound `0xC`
+(`func_8002792C`); the confirm mask `gp+0x38` = `0x8009C24C` sets
+`*confirmed = 1` and `*sel = cursor` with sound `0xD`; the cancel mask
+`gp+0x3C` = `0x8009C250` writes -1 to `*cancel` with sound `0xE`. It returns
+the cursor. **Measured** (slot 1, fdat17, menu open and closed): the masks
+read `0x0040` (Cross) and `0x0020` (Circle). No other button is tested, and
+`func_80027A40` (called before a page opens) waits until the pad is released.
+
+**L1 + R1 held in the menu** calls `func_8001A9DC`, a location readout left in
+the retail game: `area × 10000 + (0x801B25F0 >> 11) × 100 + (0x801B25F8 >> 11)`
+(the area byte `0x8018FADD`), six digits in the number font at (247, 210). So
+L1 alone is not free in the menu. **L2 is**: measured, L2 pressed with the menu
+open left it open with its state unchanged, and Circle then closed it.
+
+**SYSTEM `func_8001E484`** is `func_800252F4(3, 5, cursor, 0)` over LOAD,
+OPTION 1, OPTION 2, BUTTON CONFIG and QUIT GAME, through a jump table to Load
+`func_8001E710`, `func_8001EC84`, `func_8001F004`, the control config
+`func_8001F31C` (which calls `func_8001F4C0`, see `docs/INPUT.md`) and
+`func_8001F8B4`. **OPTION 2 `func_8001F004`** is the template for a page of
+switches: a loop over the same repeat gate, Up/Down for the row (sound `0xC`),
+Left `0x8000`/Right `0x2000` for the value (`0xD`), cancel to leave (`0xE`),
+drawn as `func_800252F4(5, 5, cursor, 1)` plus the values by `func_800246BC`,
+and kept in bytes at `0x801B25DF..25E4` on leaving (`func_8001F274`).
+
+**The lists are a table, not code.** `func_800252F4(group, count, cursor,
+mode)` draws group `g` from `0x8007E660 + 0xFC × g`: nine `0x1C`-byte records,
+a header (drawn only when its X is non-zero) and up to eight items. A record is
+`s16 X`, `s16 Y` and a 24-byte string ending in `0xFF`. Items sit 26 apart,
+from Y 32 (group 0) or under a header at Y 32 from Y 58. The selected item is boxed with `func_80026020` (blink counter
+`gp+0x4C`) and its label drawn bright by `func_800261DC(0x8007E570, record)`; the
+others are boxed with `func_80025F38` (box template `0x8007E5A0`) and drawn by
+`func_80026158`, which sets the label colour words to the unselected shade and
+calls `func_800261DC`. A header is boxed plain and drawn bright. The same shape as
+Verdite2's, at different addresses and with eight items, not ten.
+
+| group | header | items |
+|---|---|---|
+| 0 | (none) | USE ITEM, USE MAGIC, EQUIPMENT, STATUS/RECORDS, STORAGE, SYSTEM |
+| 1 | STATUS/RECORDS | OFFENSE/DEFENSE, CONVERSATION |
+| 2 | STORAGE | STORE, TAKE OUT |
+| 3 | SYSTEM | LOAD, OPTION 1, OPTION 2, BUTTON CONFIG, QUIT GAME (records 6-8: SAVE, LOAD, QUIT) |
+| 4 | OPTION 1 | SOUND EFFECT, MUSIC, BRIGHTNESS |
+| 5 | OPTION 2 | DISPLAY HP/MP, DISPLAY COMPASS, DISPLAY ITEMS, WALKING EFFECT, PANEL |
+| 6 | SHOP | BUY, SELL |
+| 7 | (none) | STAY, DO NOT STAY |
+
+**The label font** (template `0x8007E570`: tpage `0x1D`, 4-bit at VRAM
+(832, 256); CLUT `0x7D05` at (80, 500); cells 7 × 15) is a 16-column grid:
+glyph `c` is at u = `(c & 0xF) × 8`, v = `(c >> 4) × 15`, advanced 7 pixels
+and drawn twice for its shadow. Read off a VRAM dump (the shell's `vram`),
+resident in play as well as in the menu:
+
+| codes | glyphs |
+|---|---|
+| `0x00..0x19` | A..Z |
+| `0x20..0x29` | 0..9 |
+| `0x30..0x38` | `.` `,` `'` `-` `=` `/` `*` `#` `!` |
+| `0x39` | a filled dot (a bullet) |
+| `0x3A`, `0x3B` | `?`, a middle dot |
+| `0x7F` | space (an empty cell) |
+| `0xFF` | end |
+
+`0x1A..0x1F`, `0x2A..0x2F`, `0x3C..0x3F` and row `0x40` are rings from other
+art; rows `0x50..0x7F` are empty. **There is no lower case, no colon, no `%`,
+no `+` and no brackets.** The smaller **number font** (template `0x8007E564`, the
+same page, u 238 for codes 0..10 and u 245 from 11, v = `index × 15`) is 0..9,
+`0x0A` blank, then C E G L M P V X, `0x13` a small ×, and `0x14` `/`;
+`func_800277C0(n, digits, pad, mode)` formats a number into it, and modes 1..5
+add `×`, `G`, `MP`, `EXP` or `LV`.
+
+### The port settings page
+
+Read 2026-10-06 off the recompiled code and `GAME.EXE`'s data, for
+`patches/SettingsPage.cs` (`docs/SETTINGS.md`, "The page in the game's menu").
+
+**The hook.** A post on the chooser `func_800221E8` whose `c.RA` is `0x8001A8E4`
+is the top menu's call (the callee restores `RA`, so the post sees it), between
+the menu's frames. The menu's `sp` is `c.SP` there: `sel` at `sp+0x18` (-1),
+`confirmed` `sp+0x1C`, `cancel` `sp+0x20` (`0xFFFFFF9D` until cancelled),
+checked against the generated code. The cursor is in `s3`, not memory. The pad
+word `PadRead_game(1)` returns has L2 `0x0001`, R2 `0x0002`, L1 `0x0004`, R1
+`0x0008` (the menu's L1+R1 test masks `0x0004` and `0x0008`). Hooks are MonoMod
+detours, so the page's own calls into the frame head and presenter take the
+vblank hold and the world behind menus as the game's do.
+
+**OPTION 2's loop**, which the page copies: the repeat gate `func_800279D8`, the pad
+through `func_800279A4`, then two frames of `func_80026FE4`, the list, the values
+and `func_800270F8` per poll. Up/Down write 0 to `gp+0x54`, which makes the next
+frame head restart the selected box's pulse (`gp+0x4C` set to `0x30`); the head
+counts `gp+0x4C` and `gp+0x50` (the value boxes' pulse) round 0..`0x5F`. Cross,
+Left and Right all change a value (Cross as Right); OPTION 2 wraps, the page does
+not.
+
+**Boxes and text.** The box template `0x8007E5A0` is tpage `0x1E`, CLUT `0x7D45`,
+u/v 0, 118 × 24, drawn at the record's X - 6, Y - 6 by `func_80027494`, a
+POLY_FT4 whose drawn size is separate from its texture's (`a2`/`a3` against
+`sp+0x18`/`sp+0x1C`). So a label fits 16 cells from X 45. `0x8007E594` is a 54 ×
+24 box from u `0xA0`, and `0x8007E5AC` the 16 × 16 icons (tpage `0x1C`, CLUT
+`0x7A85`) the hint row draws. A plain box takes its grey from the byte `gp+0x58`;
+the selected one pulses from the counter it is passed. The label colour is three
+words, `gp+0x5C`, `+0x60`, `+0x64`; `func_80026158` sets them to `0x47/0x47/0x57`
+(PANEL `0x801B25E4` = 0) or `0x57` each and puts them back; `gp+0x68` is the
+shadow's.
+
+**The hint row** (`func_800252F4`'s tail, Y `0xD6`): mode 0 draws the confirm
+icon `[gp+0x40]` at X `0x5F`, mode 1 icon 9 at `0x5B` (OPTION 2's, for
+Left/Right), then both draw "select" (`0x8009C290`) at `0x69`, the cancel icon
+`[gp+0x44]` at `0xA0` and "return" (`0x8009C288`) at `0xAA`. Icons go through
+`func_800269C0(x, y, icon)`, the words through `func_80026570(x, y, text, 0,
+[sp+0x10] 0)`, whose font is ASCII lower case `a`..`z` (`c - 0x61`) only. The
+control config's `func_8001F4C0` ends by swapping the confirm and cancel masks and
+icons between the two configurations (icons 1 and 3).
+
+**The start menu's question** `func_8002200C` is group 7 (STAY at (101, 94), DO
+NOT STAY at (101, 122)) drawn by `func_800252F4(7, 2, cursor, 0)` over the same
+chooser with a last index of 1. It enters the framework itself
+(`func_80027198`), so the page draws the two items itself rather than calling it.
+
+**The frame's room.** Under a header at Y 32 items are 26 apart from Y 58: a
+sixth ends at Y 206, a seventh would cross the hint row. The game's own pages
+use five at most.
+
 ## Death and auto reload
 
 The death clock `0x801B261E` (zeroed by the latch, +1 a tick in the state-17
