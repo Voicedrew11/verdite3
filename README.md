@@ -1,32 +1,44 @@
-# Verdite3
+<img width="700" alt="verdite3white" src="https://github.com/user-attachments/assets/833865b8-a6e2-4486-a999-4832458d2d0e" />
 
-A static recompilation of **King's Field III** (the Japanese numbering) using
-[RecompOne](https://github.com/BlackLabelHQ/RecompOne). The series was renumbered
-for the West: the game sold in North America as **King's Field II** is disc
-`SLUS-00255`, and that is the disc this project targets. (The sibling project
-Verdite2 targets `SLUS-00158`, the first game's US release, which is a different
-game.)
 
-You must supply your own dump of `SLUS-00255`. No disc data is included, and
-none ever will be.
+***
 
-**Status: boots, plays, saves and loads; a release can be built.** The state of
-each piece is in `NOTES.md`. `tools/RecompOne` is a subtree of the shared fork
-`Voicedrew11/verdite-recompone`, and `tools/verdite-core` of the code shared with
-Verdite2.
+[![Release](https://img.shields.io/github/v/release/Voicedrew11/verdite3)](https://github.com/Voicedrew11/verdite3/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Voicedrew11/verdite3/total)](https://github.com/Voicedrew11/verdite3/releases)
+[![Discord](https://img.shields.io/discord/1553561882843947149?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/R4EKCs8RWH)
 
-## No prebuilt binary
+Verdite3 is a PC port of King's Field (US) built atop of the [RecompOne](https://github.com/BlackLabelHQ/RecompOne) project. 
 
-A playable binary cannot be shipped. The generated code is a translation of
-FromSoftware's own code, so the assembly that plays the game has to be built on
-the machine of somebody who owns the disc. A prebuilt binary would also bake
-absolute disc addresses from one mastering, so it could silently fail to load
-data on a differently mastered dump. The project ships its inputs and builds the
-game at first run instead: `Verdite3` asks for your image, builds the game from it
-once (about fifteen seconds), and starts straight away after that. See
-`docs/PACKAGING.md`.
+## Features
 
-## Upstream
+- Widescreen support (16:9, 16:10, 21:9), with changed culling behavior
+- Perspective-correct textures and corrected vertex wobbling
+- Anisotropic filtering
+- Ambient occlusion
+- Z-buffer
+- 24-bit colour
+- 60+ fps
+- Consistent game speed
+- Expanded render distance
+- Per-pixel lighting
+- Fancy water
+- Reflections
+- Smooth fog
+- Enhanced audio quality
+- Automatic save reload after death
+- Keyboard and mouse support
+- Modern Twin-stick FPS controls
+- Mod support
 
-This project is built on the RecompOne fork, not directly on upstream RecompOne.
-No pull requests and no issues go to upstream RecompOne; see `AGENTS.md`.
+## Status
+
+Game is playable from start to finish. There may still be some intermittent issues
+
+## Requirements
+
+A dump of the North American PlayStation release (`SLUS-00158`) in `.cue` / `.bin`, or `.chd` format.
+
+## Credits
+
+Built on [RecompOne](https://github.com/BlackLabelHQ/RecompOne) (MIT). *King's
+Field* is the property of FromSoftware; this project ships no game data.
