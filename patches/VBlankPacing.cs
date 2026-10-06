@@ -136,9 +136,11 @@ public static class VBlankPacing
 
         if (now < _due)
         {
+            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(FrameProfiler.VBlankWait);
             double sleepUntil = _due - SpinMs;
             if (now < sleepUntil && (int)(sleepUntil - now) is > 0 and var ms) Thread.Sleep(ms);
             while (_clock.Elapsed.TotalMilliseconds < _due) Thread.SpinWait(48);
+            RecompOne.Runtime.Diagnostics.Profiler.End(profile);
         }
 
         _waitMs += _clock.Elapsed.TotalMilliseconds - now;

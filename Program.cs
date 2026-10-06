@@ -105,6 +105,25 @@ Kf3.RateCensus.Install();
 // ticks" in docs/SMOOTHING.md.
 Kf3.TintProbe.Install();
 
+// The frame profiler (Verdite2's): where each frame's time goes, by section. Every
+// hooked function is timed inside HookManager (its recompiled body and each patch's
+// delegate apart), the runtime times the present path, and the pacers' sleeps are
+// sections of their own so a capped frame reads as work plus waiting. Shift+P opens
+// the panel, and recording runs while it is open. See "Profiling a frame" in
+// docs/DEVELOPMENT.md.
+//
+//     KF3_PROFILE=1             record from boot, a console summary every 5 s
+//     KF3_PROFILE=panel         record from boot and open the panel
+//     KF3_PROFILE_OUT=path.csv  every frame's sections; scripts/profile_report.py
+//     KF3_PROFILE_SPIKE=12      a console line per frame over 12 ms of work
+//     KF3_PROFILE_FUNCS=stages  time all fifteen main-loop stages, or name
+//                               functions: game:80030FCC+8003BFD0
+Kf3.FrameProfiler.Configure(Environment.GetEnvironmentVariable("KF3_PROFILE"),
+                            Environment.GetEnvironmentVariable("KF3_PROFILE_OUT"),
+                            Environment.GetEnvironmentVariable("KF3_PROFILE_SPIKE"),
+                            Environment.GetEnvironmentVariable("KF3_PROFILE_FUNCS"));
+Kf3.FrameProfiler.Install();
+
 // VSync calls outside stage 15 wait a real vblank, as the console's did. On by
 // default; KF3_VBLANKPACING=0 compares against the runtime's clock. See "Menus and
 // loading screens wait for a vblank" in docs/DEVELOPMENT.md.

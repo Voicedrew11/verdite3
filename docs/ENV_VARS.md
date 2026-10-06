@@ -35,6 +35,10 @@ kept.
 | `KF3_LOOPPACING_PROBE` | `1`: a line a second while a modal loop runs: modal stage-15 calls a second (the loop body's rate), redraws each, and the last call's `a0`/`a1` and caller | off |
 | `KF3_STAGEPROBE` | `1`: which main-loop stages write the ordering table, every 5 s | off |
 | `KF3_RATECENSUS` | seconds: which words change on frames no stage ran on (needs `KF3_FPS`) | off |
+| `KF3_PROFILE` | `1`: the frame profiler records from boot, a console summary every 5 s; `panel`: and opens its panel (Shift+P toggles it at any time) | off |
+| `KF3_PROFILE_OUT` | a path: every recorded frame's sections and GPU passes as CSV, for `scripts/profile_report.py` | none |
+| `KF3_PROFILE_SPIKE` | ms: a console line for each frame whose work passes it | off |
+| `KF3_PROFILE_FUNCS` | `stages`, or `[overlay:]hex` items joined by `+`: functions to time with an empty pre-hook | none |
 | `KF3_TINTPROBE` | `1`: every 2 s that drew a full-screen tint, the frames and tinted frames, each split by whether a tick built it, and a strip a character a frame | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
 | `KF3_GEOPROBE_FUNCS` | `hex,hex,...` (up to 16): more functions for `KF3_GEOPROBE`, reported per call site | none |

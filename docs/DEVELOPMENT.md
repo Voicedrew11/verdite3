@@ -313,6 +313,85 @@ main loop is untouched (144.0 fps, 15.0 ticks/s, 0 held). The loads before the
 area held 25-39 a second. **Not judged by eye**: the cursor repeat (8 vblanks,
 133 ms), the highlight and window slide.
 
+## Profiling a frame
+
+Verdite2's frame profiler, ported 2026-10-06: `patches/FrameProfiler.cs`,
+`patches/ProfilerPanel.cs`, `patches/GpuFrames.cs` and the runtime's
+`Diagnostics/Profiler.cs` and `Diagnostics/GpuTimes.cs` (fork `0045`, `0084`). It says
+where a frame's time went, by section, on the game thread, and the GPU's time by
+pass. **Shift+P** opens the panel, and recording runs while it is open;
+`KF3_PROFILE=1` records from boot and prints a summary every five seconds, and
+`KF3_PROFILE_OUT=profile.csv` writes every frame for `scripts/profile_report.py`:
+
+```bash
+KF3_AUTOSTART=1 KF3_FPS=144 KF3_PROFILE=1 KF3_PROFILE_OUT=profile.csv \
+    dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
+python3 scripts/profile_report.py profile.csv --skip 30      # drop boot and first-hit JIT
+```
+
+**What is a section without asking.** Every function `HookManager` has detoured is
+timed inside `Invoke`: the recompiled body as `func_XXXXXXXX@overlay` and every
+pre, post and replace delegate on its own (`replace Stage15.Replace`, `post
+GpuWorld.Begin`). With this port's patches that already covers all fifteen
+main-loop stages and most of stage 15's calls. The runtime adds `LibEtc.VSync`,
+`Runtime.PresentFrame`, the window's event pump, the picture compose, the
+interface, `GlCore.Flush` and `LibGpu.DrawOTag`'s packet walk. Whatever nothing
+claims is **game code (no section)**. Known addresses carry a label (`stage 4: the
+player's tick (func_80030FCC@game)`, `map tile walk (func_8003BFD0@game)`), from
+the stage table and stage 15's calls in `GAME_INTERNALS.md`, the menu's presenter,
+and `DrawOTag` and `VSync` in each executable. ``replace Slot`1.Replace`` and ``pre
+Site`1.Pre`` are Verdite Core's `HookAttach` slots, under their generic names.
+
+**Self and inclusive.** Self is what a section did itself, excluding the sections
+it called, so a frame's self times sum to its length. Inclusive adds the children:
+stage 15's is nearly the whole frame, because the swap, the frame cap and the
+present happen inside it.
+
+**Work, swap and wait are three different things.** Each section is in a group:
+game, hook, runtime, **swap** (the thread blocked on the driver in `SwapBuffers`)
+or **wait** (a sleep to a deadline: `FramePacing.Floor`, `VBlankPacing`,
+`FrameClock.Throttle`, `WaitVBlanks`). A frame capped at 144 fps is 6.94 ms whatever
+it did, so the figure to chase is **work**, the frame less its waits and its swap.
+The panel hides the waits unless *Show waits* is on.
+
+**The frame boundary is the end of `Runtime.PresentFrame`**, not a hook. A section
+still open there (a stage running a modal loop that presents its own frames) is
+split: the time so far goes to the frame that ended, and the rest to the next.
+
+**To see inside the game's own time, time more functions.** An empty pre-hook
+makes any recompiled function a section: *Time the 15 stages* and *Time function*
+in the panel, or `KF3_PROFILE_FUNCS=stages` / `game:80030FCC+8003BFD0`. Each is a
+detour for the rest of the session. Stages 1-14 are already hooked, so `stages`
+adds only stage 15's pre-hook.
+
+**The GPU** (`0084`): while recording, the GL backend puts a `GL_TIME_ELAPSED`
+query around every batch submit and each present pass and reads them back once
+the GPU has finished, about three frames later; `GpuFrames` charges each to the
+frame that issued it. The passes are `scene`, `capture`, `ao`, `reflections`,
+`composite` and `world` (the retained renderer). Not counted: VRAM uploads,
+writebacks, the interface and the swap. In the panel: a `GPU` line under the
+header, a strip under the frame bars at their scale, and the passes as table rows
+(the selector beside the filter: CPU + GPU, CPU, GPU). In the CSV: `gpu.*` rows.
+
+**The spikes**: each frame also carries GC pause time, collections, the game
+thread's allocations and JIT time. The panel lists frames over a work threshold
+(twice the median plus 2 ms unless set) and a click reads one frame in the table;
+`KF3_PROFILE_SPIKE=12` prints them.
+
+**First measurement** (2026-10-06): slot 1 (area 5, `fdat17`, standing), the
+Retained GPU renderer with the user's interface settings, `KF3_FPS=144`,
+`KF3_PROFILE=panel KF3_PROFILE_FUNCS=stages`, RX 9070 XT; 5,406 frames after the
+first 30 s. 144.0 fps, frame 6.95 ms (p99 7.50); **work 1.44 ms** (p99 1.96),
+swap 0.06, the frame cap 5.44; **GPU 1.36 ms a present** (`world` 0.92, `ao` 0.31,
+`scene` 0.11, `composite` 0.03). The largest CPU sections: `LibGpu.DrawOTag` 0.28
+ms, `post GpuWorld.Begin` 0.27, the interface 0.13 (the panel itself among it), the
+`HookAttach` slots 0.10 over 73 calls, the surface buffer 0.09, the profiler's own
+reporting 0.07; stage 15's own body 0.02, the stages under 0.01 each. Every spike
+past the boot was **JIT**: the first frames of play (stage 5 84 ms, `Analog.
+ReplaceMove` 81, stage 4 71, all compiling), and one 19 ms frame a minute in (17 ms
+of JIT in the vblank grid). Nothing here is judged by eye; whether the panel
+reads well is the user's to say.
+
 ## Retained scene verification (2026-10-04)
 
 Build the game, then snapshot its entire output into an isolated temporary

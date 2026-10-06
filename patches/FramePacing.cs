@@ -342,9 +342,11 @@ public static class FramePacing
         if (_due < now - min) _due = now;
         if (now < _due)
         {
+            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(FrameProfiler.FloorWait);
             double sleepUntil = _due - SpinMs;
             if (now < sleepUntil && (int)(sleepUntil - now) is > 0 and var ms) Thread.Sleep(ms);
             while (_clock.Elapsed.TotalMilliseconds < _due) Thread.SpinWait(48);
+            RecompOne.Runtime.Diagnostics.Profiler.End(profile);
         }
         _due += min;
     }

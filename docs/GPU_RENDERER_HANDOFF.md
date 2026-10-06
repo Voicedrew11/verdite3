@@ -29,9 +29,11 @@ near fallback left. The depth tolerance's slope term is bounded in the main view
    by the retained shader's). If a model's base still looks cut by the floor, the
    measured candidate is a base genuinely below the floor's plane (area 1 most);
    see "Models just behind the floor" for the rule that was tried and removed.
-2. Performance: no valid per-stage timing exists yet (see "Baseline"). Measure
-   Retained GPU against packets at fixed views with the GPU frame timers before
-   optimising.
+2. Performance: the frame profiler is ported (2026-10-06, Shift+P, `KF3_PROFILE`;
+   "Profiling a frame" in `DEVELOPMENT.md`), with the GPU frame timers. Its first
+   reading, Retained GPU standing in `fdat17` at 144 fps: 1.44 ms of CPU work and
+   1.36 ms of GPU a frame (`world` 0.92). Measure Retained GPU against packets
+   (`KF3_GPU_WORLD=0`) at fixed views with it before optimising.
 3. Front-table submits (`front-table-policy-pending`) and the orthographic branch
    are the retained world's remaining fallbacks.
 
