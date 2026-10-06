@@ -61,11 +61,12 @@ Kf3.AgentServer.Install();
 Kf3.AutoStart.Configure(Environment.GetEnvironmentVariable("KF3_AUTOSTART"));
 Kf3.AutoStart.Install();
 
-// Continue on the title with a full card: OPEN.EXE's card check fails when it
-// cannot create a scratch file, which five saves guarantee. KF3_TITLECONTINUE=0
-// compares. See "Saves and the start menu" in docs/GAME_INTERNALS.md.
-Kf3.TitleContinue.Configure(Environment.GetEnvironmentVariable("KF3_TITLECONTINUE"));
-Kf3.TitleContinue.Install();
+// A full card: both executables' card check fails when it cannot create a
+// scratch file, which five saves guarantee, so the title leaves Continue off and
+// the in-game Save offers to format the card. KF3_FULLCARD=0 compares. See
+// "Saves and the start menu" in docs/GAME_INTERNALS.md.
+Kf3.FullCard.Configure(Environment.GetEnvironmentVariable("KF3_FULLCARD"));
+Kf3.FullCard.Install();
 
 // Reload the last save on death, through the in-game menu's own Load. A setting
 // under Gameplay; the variables win over it:

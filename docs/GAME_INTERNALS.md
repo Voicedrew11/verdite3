@@ -472,24 +472,50 @@ the item heals and the full restores share it.
   runs the area load itself (stages 8 and the CD loader in a loop), and its
   placement `func_8002B760` clears the action byte.
 
-### The title's Continue and a full card
+### A full card: the title's Continue and the in-game Save
 
-**OPEN.EXE leaves Continue off when the card is full** (read 2026-10-05). Before
-the title menu (`0x80011FDC`), `func_80014174` checks the card, then proves it
-writable by opening `bu00:BASLUS-00255TEMP` with create (the name at `0x8001108C`,
-mode `0x200`) and deleting it; it returns 2 when the create fails. Any non-zero
-answer skips the directory read `func_80014264` and leaves the save count at 0,
-and the menu `func_800131AC(&choice, count)` then has no Continue. A save is 3
-blocks of the card's 15, so **five saves fill it**, and from then on the saves
-are only reachable through the in-game Load. GAME.EXE's copy of the same check
-(`func_800280D4`) treats 2 as readable and goes on to the directory, which is
-why that path works. The runtime's card (`MemoryCard.Create`) refuses a create
-with no free block as the hardware does; this is the game's own rule.
+**Both executables read a full card as unusable** (OPEN.EXE read 2026-10-05,
+GAME.EXE 2026-10-05). The card check (OPEN.EXE `func_80014174`, GAME.EXE
+`func_800280D4`, copies of one routine) waits for the card's event
+(`func_80028C98`: 0 done, 1 error, 2 timeout, 3 new card), then proves it
+writable by opening `bu00:BASLUS-00255TEMP` with create (the name at
+`0x8001108C` in OPEN.EXE, mode `0x200`) and deleting it; it returns 2 when the
+create fails. A save is 3 blocks of the card's 15, so **five saves fill it**,
+and from then on every check returns 2. The runtime's card
+(`MemoryCard.Create`) refuses a create with no free block, the check and its
+callers are the game's own code. Not checked: whether a real BIOS refuses this
+create too (it asks for 0 blocks, mode `0x200`); the original disc with a real
+BIOS and five saves on the card would settle it. The callers:
 
-`patches/TitleContinue.cs` posts on `func_80014174` and turns 2 into 0, so the
-directory decides. **Measured**: card A with five saves, Start pressed through
-OPEN.EXE: the title preselected Continue and `0x800102FA` read 1 in GAME.EXE;
-with `KF3_TITLECONTINUE=0`, 0 (a New Game).
+- **The title** (`0x80011FDC`) takes any non-zero answer as no card, skips the
+  directory read `func_80014264`, leaves the save count at 0, and the menu
+  `func_800131AC(&choice, count)` has no Continue.
+- **GAME.EXE's start menu** `func_8001FA60` treats 2 as 0 and goes on to the
+  directory.
+- **The in-game Load list** `func_8002008C` retries the check ten times, then
+  reads the directory anyway, which is why Load works on a full card.
+- **The in-game Save** `func_800203C8(slot)` runs the check once: 0 saves
+  (`func_80028750`), 1 shows the no-card message (`func_8002098C`), 2 asks
+  `func_80020560`, the format prompt, and on yes formats the card
+  (`func_800285DC`, `format("bu00:")`) before saving. So on a full card **no
+  save can be written**, and the only way forward the game offers erases all
+  five saves. Measured: card A with five saves, menu opened with Cross, the save
+  chosen: one TEMP open/close/erase and the game waiting at the prompt, the card
+  unchanged.
+
+The saver `func_80028750` reads the directory and only creates a file for a slot
+that has none (`open(name, 0x30200)`, 3 blocks); a slot that exists is opened
+for write (mode 2), written (`0x6000` bytes), read back and summed. So saving
+over a slot needs no free block; a new slot on a full card fails its own create
+and the game reports the save as failed.
+
+`patches/FullCard.cs` posts on both checks and turns 2 into 0, so the directory
+decides. **Measured**: card A with five saves, Start pressed through OPEN.EXE:
+the title preselected Continue and `0x800102FA` read 1 in GAME.EXE; with
+`KF3_FULLCARD=0`, 0 (a New Game). In game, slot 1 loaded, Cross four times:
+slot 1's first block rewritten, the other four saves and the directory
+untouched, and slot 1 then loaded back through the game's sum check
+(`KF3_AUTOSTART=1`: fdat17, HP 108/134, LV 12).
 
 ## Menus and full-screen messages
 
