@@ -1684,6 +1684,28 @@ Four files in the directory have no entry below:
   normal program. `NormalFs` is now a `static readonly` composed string. **A frame
   with no fade and no added half is the program before.** **No recompile.**
   Measured in Verdite3's `WIDESCREEN.md` ("Render distance").
+- `0090-gpu-suppress-dither.patch` — a port that turned the GPU's ordered dither
+  off had to clear bit 9 of every draw-mode word in RAM before the GPU saw it and
+  put it back after: PutDrawEnv's `dtd` byte, and every E1 word in the ordering
+  table, which meant walking the whole table a second time before each DrawOTag
+  (0.05 ms a frame in Verdite3, measured 2026-10-06). `Gpu.SuppressDither`, a
+  static the port sets, masks the bit where every E1 word lands, `SetDrawMode`, so
+  the packets, PutDrawEnv's word and anything else written to GP0 take it the same
+  way, and GPUSTAT bit 9 reads 0 as it did. **Off is the GPU as it was.** **No
+  recompile.** Verdite3's `NoDither` uses it ("Unit 1" in its `docs/PICTURE.md`).
+- `0091-otc-clear-direct.patch` — DMA channel 6's ordering-table clear wrote each
+  entry through `PSMemory.WriteU32`, so an 8192-entry table was 8192 calls down the
+  full store path every frame (0.055 ms a frame of Verdite3's stage 15, measured
+  2026-10-06). `PSMemory.ClearOrderingTable` stores the same words into RAM
+  directly when that path would only have stored them (`DirectRam`, `RamProbe`
+  off) and the table lies in RAM without wrapping; otherwise `Dma` keeps its loop.
+  `GteVertexMap` sees the same stores: one by one through `WriteU32` while one
+  could still bind a pending value (`MayBind`), then `NoteStores`, which advances
+  the store count, clears the pending filter and unbinds the words, as that many
+  `NoteWrite` calls take their early return. Measured in Verdite3, slot 5,
+  uncapped, with the vertex map active: 343,606,352 words over 83,870 clears, every
+  one equal to the loop's, none falling back; the clear 0.055 → 0.018 ms a frame.
+  **No recompile.**
 
 ## Retained contract additions under verification (2026-10-04)
 
