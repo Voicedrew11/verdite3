@@ -61,7 +61,7 @@ public static class LibGpu
         var arm = RetainedScene.ArmSerial > 0 && RetainedScene.ArmSerial == RetainedScene.MainSerial
                   && !custom && !PlanarReflections.Capturing;
         var armDue = false;
-        // 0092. The last slot the game linked to be drawn before the world; -1 until a
+        // 0096. The last slot the game linked to be drawn before the world; -1 until a
         // main view has drawn.
         var underTo = -1;
         for (var guard = 0; guard < 0x100000; guard++)
@@ -125,7 +125,7 @@ public static class LibGpu
                         else SendHeld(gpu, m, onEntry, probe, guard, slot, ref water);
                     }
                     // The water walked before a barrier that draws goes before it, as
-                    // the held packets do; not before one under the world (0092),
+                    // the held packets do; not before one under the world (0096),
                     // which the water is drawn over.
                     if (water && kind == BlendOrder.Kind.Barrier && !RetainedScene.UnderWorld && Draws(m, addr))
                         water = gpu.DrawRetainedWater(WaterCut(slot));

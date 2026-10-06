@@ -1698,7 +1698,7 @@ Four files in the directory have no entry below:
   normal program. `NormalFs` is now a `static readonly` composed string. **A frame
   with no fade and no added half is the program before.** **No recompile.**
   Measured in Verdite3's `WIDESCREEN.md` ("Render distance").
-- `0090-gpu-suppress-dither.patch` — a port that turned the GPU's ordered dither
+- `0094-gpu-suppress-dither.patch` — a port that turned the GPU's ordered dither
   off had to clear bit 9 of every draw-mode word in RAM before the GPU saw it and
   put it back after: PutDrawEnv's `dtd` byte, and every E1 word in the ordering
   table, which meant walking the whole table a second time before each DrawOTag
@@ -1707,7 +1707,7 @@ Four files in the directory have no entry below:
   the packets, PutDrawEnv's word and anything else written to GP0 take it the same
   way, and GPUSTAT bit 9 reads 0 as it did. **Off is the GPU as it was.** **No
   recompile.** Verdite3's `NoDither` uses it ("Unit 1" in its `docs/PICTURE.md`).
-- `0091-otc-clear-direct.patch` — DMA channel 6's ordering-table clear wrote each
+- `0095-otc-clear-direct.patch` — DMA channel 6's ordering-table clear wrote each
   entry through `PSMemory.WriteU32`, so an 8192-entry table was 8192 calls down the
   full store path every frame (0.055 ms a frame of Verdite3's stage 15, measured
   2026-10-06). `PSMemory.ClearOrderingTable` stores the same words into RAM
@@ -1720,7 +1720,7 @@ Four files in the directory have no entry below:
   uncapped, with the vertex map active: 343,606,352 words over 83,870 clears, every
   one equal to the loop's, none falling back; the clear 0.055 → 0.018 ms a frame.
   **No recompile.**
-- `0092-retained-under-world.patch` — the walk draws the retained main view at slot
+- `0096-retained-under-world.patch` — the walk draws the retained main view at slot
   1, and a game can splice a second table in right after it that it meant to be drawn
   first (Verdite3's eight-entry front table, linked after the main table's entry
   8190). Those packets carry no depth record, so they were drawn over the finished

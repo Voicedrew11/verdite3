@@ -41,7 +41,7 @@ public sealed class PSMemory : IMemory
 
     internal byte[] RamBuffer => _ram;
 
-    /// <summary>0091. DMA channel 6's clear, the words <c>Dma</c>'s loop writes through
+    /// <summary>0095. DMA channel 6's clear, the words <c>Dma</c>'s loop writes through
     /// <see cref="WriteU32"/> -- entry <paramref name="madr"/> down to the table's head,
     /// each linked to the one below it and the last ending the list -- stored into RAM
     /// directly: an 8192-entry table was 8192 calls down the full store path every

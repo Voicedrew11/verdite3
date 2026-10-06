@@ -213,11 +213,11 @@ public static class GteVertexMap
     /// <summary>A guest word store. If it is carrying a value someone published, the
     /// destination inherits the attributes; if it is not, whatever the destination
     /// used to hold is no longer true and is dropped.</summary>
-    /// <summary>0091. Whether the next store <see cref="NoteWrite"/> sees could still bind
+    /// <summary>0095. Whether the next store <see cref="NoteWrite"/> sees could still bind
     /// a pending value; once false it stays false until the next publish.</summary>
     public static bool MayBind => _tick + 1u - _newestPendingTick <= PendingMaxAge;
 
-    /// <summary>0091. <paramref name="count"/> stores to the words from
+    /// <summary>0095. <paramref name="count"/> stores to the words from
     /// <paramref name="low"/> up to <paramref name="high"/>, as that many
     /// <see cref="NoteWrite"/> calls would see them while <see cref="MayBind"/> is
     /// false: each unbinds its word, and none binds.</summary>

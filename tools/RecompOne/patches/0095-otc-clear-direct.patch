@@ -6,11 +6,11 @@ index 9cef1dc..1a0edd1 100644
      /// <summary>A guest word store. If it is carrying a value someone published, the
      /// destination inherits the attributes; if it is not, whatever the destination
      /// used to hold is no longer true and is dropped.</summary>
-+    /// <summary>0091. Whether the next store <see cref="NoteWrite"/> sees could still bind
++    /// <summary>0095. Whether the next store <see cref="NoteWrite"/> sees could still bind
 +    /// a pending value; once false it stays false until the next publish.</summary>
 +    public static bool MayBind => _tick + 1u - _newestPendingTick <= PendingMaxAge;
 +
-+    /// <summary>0091. <paramref name="count"/> stores to the words from
++    /// <summary>0095. <paramref name="count"/> stores to the words from
 +    /// <paramref name="low"/> up to <paramref name="high"/>, as that many
 +    /// <see cref="NoteWrite"/> calls would see them while <see cref="MayBind"/> is
 +    /// false: each unbinds its word, and none binds.</summary>
@@ -33,7 +33,7 @@ index 3ee7326..3d4728a 100644
      {
          var count = bcr & 0xFFFFu;
          if (count == 0) return;
-+        // 0091. The same words, written straight into RAM when nothing watches the stores.
++        // 0095. The same words, written straight into RAM when nothing watches the stores.
 +        if (_mem is PSMemory ps && ps.ClearOrderingTable(madr, count)) return;
          var addr = madr;
          for (uint i = 0; i < count - 1; i++)
@@ -46,7 +46,7 @@ index a88a797..e00f4ae 100644
  
      internal byte[] RamBuffer => _ram;
  
-+    /// <summary>0091. DMA channel 6's clear, the words <c>Dma</c>'s loop writes through
++    /// <summary>0095. DMA channel 6's clear, the words <c>Dma</c>'s loop writes through
 +    /// <see cref="WriteU32"/> -- entry <paramref name="madr"/> down to the table's head,
 +    /// each linked to the one below it and the last ending the list -- stored into RAM
 +    /// directly: an 8192-entry table was 8192 calls down the full store path every

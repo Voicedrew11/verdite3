@@ -1005,7 +1005,7 @@ public sealed partial class GlCore : IGpuBackend
         // because a death fade or a damage flash is something you see the world
         // *through* and must not erase its depth. 4 = 2 on a packet the port
         // called solid (a blended model, the secret door): the occlusion pass
-        // sees all of it. 5 (0092) = linked to be drawn before the world the
+        // sees all of it. 5 (0096) = linked to be drawn before the world the
         // retained main view already drew: at the far plane, tested, so it shows
         // only where the world left none.
         int zMode = 0;
@@ -1184,7 +1184,7 @@ public sealed partial class GlCore : IGpuBackend
         _kTarget != null && x1 - x0 >= _kTarget.W * 0.9f && y1 - y0 >= _kTarget.H * 0.9f;
 
     /// <summary>The zMode a primitive with no recovered depth takes: 5 under the
-    /// retained world (0092), 3 (stamp the far plane) while the occlusion pass is on
+    /// retained world (0096), 3 (stamp the far plane) while the occlusion pass is on
     /// and the primitive is opaque, 0 -- which is what everything did before this
     /// existed -- otherwise.</summary>
     static int FarMask(in PrimFlags f) =>
@@ -1714,7 +1714,7 @@ public sealed partial class GlCore : IGpuBackend
         }
         else if (_kZMode == 5)
         {
-            // 0092. Under the world: its fragments are at the far plane, so LEQUAL
+            // 0096. Under the world: its fragments are at the far plane, so LEQUAL
             // passes only where nothing nearer was drawn; nothing is written.
             _gl.Enable(EnableCap.DepthTest);
             _gl.DepthFunc(DepthFunction.Lequal);
@@ -2288,7 +2288,7 @@ public sealed partial class GlCore : IGpuBackend
         if (_kZMode != 1) RetainedScene.MaskAhead += held - clear;
     }
 
-    /// <summary>0092. A batch under the world: its samples, and those its far-plane
+    /// <summary>0096. A batch under the world: its samples, and those its far-plane
     /// test passes. Writes nothing.</summary>
     void ProbeUnder(int first, int count)
     {
