@@ -111,7 +111,8 @@ public static class RetainedScene
                 if ((m >> r & 1ul) == 0) continue;
                 int at = r * RecordInts;
                 float dqa = Records[at + RecDqa], dqb = Records[at + RecDqb];
-                float q = Records[at + RecCurve] == 0 || dqa >= 0f ? 0f : Math.Max(0f, (3232f * 4096f - dqb) / dqa);
+                float q = Records[at + RecCurve] == 0 || Records[at + RecCurve] == LinearDepthCue.Curve || dqa >= 0f
+                    ? 0f : Math.Max(0f, (3232f * 4096f - dqb) / dqa);
                 if (q < best) { best = q; of = r; }
             }
             if (best >= ChunkFogQ[c]) continue;
@@ -217,6 +218,59 @@ public static class RetainedScene
     /// <summary>The probe's readback by surface id: none, opaque, water, overlay, an
     /// authored id, a blended one.</summary>
     public static readonly long[] SurfaceIds = new long[6];
+
+    // ---- 0085. the depth-stage probe ------------------------------------------------
+
+    /// <summary>0085's depth-stage probe, off by default: sample the frame target's
+    /// depth at two stages, once every five seconds. Numeric FBO reads only.</summary>
+    public static bool DepthStageProbe;
+
+    /// <summary>The probe's stages: after the retained main draw, and the present's source.</summary>
+    public const int ProbeMain = 0, ProbePresent = 1, ProbeStages = 2;
+
+    /// <summary>How long the probe waits between runs.</summary>
+    public const long ProbePeriodMs = 5000;
+
+    static long _probeAt;
+    static bool _probeArmed;
+
+    /// <summary>Whether the after-main stage is due; the runtime owns the cadence.</summary>
+    public static bool ProbeMainDue => DepthStageProbe && Environment.TickCount64 >= _probeAt;
+
+    /// <summary>Whether the present stage follows the after-main sample that armed it.</summary>
+    public static bool ProbePresentDue => DepthStageProbe && _probeArmed;
+
+    /// <summary>The after-main sample was taken: wait out the period, arm the present stage.</summary>
+    public static void ProbeMainTaken() { _probeAt = Environment.TickCount64 + ProbePeriodMs; _probeArmed = true; }
+
+    /// <summary>The present sample was taken.</summary>
+    public static void ProbePresentTaken() => _probeArmed = false;
+
+    /// <summary>The probe's runs, samples, depth-carrying samples, and stages with no
+    /// target or no depth attachment, by stage.</summary>
+    public static readonly long[] ProbeRuns = new long[ProbeStages];
+    public static readonly long[] ProbeSamples = new long[ProbeStages];
+    public static readonly long[] ProbeDepth = new long[ProbeStages];
+    public static readonly long[] ProbeTargetAbsent = new long[ProbeStages], ProbeDepthAbsent = new long[ProbeStages];
+
+    /// <summary>The samples with no surface buffer to read an id from, and the samples
+    /// whose buffer is not the sampled frame's (the pass runs at present), by stage.</summary>
+    public static readonly long[] ProbeSurfaceAbsent = new long[ProbeStages], ProbeSurfaceStale = new long[ProbeStages];
+
+    /// <summary>The present stage's ids sampled, six a stage in <see cref="SurfaceIds"/>'
+    /// order; the after-main stage reads no ids, its buffer being an older frame's.</summary>
+    public static readonly long[] ProbeSurfaceIds = new long[ProbeStages * 6];
+
+    /// <summary>The probe's last reading, by stage: target, frame, retained serial, size.</summary>
+    public static readonly uint[] ProbeTargetFbo = new uint[ProbeStages];
+    public static readonly long[] ProbeFrame = new long[ProbeStages];
+    public static readonly int[] ProbeTargetSerial = new int[ProbeStages];
+    public static readonly int[] ProbeTargetW = new int[ProbeStages], ProbeTargetH = new int[ProbeStages];
+
+    /// <summary>Present/after-main pairs taken, and whether the two read the same
+    /// target and the same retained serial; a pair that did not is still counted.</summary>
+    public static long ProbePairRuns, ProbePairFboMatch, ProbePairFboMismatch;
+    public static long ProbePairSerialMatch, ProbePairSerialMismatch;
 
     /// <summary>0085. The port's switch: the map's blended faces (water) are drawn by
     /// the backend too, a slice of view depth at a time where the table's walk would
@@ -398,7 +452,7 @@ public static class RetainedScene
     public static float BlackQuotient(in Vertex v)
     {
         int curve = (int)(v.Curve + 0.5f);
-        if (curve == 0 || v.Dqa >= 0f) return 0f;
+        if (curve == 0 || curve == LinearDepthCue.Curve || v.Dqa >= 0f) return 0f;
         float ir0 = curve == 1 ? 2848f : 3232f;
         return Math.Max(0f, (ir0 * 4096f - v.Dqb) / v.Dqa);
     }
@@ -408,6 +462,8 @@ public static class RetainedScene
     {
         int curve = (int)(v.Curve + 0.5f);
         if (curve == 0) return 1f;
+        if (curve == LinearDepthCue.Curve)
+            return Math.Clamp(1 - LinearDepthCue.Weight(z, v.Dqa, v.Dqb) / 4096, 0, 1);
         float q = Math.Min(h * 65536f / Math.Max(z, 1f), 131071f);
         float ir0 = Math.Clamp((v.Dqa * q + v.Dqb) / 4096f, 0f, 4096f);
         float w = curve == 1 ? Math.Max(ir0 - 800f, 0f) * 2f : ir0 < 2800f ? ir0 : 3f * ir0 - 5600f;
@@ -473,8 +529,12 @@ public static class RetainedScene
         /// tile walk drew, unless the port weighs them (<see cref="CurrentHalves"/>).</summary>
         public readonly byte[] Halves = new byte[HalvesW * HalvesH];
         /// <summary>0085. The halves the frame's own walk drew, 255 each: the main
-        /// view's gate, which nothing grows or fades.</summary>
+        /// view's gate, which nothing grows or fades. 0089: the port may add halves
+        /// past the walk's reach (<see cref="CurrentMainHalves"/>).</summary>
         public readonly byte[] MainHalves = new byte[HalvesW * HalvesH];
+        /// <summary>0089. The main view's <see cref="DistanceFade"/>: its edge and band
+        /// in world units from the camera's X and Z, and its depth limit; all 0 is none.</summary>
+        public float FadeEdge, FadeBand, FadeDepth;
         /// <summary>0085. The swell this frame was walked with: per wave, its
         /// wavenumber along X and Z, its height and its phase; and whether it is on.</summary>
         public readonly float[] Swell = new float[12];
@@ -567,6 +627,7 @@ public static class RetainedScene
         MirrorSerial = 0;
         Array.Clear(f.Halves);
         Array.Clear(f.MainHalves);
+        f.FadeEdge = f.FadeBand = f.FadeDepth = 0f;
     }
 
     // ---- 0085: the mirror ----------------------------------------------------------
@@ -637,6 +698,22 @@ public static class RetainedScene
     /// is not reflected, 255 fully, and between is dithered (the world program's
     /// <c>vFade</c>). Empty outside a frame.</summary>
     public static Span<byte> CurrentHalves => Current.Serial == _serial ? Current.Halves : Span<byte>.Empty;
+
+    /// <summary>0089. The current frame's main-view gate, for a port that draws halves
+    /// past the walk's reach: 255 is drawn, and a half written here is neither
+    /// reflected nor noted for the mirror. Empty outside a frame.</summary>
+    public static Span<byte> CurrentMainHalves => Current.Serial == _serial ? Current.MainHalves : Span<byte>.Empty;
+
+    /// <summary>0089. The current frame's <see cref="DistanceFade"/>: <paramref name="edge"/>
+    /// and <paramref name="band"/> in world units of horizontal distance from the camera
+    /// (band 0 none), <paramref name="depth"/> the view depth everything is gone by (0
+    /// none).</summary>
+    public static void SetFade(float edge, float band, float depth)
+    {
+        var f = Current;
+        if (f.Serial != _serial) return;
+        f.FadeEdge = edge; f.FadeBand = band; f.FadeDepth = depth;
+    }
 
     /// <summary>One model's triangles, in world space, to the current frame.</summary>
     public static void AddDynamic(ReadOnlySpan<Vertex> tris)
@@ -993,6 +1070,56 @@ public static class RetainedScene
     /// <summary>0085. Off, the models taken off the packets are not drawn either: the
     /// probe's way to see what they cover.</summary>
     public static bool MainModelsShown = true;
+
+    /// <summary>0086. The main view's models mark the target's stencil, and a tested
+    /// packet the walk sends after them draws over those pixels against its true depth
+    /// instead of 0051's tolerance: they were drawn at slot 1, ahead of every packet,
+    /// so the tolerance gave a model's pixels to whatever stood just behind it. Off
+    /// unless the game turns it on.</summary>
+    public static bool ModelMask;
+
+    /// <summary>0086. Counts what the tolerance would let through over the models'
+    /// pixels, with two occlusion queries per tested batch drawn after them (a stall
+    /// each); off by default. The counts below are cumulative.</summary>
+    public static bool ModelMaskProbe;
+
+    /// <summary>0086. Main views that marked models; tested batches drawn over the
+    /// mark; samples of those that pass the tolerant test over model pixels, and of
+    /// those, the ones behind the model's true depth, which the mask holds back.</summary>
+    public static long MaskFrames, MaskBatches, MaskSamples, MaskBehind;
+
+    /// <summary>0086, with the probe: samples of the blended ones in front of the model
+    /// by less than the tolerance, which still draw (an opaque batch's own depth is
+    /// already in the buffer when it is probed). Then, before each model list's
+    /// depth, the models' samples against the map: those the tolerant test passes, and
+    /// those it fails but a test pulled 0xF0 slots towards the camera
+    /// passes -- a model just behind a map face, which the table, linking a tile
+    /// 0xF0 slots deeper than its mean, drew over it.</summary>
+    public static long MaskAhead, ModelSamples, ModelUnderMap;
+
+    /// <summary>0086. The probe's slacks, in view-depth units, the last 0xF0 table
+    /// slots; <see cref="ModelUnderSlack"/> counts, per slack, the models' samples it
+    /// passes and the tolerance does not (<see cref="ModelUnderMap"/> is the last).</summary>
+    public static readonly float[] MapSlacks = [8, 32, 128, 512, 0xF0 * 4];
+    public static readonly long[] ModelUnderSlack = new long[5];
+
+    /// <summary>The tolerance probe: before each colour pass of the main view's map and
+    /// models, the samples the tolerant test passes, and of those the ones it passes
+    /// only because the tolerance exceeded each of <see cref="ToleranceCaps"/> -- colour
+    /// drawn over a nearer surface by more than that many view-depth units. Occlusion
+    /// queries (a stall each); off by default; cumulative.</summary>
+    public static bool ToleranceProbe;
+    public static readonly float[] ToleranceCaps = [0.25f, 1, 4, 16, 64, 512];
+    /// <summary>Per pass: 0 the map, 1 the frame's posed models, 2 the instances.</summary>
+    public static readonly long[] ToleranceSamples = new long[3];
+    /// <summary>Pass * <see cref="ToleranceCaps"/>.Length + cap.</summary>
+    public static readonly long[] ToleranceBehind = new long[18];
+
+    /// <summary>The main view's ceiling on 0051's slope term, in the game's pixels: a
+    /// fragment of the map or a model is pulled towards the camera by at most the
+    /// constant bias plus the world width of this many pixels at its own depth
+    /// (z / H each). 0, the default, leaves the term unbounded.</summary>
+    public static float DepthCapPixels;
 
     /// <summary>The planes the current frame mirrors in, nearest-first by the
     /// port's own ranking; at most <see cref="MaxPlanes"/>.</summary>

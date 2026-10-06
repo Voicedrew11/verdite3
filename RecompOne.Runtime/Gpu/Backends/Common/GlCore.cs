@@ -289,6 +289,12 @@ public sealed partial class GlCore : IGpuBackend
         if (uMip >= 0) _gl.Uniform1(uMip, 5);
         int uMatPrim = _gl.GetUniformLocation(_progPrim, "uMatTable");
         if (uMatPrim >= 0) _gl.Uniform1(uMatPrim, MatUnit);
+        // 0088. Never read for a packet, but an integer sampler left on unit 0 beside
+        // uVram's float one makes every draw invalid.
+        int uRecPrim = _gl.GetUniformLocation(_progPrim, "uRecords");
+        if (uRecPrim >= 0) _gl.Uniform1(uRecPrim, RecordsUnit);
+        int uNbPrim = _gl.GetUniformLocation(_progPrim, "uNbHalves");
+        if (uNbPrim >= 0) _gl.Uniform1(uNbPrim, NbHalvesUnit);
         InitShadowUniforms(_progPrim, true);
         _uPrimScale = _gl.GetUniformLocation(_progPrim, "uScale");
         SetScaleUniform(_progPrim, GlVram.Scale);
@@ -1037,7 +1043,7 @@ public sealed partial class GlCore : IGpuBackend
             {
                 m = zMode == 2 ? SurfaceMaterial.None : SurfaceMaterial.Opaque;
                 if (GteDepth.Reflections)
-                    m = SurfaceMaterial.Classify(a.Material, f.Textured && !f.UseImage, f.SemiTrans && zMode == 2,
+                    m = SurfaceMaterial.Classify(a.Material, a.NotRect, f.Textured && !f.UseImage, f.SemiTrans && zMode == 2,
                         f.BlendMode, f.TPage,
                         (int)Math.Min(a.U, Math.Min(b.U, c.U)), (int)Math.Min(a.V, Math.Min(b.V, c.V)),
                         (int)Math.Max(a.U, Math.Max(b.U, c.U)), (int)Math.Max(a.V, Math.Max(b.V, c.V)));
@@ -1073,8 +1079,11 @@ public sealed partial class GlCore : IGpuBackend
             {
                 // A blended triangle carries 128 over its material (NormalFs).
                 float gm = zMode == 2 ? m + SurfaceMaterial.BlendedFlag : m;
+                // Its texel too, so a billboard's transparent texels -- which drew
+                // no depth -- write no normal either (NormalFs).
+                uint tex = SurfaceTex(f);
                 _kTarget.Geo.Frame(_frame, GteDepth.Generation);
-                _kTarget.Geo.Add(GeoVert(a, gm), GeoVert(b, gm), GeoVert(c, gm));
+                _kTarget.Geo.Add(GeoVert(a, gm, tex), GeoVert(b, gm, tex), GeoVert(c, gm, tex));
             }
         }
         if (lightGen >= 0) _kLightGen = lightGen;
@@ -1142,8 +1151,15 @@ public sealed partial class GlCore : IGpuBackend
 
     /// <summary>0058. A vertex as the normal pass wants it: the position the colour
     /// pass is about to draw, and the view depth the plane is reconstructed from.</summary>
-    static AoGeometry.V GeoVert(in HleVertex v, float m) =>
-        new() { X = v.X, Y = v.Y, Z = m == SurfaceMaterial.Overlay || m >= SurfaceMaterial.VeilHalf ? 0f : v.Z, M = m };
+    static AoGeometry.V GeoVert(in HleVertex v, float m, uint tex) =>
+        new() { X = v.X, Y = v.Y, Z = m == SurfaceMaterial.Overlay || m >= SurfaceMaterial.VeilHalf ? 0f : v.Z, M = m,
+                Tu = v.U, Tv = v.V, Tex = tex };
+
+    /// <summary>A surface's texel for the normal pass, as <see cref="VeilTex"/>, or 0
+    /// where the pass cannot read it as the colour pass did: an image, or under a
+    /// texture window, which the pass's decode leaves out. Those keep the whole face.</summary>
+    uint SurfaceTex(in PrimFlags f) =>
+        _env.TwMaskX == 0 && _env.TwMaskY == 0 && !f.UseImage ? VeilTex(f) : 0u;
 
     /// <summary>A see-through 2D primitive's mark: mode 0 shows half of what is behind it.</summary>
     static float VeilOf(in PrimFlags f) => f.BlendMode == 0 ? SurfaceMaterial.VeilHalf : SurfaceMaterial.VeilFull;
@@ -2011,12 +2027,12 @@ public sealed partial class GlCore : IGpuBackend
         if (_legacy)
         {
             _gl.Disable(EnableCap.Blend);
-            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+            DrawTested(rt, zBias, first, _count, true);
         }
         else if (!_kTransparent)
         {
             _gl.Disable(EnableCap.Blend);
-            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+            DrawTested(rt, zBias, first, _count, true);
         }
         else
         {
@@ -2026,20 +2042,20 @@ public sealed partial class GlCore : IGpuBackend
             {
                 _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
                 SetBlend(0f, 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, true);
 
                 _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
                 RebindTarget(rt);
                 _gl.BlendEquationSeparate(BlendEquationModeEXT.FuncReverseSubtract, BlendEquationModeEXT.FuncAdd);
                 SetBlend(1f, 1f);
                 _gl.Uniform4(_uBlendOpaque, 0f, 0f, 0f, 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, false);
             }
             else
             {
                 _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
                 SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
-                _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)_count);
+                DrawTested(rt, zBias, first, _count, true);
             }
 
             // Texels without the semi-transparency bit draw opaque, so they must hide what is behind them from the occlusion pass.
@@ -2178,6 +2194,80 @@ public sealed partial class GlCore : IGpuBackend
             SurfaceMaterial.Uploads++;
         }
         _gl.ActiveTexture(TextureUnit.Texture0);
+    }
+
+    /// <summary>
+    /// 0086. A batch's colour. Tested (<paramref name="zBias"/>, 0051) over the pixels
+    /// the main view's retained models marked this frame, it draws there against the
+    /// true depth: the models went in at slot 1, ahead of every packet the walk sends
+    /// after, so the tolerance that gives a coplanar overlap to the later table entry
+    /// gave a model's pixels to anything up to the tolerance behind it, such as the
+    /// floor behind a creature, whose slope term is large at a grazing angle.
+    /// An opaque packet that draws there takes the pixel, and the tolerance with it.
+    /// <paramref name="probe"/> once per batch: <see cref="RetainedScene.ModelMaskProbe"/>.
+    /// </summary>
+    void DrawTested(GlDisplayRt? rt, bool zBias, int first, int count, bool probe)
+    {
+        if (!zBias || rt is not { IsPlanar: false } || rt.ModelMaskFrame != _frame)
+        {
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            return;
+        }
+        if (probe) RetainedScene.MaskBatches++;
+        if (probe && RetainedScene.ModelMaskProbe) ProbeModelMask(first, count);
+        if (!RetainedScene.ModelMask)
+        {
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            return;
+        }
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilMask(0);
+        _gl.StencilFunc(StencilFunction.Equal, 0, 1);
+        _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+        SetDepthBias(false);
+        _gl.StencilFunc(StencilFunction.Equal, 1, 1);
+        if (_kZMode == 1)
+        {
+            _gl.StencilMask(1);
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Zero);
+        }
+        _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
+        _gl.StencilMask(0xFF);
+        _gl.Disable(EnableCap.StencilTest);
+        SetDepthBias(true);
+    }
+
+    /// <summary>0086. Over the models' pixels, the samples of this batch the tolerant
+    /// test passes; of those the ones behind the stored depth, and the ones in front of
+    /// it by less than the tolerance. Writes nothing.</summary>
+    void ProbeModelMask(int first, int count)
+    {
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilMask(0);
+        _gl.StencilFunc(StencilFunction.Equal, 1, 1);
+        _gl.ColorMask(false, false, false, false);
+        long Count(float sign)
+        {
+            if (_uDepthBias >= 0) _gl.Uniform1(_uDepthBias, sign * GteDepth.DepthBias / 65536f);
+            if (_uDepthSlope >= 0) _gl.Uniform1(_uDepthSlope, sign * GteDepth.DepthSlope);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            _gl.DrawArrays(PrimitiveType.Triangles, first, (uint)count);
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long tolerant = Count(1f), held = Count(0f), clear = _kZMode != 1 ? Count(-1f) : held;
+        SetDepthBias(true);
+        _gl.ColorMask(true, true, true, true);
+        _gl.StencilMask(0xFF);
+        _gl.Disable(EnableCap.StencilTest);
+        RetainedScene.MaskSamples += tolerant;
+        RetainedScene.MaskBehind += tolerant - held;
+        // An opaque batch's own depth went in first, so only a blended one's tells.
+        if (_kZMode != 1) RetainedScene.MaskAhead += held - clear;
     }
 
     void SetDepthBias(bool on)
@@ -2421,6 +2511,18 @@ public sealed partial class GlCore : IGpuBackend
         }
         else if (GteDepth.Reflections && !rgb24)
             ScreenReflections.NoTarget++;
+        // 0085's probe: with both consumers off the surface pass is still drawn for
+        // `SurfaceCheck` and for the depth-stage probe, so the readback is the frame's.
+        if (!aoOn && !ssrOn && (RetainedScene.SurfaceCheck || RetainedScene.ProbePresentDue)
+            && !rgb24 && _progNormal != 0 && src is { Depth: not 0 })
+            surfaces = DrawSurfaces(src!, GlVram.Scale);
+        // The depth-stage probe, present stage: the source about to be shown, with ids
+        // only from a fresh surface pass.
+        if (!rgb24 && RetainedScene.ProbePresentDue)
+        {
+            ProbeDepthStage(RetainedScene.ProbePresent, src, src?.RetainedSerial ?? 0, surfaces);
+            RetainedScene.ProbePresentTaken();
+        }
 
         var compProfile = Diagnostics.Profiler.Begin(Diagnostics.Profiler.Composite);
         long compStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -2760,10 +2862,11 @@ public sealed partial class GlCore : IGpuBackend
     /// about to read. Agreeing with the depth buffer is therefore a property of the
     /// order rather than of a test that could disagree with it.
     ///
-    /// The one place it can be wrong is a textured polygon that discarded a texel:
-    /// it wrote no depth there and does write a normal. That costs a wrong normal on
-    /// the see-through parts of a grate, never a wrong depth, and the pass's own
-    /// fallback is what those pixels used to get.
+    /// A textured polygon's transparent texels wrote no depth, so they write no
+    /// normal either: NormalFs reads the texel from VRAM and drops them. Otherwise a
+    /// billboard's box was shaded with its own camera-facing normal at the wall's
+    /// depth behind it, a faint rectangle round the sprite with AO on. Only under a
+    /// texture window, which that decode leaves out, is the whole face kept.
     /// </summary>
     ///
     /// 0067. It is drawn once for both passes and it is the surface buffer too: a
@@ -2773,7 +2876,8 @@ public sealed partial class GlCore : IGpuBackend
     /// reads; see NormalFs.
     unsafe bool RenderSurfaces(GlDisplayRt src, int scale)
     {
-        if ((!GteDepth.AoNormals && !GteDepth.Reflections) || _progNormal == 0
+        if ((!GteDepth.AoNormals && !GteDepth.Reflections && !RetainedScene.SurfaceCheck
+             && !RetainedScene.DepthStageProbe) || _progNormal == 0
             || src.Geo.Count == 0 && src.Geo.WorldSerial == 0) return false;
         EnsureNormalTarget(src, scale);
         if (src.Normal == 0) return false;
@@ -2822,12 +2926,10 @@ public sealed partial class GlCore : IGpuBackend
         // alpha added, on both attachments (it writes zero to the normal buffer).
         // A veil run is drawn twice: its see-through texels with that blend
         // (uVeilPass 1), then a textured one's opaque texels as an overlay (2).
+        // A veil's texel and a textured surface's both come from sample VRAM.
         var breaks = src.Geo.Breaks;
-        if (breaks.Count > 0)
-        {
-            _gl.ActiveTexture(TextureUnit.Texture0);
-            _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-        }
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
         // 0085. The map's water goes in where the colour pass drew it among the list.
         var water = world && _wnReady ? src.Geo.Water : null;
         int start = 0, bi = 0, wi = 0;
@@ -2843,11 +2945,8 @@ public sealed partial class GlCore : IGpuBackend
                 _gl.UseProgram(_progNormal);
                 _gl.BindVertexArray(_nrmVao);
                 _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _nrmVbo);
-                if (breaks.Count > 0)
-                {
-                    _gl.ActiveTexture(TextureUnit.Texture0);
-                    _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-                }
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
             }
             // After the water the walk drew before it.
             if (armAt >= 0 && armAt <= start)
@@ -2859,11 +2958,8 @@ public sealed partial class GlCore : IGpuBackend
                 _gl.UseProgram(_progNormal);
                 _gl.BindVertexArray(_nrmVao);
                 _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _nrmVbo);
-                if (breaks.Count > 0)
-                {
-                    _gl.ActiveTexture(TextureUnit.Texture0);
-                    _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
-                }
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                _gl.BindTexture(TextureTarget.Texture2D, _vram.SampleTexture);
             }
             for (; bi < breaks.Count && breaks[bi] <= start; bi++) veil = !veil;
             if (start >= verts.Length) break;
@@ -3200,7 +3296,9 @@ public sealed partial class GlCore : IGpuBackend
     unsafe void EnsureNormalTarget(GlDisplayRt rt, int scale)
     {
         int w = rt.Wide1x * scale, h = rt.H * scale;
-        bool surface = GteDepth.Reflections;
+        // A numerical surface probe also needs the material/depth attachment,
+        // even when no reflection feature consumes it in ordinary drawing.
+        bool surface = GteDepth.Reflections || RetainedScene.SurfaceCheck || RetainedScene.DepthStageProbe;
         if (rt.Normal != 0 && rt.NormalW == w && rt.NormalH == h && (rt.Surface != 0) == surface) return;
         if (rt.Normal == 0)
         {

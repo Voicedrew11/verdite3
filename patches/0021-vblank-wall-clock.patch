@@ -31,7 +31,7 @@
      public static void VSync(CpuContext c, IMemory m)
      {
          int mode = (int)c.A0;
-@@ -17,6 +37,38 @@
+@@ -17,10 +37,42 @@
          if (mode == 1) { c.V0 = 0; return; }
  
          Runtime.PresentFrame();
@@ -69,7 +69,15 @@
 +    {
          _vcount++;
  
-         //RCntCNT3/EvSpINT -- the vblank root counter. a game that opened it with
+-        //RCntCNT3/EvSpINT -- the vblank root counter. a game that opened it with
+-        //EvMdINTR expects its handler once a frame; the recompiled build has no
+-        //timer interrupt, so this is the only place it can come from.
+-        Bios.BiosB.DeliverEventIntr(c, m, 0xF2000003u, 0x0002u);
++        //0021: RCntCNT3/EvSpINT, the vblank root counter's event, is not delivered
++        //here. IRQ 0 below delivers it (Interrupts.ServiceIrq -> DeliverIrqEvents),
++        //as on upstream's blocking timeline; delivering it here as well ran every
++        //handler on it twice a vblank.
+ 
 @@ -32,6 +77,8 @@
              Event.Dispatch(e);
          }

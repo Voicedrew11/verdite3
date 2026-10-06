@@ -139,7 +139,31 @@ public static class LibEtc
         c.V0 = 0;
     }
 
+    //0091. A game that waits for its vblank handler without calling VSync gets its
+    //vblanks from the interrupt poll instead. Off unless the port sets it.
+    public static bool VBlankFromPoll;
+    private static bool _advancing;
+
+    internal static void PollVBlanks(CpuContext c, IMemory m)
+    {
+        if (BlockingVSync || _advancing) return;
+        AdvanceVBlanks(c, m);
+    }
+
     private static void AdvanceVBlanks(CpuContext c, IMemory m)
+    {
+        _advancing = true;
+        try
+        {
+            AdvanceVBlanksOnGrid(c, m);
+        }
+        finally
+        {
+            _advancing = false;
+        }
+    }
+
+    private static void AdvanceVBlanksOnGrid(CpuContext c, IMemory m)
     {
         var now = VBlankClock.Elapsed.TotalMilliseconds;
         if (!_timelineStarted)
@@ -172,10 +196,10 @@ public static class LibEtc
     {
         _vcount++;
 
-        //RCntCNT3/EvSpINT -- the vblank root counter. a game that opened it with
-        //EvMdINTR expects its handler once a frame; the recompiled build has no
-        //timer interrupt, so this is the only place it can come from.
-        Bios.BiosB.DeliverEventIntr(c, m, 0xF2000003u, 0x0002u);
+        //0021: RCntCNT3/EvSpINT, the vblank root counter's event, is not delivered
+        //here. IRQ 0 below delivers it (Interrupts.ServiceIrq -> DeliverIrqEvents),
+        //as on upstream's blocking timeline; delivering it here as well ran every
+        //handler on it twice a vblank.
 
         if (Event.HasAnyListeners<VSyncEvent>())
         {

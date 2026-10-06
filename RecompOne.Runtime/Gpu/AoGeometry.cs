@@ -48,8 +48,10 @@ public sealed class AoGeometry
     public static bool Enabled = true;
 
     /// <summary>Collecting costs nothing when nothing will read it. The reflection
-    /// pass reads the surface buffer whatever the occlusion pass's normals are set to.</summary>
-    public static bool Active => (Enabled && GteDepth.AmbientOcclusion) || GteDepth.Reflections;
+    /// pass reads the surface buffer whatever the occlusion pass's normals are set to,
+    /// and 0085's probes read it with both of those passes off.</summary>
+    public static bool Active => (Enabled && GteDepth.AmbientOcclusion) || GteDepth.Reflections
+                                 || RetainedScene.SurfaceCheck || RetainedScene.DepthStageProbe;
 
     /// <summary>Triangles kept, triangles refused for want of room, and the normal
     /// passes actually drawn. Never reset except by the probe.</summary>

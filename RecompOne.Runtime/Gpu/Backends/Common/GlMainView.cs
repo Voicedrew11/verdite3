@@ -31,7 +31,7 @@ public sealed partial class GlCore
         _uwDither = _gl.GetUniformLocation(_progWorld, "uWorldDither");
         _uwCueFromZ = _gl.GetUniformLocation(_progWorld, "uCueFromZ");
         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
-        _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly");
+        _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
@@ -59,7 +59,7 @@ public sealed partial class GlCore
     bool _wMips;
     // The view depth the normal pass's last water slice reached.
     float _wDone;
-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell;
+    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1;
     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
     // The world normal program is set up for this pass's frame (DrawWorldNormals).
@@ -72,7 +72,7 @@ public sealed partial class GlCore
         RetainedScene.WaterPending = false;
         if (!RetainedScene.MainView || _progWorld == 0) return false;
         var f = RetainedScene.Find(RetainedScene.MainSerial);
-        if (f == null || RetainedScene.StaticCount[0] == 0) return false;
+        if (f == null) return false;
         Flush(FlushReason.Target);
         var rt = ClassifyDisplay();
         if (rt == null) return false;
@@ -102,6 +102,14 @@ public sealed partial class GlCore
         }
         long t3 = System.Diagnostics.Stopwatch.GetTimestamp();
         int drawn = DrawMapOpaque();
+        // 0086. The models' pixels, for the packets the walk sends after them.
+        _maskModels = RetainedScene.ModelMask || RetainedScene.ModelMaskProbe;
+        if (_maskModels && RetainedScene.MainModelsShown && (models >= 0 || inst >= 0))
+        {
+            ClearModelMask();
+            rt.ModelMaskFrame = _frame;
+            RetainedScene.MaskFrames++;
+        }
         if (models >= 0 && RetainedScene.MainModelsShown)
         {
             DrawWorldModels(f.Models, models);
@@ -113,6 +121,7 @@ public sealed partial class GlCore
             DrawInstances(f.Instances, inst);
             RetainedScene.InstancesDrawn += f.Instances.Count;
         }
+        _maskModels = false;
         EndWorldState();
         EndGpuTimer(query, GpuWork.Batch, 0, Diagnostics.GpuTimes.Pass.World);
 
@@ -128,6 +137,12 @@ public sealed partial class GlCore
             rt.Geo.WorldCy = cy;
         }
         MarkDrawn(rt);
+        // The probe: the depth the retained main draw left, before water, packets, present.
+        if (RetainedScene.ProbeMainDue)
+        {
+            ProbeDepthStage(RetainedScene.ProbeMain, rt, RetainedScene.MainSerial);
+            RetainedScene.ProbeMainTaken();
+        }
         // The margin latch counts packet vertices past the game's clip (V), and the
         // map and models drawn here are no packets, so a target made while this
         // draws -- an aspect changed in play -- never latched and the present
@@ -264,12 +279,111 @@ public sealed partial class GlCore
         _gl.DepthMask(false);
         if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
+        ProbeTolerance(0, () => DrawRange(0, null));
         int drawn = DrawRange(0, null);
         if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, 0f);
         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
         _gl.DepthMask(true);
         RetainedScene.MainMapPrepasses++;
         return drawn;
+    }
+
+    /// <summary>The tolerance probe (<see cref="RetainedScene.ToleranceProbe"/>), in a
+    /// colour pass's state, before it draws: <paramref name="draw"/> again with colour
+    /// off, its samples counted with the tolerance whole and capped at each of
+    /// <see cref="RetainedScene.ToleranceCaps"/>. Writes nothing.</summary>
+    void ProbeTolerance(int pass, Action draw)
+    {
+        if (!RetainedScene.ToleranceProbe || _uwDepthCap < 0) return;
+        _gl.ColorMask(false, false, false, false);
+        long Count(float cap)
+        {
+            _gl.Uniform1(_uwDepthCap, cap / 65536f);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            draw();
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long all = Count(1e9f);
+        RetainedScene.ToleranceSamples[pass] += all;
+        var caps = RetainedScene.ToleranceCaps;
+        for (int k = 0; k < caps.Length; k++)
+            RetainedScene.ToleranceBehind[pass * caps.Length + k] += all - Count(caps[k]);
+        _gl.Uniform1(_uwDepthCap, 1e9f / 65536f);
+        _gl.ColorMask(true, true, true, true);
+    }
+
+    // 0086. The main view's models are drawing, and mark the stencil where they land.
+    bool _maskModels;
+
+    /// <summary>0086. The target's stencil cleared to "no model here", whatever the
+    /// scissor; the models then set it where their colour lands (MarkModels).</summary>
+    void ClearModelMask()
+    {
+        bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.StencilMask(0xFF);
+        _gl.ClearStencil(0);
+        _gl.Clear(ClearBufferMask.StencilBufferBit);
+        if (scissor) _gl.Enable(EnableCap.ScissorTest);
+    }
+
+    /// <summary>0086. Around a model colour pass of the main view: each pixel it draws
+    /// is marked. Nothing is rejected by the stencil.</summary>
+    void MarkModels(bool on)
+    {
+        if (!_maskModels) return;
+        if (on)
+        {
+            _gl.Enable(EnableCap.StencilTest);
+            _gl.StencilFunc(StencilFunction.Always, 1, 1);
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+            _gl.StencilMask(1);
+        }
+        else
+        {
+            _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
+            _gl.StencilMask(0xFF);
+            _gl.Disable(EnableCap.StencilTest);
+        }
+    }
+
+    /// <summary>0086's probe, before a model list writes depth: its samples against the
+    /// map's depth with the tolerance, and those that only a test pulled the map's
+    /// slack towards the camera passes. Writes nothing.</summary>
+    void ProbeModelsUnderMap(Action draw)
+    {
+        if (!_maskModels || !RetainedScene.ModelMaskProbe || _uwDepthBias < 0) return;
+        _gl.ColorMask(false, false, false, false);
+        _gl.DepthMask(false);
+        long Count(float bias, float slope)
+        {
+            _gl.Uniform1(_uwDepthBias, bias / 65536f);
+            if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, slope);
+            uint q = _gl.GenQuery();
+            _gl.BeginQuery(QueryTarget.SamplesPassed, q);
+            draw();
+            _gl.EndQuery(QueryTarget.SamplesPassed);
+            _gl.GetQueryObject(q, QueryObjectParameterName.Result, out long n);
+            _gl.DeleteQuery(q);
+            return n;
+        }
+        long tolerant = Count(GteDepth.DepthBias, GteDepth.DepthSlope);
+        long slack = 0;
+        for (int i = 0; i < RetainedScene.MapSlacks.Length; i++)
+        {
+            slack = Count(RetainedScene.MapSlacks[i], GteDepth.DepthSlope);
+            RetainedScene.ModelUnderSlack[i] += slack - tolerant;
+        }
+        _gl.Uniform1(_uwDepthBias, 0f);
+        if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
+        _gl.ColorMask(true, true, true, true);
+        _gl.DepthMask(true);
+        RetainedScene.ModelSamples += tolerant;
+        RetainedScene.ModelUnderMap += slack - tolerant;
     }
 
     /// <summary>The depth half of 0051's two passes: colour masked, and PrimFs making
@@ -307,6 +421,8 @@ public sealed partial class GlCore
         if (_uwTrueColor >= 0) _gl.Uniform1(_uwTrueColor, GteDepth.TrueColor ? 1f : 0f);
         if (_uwPlainZ >= 0) _gl.Uniform1(_uwPlainZ, GteDepth.PlainDepth);
         if (_uwMirror >= 0) _gl.Uniform1(_uwMirror, 0);
+        if (_uwDepthCapZ >= 0)
+            _gl.Uniform1(_uwDepthCapZ, RetainedScene.DepthCapPixels > 0f ? RetainedScene.DepthCapPixels / Math.Max(1f, f.View.H) : 0f);
         if (_uwMaskOn >= 0) _gl.Uniform1(_uwMaskOn, 0);
         if (_uwAtmosSkip >= 0) _gl.Uniform1(_uwAtmosSkip, 0);
         // The frame's own settings, as its packets take them: the GTE's whole pixels
@@ -315,6 +431,10 @@ public sealed partial class GlCore
         if (_uwSnap >= 0) _gl.Uniform1(_uwSnap, GteDepth.Subpixel ? 0 : 1);
         if (_uwPerPixel >= 0) _gl.Uniform1(_uwPerPixel, GteLightMap.Enabled ? 1 : 0);
         if (_uwDither >= 0) _gl.Uniform1(_uwDither, _env.Dither ? 1 : 0);
+        if (_uwNeighbour >= 0) _gl.Uniform1(_uwNeighbour, NeighbourBlend.Mode);
+        if (_uwNbTile >= 0) _gl.Uniform1(_uwNbTile, NeighbourBlend.Tile);
+        // 0089. The main view only: the mirror's walk is the game's own.
+        SendFade(_uwFade, _uwFadeZ, mirror ? null : f);
         // Fogged at each pixel's own depth: a face clipped at the eye has no corner
         // whose screen-affine fog holds at the clip.
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, RetainedScene.MainFogFromZ ? Math.Max(1f, f.View.H) : 0f);
@@ -411,9 +531,12 @@ public sealed partial class GlCore
         if (_uwSnap >= 0) _gl.Uniform1(_uwSnap, 0);
         if (_uwPerPixel >= 0) _gl.Uniform1(_uwPerPixel, 1);
         if (_uwDither >= 0) _gl.Uniform1(_uwDither, 0);
+        if (_uwNeighbour >= 0) _gl.Uniform1(_uwNeighbour, 0);
+        SendFade(_uwFade, _uwFadeZ, null);
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, 0f);
         if (_uwSwellOn >= 0) _gl.Uniform1(_uwSwellOn, 0);
         if (_uwClipOn >= 0) _gl.Uniform1(_uwClipOn, 0);
+        if (_uwDepthCapZ >= 0) _gl.Uniform1(_uwDepthCapZ, 0f);
         EndWorldLights();
     }
 
@@ -1083,6 +1206,7 @@ public sealed partial class GlCore
         _gl.BindVertexArray(_mdlVao[slot]);
         if (_uwMipIndirect >= 0) _gl.Uniform1(_uwMipIndirect, 0);
         bool bias = GteDepth.ZBuffer && (GteDepth.DepthBias > 0f || GteDepth.DepthSlope > 0f);
+        ProbeModelsUnderMap(() => DrawModelRuns(f));
         if (bias)
         {
             DepthOnly(true);
@@ -1092,6 +1216,8 @@ public sealed partial class GlCore
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
         }
+        if (bias) ProbeTolerance(1, () => DrawModelRuns(f));
+        MarkModels(true);
         foreach (var g in f.Groups)
         {
             if (_uwBk >= 0) _gl.Uniform3(_uwBk, g.Bk0, g.Bk1, g.Bk2);
@@ -1102,6 +1228,7 @@ public sealed partial class GlCore
             _gl.DrawArrays(PrimitiveType.Triangles, g.Start, (uint)g.Count);
             if (g.Cull) _gl.Disable(EnableCap.CullFace);
         }
+        MarkModels(false);
         if (bias)
         {
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, 0f);
@@ -1143,6 +1270,7 @@ public sealed partial class GlCore
         _uwnProjH = L("uProjH"); _uwnCentre = L("uCentre"); _uwnScale = L("uScale");
         _uwnDepthCull = L("uDepthCull"); _uwnDepthStep = L("uDepthStep");
         _uwnSwellOn = L("uSwellOn"); _uwnSwell = L("uSwell"); _uwnZSlice = L("uZSlice");
+        _uwnFade = L("uFade"); _uwnFadeZ = L("uFadeZ");
         _gl.UseProgram(_progWorldNrm);
         void Unit(string n, int v) { int l = L(n); if (l >= 0) _gl.Uniform1(l, v); }
         Unit("uVram", 0); Unit("uHalves", HalvesUnit); Unit("uFrameDepth", FrameDepthUnit); Unit("uVeilPass", 0);
@@ -1169,7 +1297,7 @@ public sealed partial class GlCore
         var f = RetainedScene.Find(geo.WorldSerial);
         _wnReady = false;
         _wnFrame = f;
-        if (_progWorldNrm != 0 && f != null && RetainedScene.StaticCount[0] > 0)
+        if (_progWorldNrm != 0 && f != null)
         {
             _wnReady = true;
             var v = f.View;
@@ -1199,6 +1327,7 @@ public sealed partial class GlCore
             if (_uwnDepthCull >= 0) _gl.Uniform1(_uwnDepthCull, 1);
             if (_uwnDepthStep >= 0) _gl.Uniform2(_uwnDepthStep, stepX, stepY);
             if (_uwnZSlice >= 0) _gl.Uniform2(_uwnZSlice, 0f, 0f);
+            SendFade(_uwnFade, _uwnFadeZ, f);
             SendWorldSwell(f, _uwnSwellOn, _uwnSwell);
             if (RetainedScene.CullBack)
             {
@@ -1290,6 +1419,26 @@ public sealed partial class GlCore
 
     float[]? _chkSurf, _chkDepth;
 
+    /// <summary>A readback's saved state: the read framebuffer, that framebuffer's read
+    /// buffer and the pack alignment, put back by <see cref="Restore"/>.</summary>
+    readonly struct ReadState
+    {
+        readonly int _fbo, _buf, _align;
+        public ReadState(GL gl)
+        {
+            _fbo = gl.GetInteger(GLEnum.ReadFramebufferBinding);
+            _buf = gl.GetInteger(GLEnum.ReadBuffer);
+            _align = gl.GetInteger(GLEnum.PackAlignment);
+            gl.PixelStore(PixelStoreParameter.PackAlignment, 4);
+        }
+        public void Restore(GL gl)
+        {
+            gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, (uint)_fbo);
+            gl.ReadBuffer((ReadBufferMode)_buf);
+            gl.PixelStore(PixelStoreParameter.PackAlignment, _align);
+        }
+    }
+
     /// <summary>The probe's: the surface buffer just drawn, read back against the
     /// target's depth on a 4-pixel grid. Waits on the GPU; the probe only.</summary>
     unsafe void CheckSurfaces(GlDisplayRt src)
@@ -1298,13 +1447,15 @@ public sealed partial class GlCore
         int sw = src.NormalW, sh = src.NormalH, dw = src.TexW, dh = src.TexH;
         if (_chkSurf == null || _chkSurf.Length < sw * sh * 4) _chkSurf = new float[sw * sh * 4];
         if (_chkDepth == null || _chkDepth.Length < dw * dh) _chkDepth = new float[dw * dh];
+        var state = new ReadState(_gl);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, src.NormalFbo);
+        int normalBuf = _gl.GetInteger(GLEnum.ReadBuffer);
         _gl.ReadBuffer(ReadBufferMode.ColorAttachment1);
         fixed (float* p = _chkSurf) _gl.ReadPixels(0, 0, (uint)sw, (uint)sh, PixelFormat.Rgba, PixelType.Float, p);
-        _gl.ReadBuffer(ReadBufferMode.ColorAttachment0);
+        _gl.ReadBuffer((ReadBufferMode)normalBuf);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, src.Fbo);
         fixed (float* p = _chkDepth) _gl.ReadPixels(0, 0, (uint)dw, (uint)dh, PixelFormat.DepthComponent, PixelType.Float, p);
-        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0);
+        state.Restore(_gl);
         for (int y = 0; y < sh; y += 4)
         for (int x = 0; x < sw; x += 4)
         {
@@ -1318,5 +1469,78 @@ public sealed partial class GlCore
             if (z > dz + 64f + dz / 64f) RetainedScene.SurfaceBehind++;
         }
         RetainedScene.SurfaceChecks++;
+    }
+
+    float[]? _probeDepth, _probeSurf;
+
+    /// <summary>0085's probe at one stage: the target's depth on a 4-pixel grid, and at
+    /// present the surface buffer, only where a pass drew it this frame. No image, and
+    /// no state left changed.</summary>
+    unsafe void ProbeDepthStage(int stage, GlDisplayRt? rt, int serial, bool surfaceFresh = false)
+    {
+        int dw = rt?.TexW ?? 0, dh = rt?.TexH ?? 0;
+        RetainedScene.ProbeRuns[stage]++;
+        RetainedScene.ProbeTargetFbo[stage] = rt?.Fbo ?? 0;
+        RetainedScene.ProbeFrame[stage] = _frame;
+        RetainedScene.ProbeTargetSerial[stage] = serial;
+        RetainedScene.ProbeTargetW[stage] = dw;
+        RetainedScene.ProbeTargetH[stage] = dh;
+        bool absent = rt == null || rt.Fbo == 0 || dw <= 0 || dh <= 0;
+        bool depth = !absent && rt!.Depth != 0;
+        int sw = rt?.NormalW ?? 0, sh = rt?.NormalH ?? 0;
+        bool hasSurface = !absent && rt!.NormalFbo != 0 && rt.Surface != 0 && sw > 0 && sh > 0;
+        // Ids come only from a fresh pass: an attachment left from an older frame is stale.
+        bool surface = hasSurface && stage == RetainedScene.ProbePresent && surfaceFresh;
+        if (absent) RetainedScene.ProbeTargetAbsent[stage]++;
+        else if (!depth) RetainedScene.ProbeDepthAbsent[stage]++;
+
+        if (depth || hasSurface)
+        {
+            var state = new ReadState(_gl);
+            if (depth)
+            {
+                if (_probeDepth == null || _probeDepth.Length < (long)dw * dh) _probeDepth = new float[(long)dw * dh];
+                _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, rt!.Fbo);
+                fixed (float* p = _probeDepth)
+                    _gl.ReadPixels(0, 0, (uint)dw, (uint)dh, PixelFormat.DepthComponent, PixelType.Float, p);
+            }
+            if (surface)
+            {
+                if (_probeSurf == null || _probeSurf.Length < (long)sw * sh * 4) _probeSurf = new float[(long)sw * sh * 4];
+                _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, rt!.NormalFbo);
+                int normalBuf = _gl.GetInteger(GLEnum.ReadBuffer);
+                _gl.ReadBuffer(ReadBufferMode.ColorAttachment1);
+                fixed (float* p = _probeSurf)
+                    _gl.ReadPixels(0, 0, (uint)sw, (uint)sh, PixelFormat.Rgba, PixelType.Float, p);
+                _gl.ReadBuffer((ReadBufferMode)normalBuf);
+            }
+            state.Restore(_gl);
+
+            for (int y = 0; y < dh; y += 4)
+            for (int x = 0; x < dw; x += 4)
+            {
+                RetainedScene.ProbeSamples[stage]++;
+                if (depth && _probeDepth![(long)y * dw + x] < 0.99999f) RetainedScene.ProbeDepth[stage]++;
+                if (!hasSurface) { RetainedScene.ProbeSurfaceAbsent[stage]++; continue; }
+                if (!surface) { RetainedScene.ProbeSurfaceStale[stage]++; continue; }
+                int sx = Math.Min(sw - 1, (int)((long)x * sw / dw)), sy = Math.Min(sh - 1, (int)((long)y * sh / dh));
+                float id = _probeSurf![((long)sy * sw + sx) * 4 + 3];
+                RetainedScene.ProbeSurfaceIds[stage * 6 + (id < 0.5f ? 0 : id < 1.5f ? 1 : id < 2.5f ? 2 : id < 3.5f ? 3 : id < 255.5f ? 4 : 5)]++;
+            }
+        }
+        if (stage == RetainedScene.ProbePresent) ProbeDepthPair();
+    }
+
+    /// <summary>0085's probe: whether the present reading's target and serial were the
+    /// after-main reading's. A pair that did not still counts its own two stages.</summary>
+    void ProbeDepthPair()
+    {
+        RetainedScene.ProbePairRuns++;
+        if (RetainedScene.ProbeTargetFbo[RetainedScene.ProbePresent] == RetainedScene.ProbeTargetFbo[RetainedScene.ProbeMain])
+            RetainedScene.ProbePairFboMatch++;
+        else RetainedScene.ProbePairFboMismatch++;
+        if (RetainedScene.ProbeTargetSerial[RetainedScene.ProbePresent] == RetainedScene.ProbeTargetSerial[RetainedScene.ProbeMain])
+            RetainedScene.ProbePairSerialMatch++;
+        else RetainedScene.ProbePairSerialMismatch++;
     }
 }

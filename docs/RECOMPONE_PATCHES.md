@@ -40,6 +40,14 @@ Four files in the directory have no entry below:
   60 Hz grid rather than when the game asks; `KF2_VSYNC=block` is upstream's
   blocking timeline. See "The vblank fired when the game asked" in
   `docs/RUNTIME.md`.
+  **Amended 2026-10-02: the vblank root counter's event (`0xF2000003`,
+  `EvSpINT`) is delivered once a vblank, by IRQ 0's service, and no longer
+  directly from `LibEtc.TickVBlank` as well.** Both deliveries ran, so every
+  handler on that event ran twice a vblank on this timeline (upstream's blocking
+  one raises IRQ 0 only). Measured 120.0 → 60.0 a second in both games: Verdite2's
+  `func_80017850` clock `0x801B6CAC`, Verdite3's `func_80019570` count
+  `0x801C12E8`. Verdite3's own frame gate then holds it to 15 frames, not 30;
+  Verdite2's acceptance numbers are unchanged. **No recompile.**
 - `0045-frame-profiler.patch` — a diagnostic: `Diagnostics/Profiler.cs`, and
   sections around `HookManager.Invoke` (the hooked body and each delegate apart),
   `LibEtc.VSync`, `Runtime.PresentFrame`, the window's events, render and swap,
@@ -331,7 +339,8 @@ Four files in the directory have no entry below:
   already runs that loop but only ever for its own condition. Exposed as
   `Runtime.Pump`. Everything else the progress UI needs was public already —
   `Popup` is abstract-public and `PopupManager.Register` takes any implementation
-  — so `Verdite2.Launcher/BuildProgressPopup.cs` is not a patch. UI only, **no
+  — so the launcher's `BuildProgressPopup.cs` (Verdite Core's `launcher/`, shared
+  by the ports since 2026-10-05) is not a patch. UI only, **no
   recompile**. See "The one patch this needed" in `docs/PACKAGING.md`.
 
 - `0032-expose-pad-queries.patch` — `InputManager` is `internal`, so a port
@@ -742,6 +751,13 @@ Four files in the directory have no entry below:
   fps: 18,309 tris/s kept, 142.4 normal passes/s, 100.0% of the covered picture lit
   from a geometry normal, 144.0 fps drawn at 20.0 ticks/s either way. **No
   recompile.** See "The normal was the guess" in `docs/RENDERING.md`.
+  *Amended (2026-10-05):* a kept triangle carries its UV and texel word
+  (`GlCore.SurfaceTex`, `VeilTex`'s packing), and `NormalFs` drops a texel that is
+  `0x0000` in sample VRAM, at `PrimFs`'s centre tap, as the colour pass does. Before,
+  a billboard's transparent texels wrote no depth but did write its camera-facing
+  normal, so AO shaded the wall behind at that normal: a faint box round every
+  sprite with AO on. A texture window or an image keeps the whole face (the decode
+  has no window). The normal pass now always binds sample VRAM on unit 0.
 
 - `0059-world-space-occlusion.patch` — the occlusion pass also marches the area's own
   80x80 tile grid, so a wall behind the camera occludes as one in front of it does,
@@ -789,7 +805,8 @@ Four files in the directory have no entry below:
   creation as `GLFW_WAYLAND_APP_ID` — the raw `0x00026001`, because Silk 2.22 has
   no name for a GLFW 3.4 hint — and as the X11 class and instance name beside it.
   Measured after: `xdg_toplevel#45.set_app_id("verdite2")` on the wire. What wants
-  both is `patches/CardIcon.cs` and `patches/DesktopEntry.cs`. UI only — **no
+  both is each game's `patches/CardIcon.cs` and Verdite Core's `WindowIcon` and
+  `DesktopEntry`. UI only — **no
   recompile**. See "The icon comes off the disc" in `docs/PACKAGING.md`.
 
 - `0062-one-named-pad-button.patch` — `GetFirstPressedPadButton` sweeps the enum
@@ -1342,7 +1359,7 @@ Four files in the directory have no entry below:
   counter being the first of them, and a width of 0 skips one (the counter's is 0
   when it is off). The counter's slot is never narrower than `000 / 000 fps`, so
   what sits left of it does not move as the count changes width.
-  `Verdite2.Launcher/UpdateBadge.cs` is the only caller. Numbered past
+  The launcher's `UpdateBadge.cs` (Verdite Core's `launcher/`) is the only caller. Numbered past
   `remaster-design`'s `0070`-`0080` so the two branches do not collide. UI only —
   **no recompile**. See "Telling the player about a new release" in
   `docs/PACKAGING.md`.
@@ -1576,6 +1593,193 @@ Four files in the directory have no entry below:
   play) was refused by the present for good: the 4:3 VRAM fallback, and no pass that
   needs a display target. The fifteenth diff in the patch file. See "A target made
   under the GPU world renderer never latched" in `docs/WIDESCREEN.md`.
+  Since amended: the depth-stage probe reads this draw's target back, and the
+  surface probe's pass runs with the occlusion and reflection features off
+  (`RetainedScene.DepthStageProbe`, `RetainedScene.SurfaceCheck`). The sixteenth
+  diff in the patch file; the fields are under "Retained contract additions under
+  verification" below.
+
+- `0086-retained-model-mask.patch` — the retained models (`0085`) are drawn at slot 1,
+  ahead of every packet the walk sends after them, and `0051`'s tolerance (1 unit
+  plus half the depth's change across a pixel) hands a coplanar overlap to the later
+  packet. Over a model's pixels it therefore let through any packet up to the
+  tolerance *behind* the model, such as a near map face's floor behind a creature,
+  whose slope term is large at a grazing angle. The display target's depth is now
+  `DEPTH24_STENCIL8` (sampled, it still reads as depth). While
+  `RetainedScene.ModelMask` is set (**off by default**; the game turns it on), the
+  main view clears the stencil before its models and their colour passes set it where
+  they land (`MarkModels`), and the target records the frame (`ModelMaskFrame`). In
+  that frame a tested packet batch's colour (`GlCore.DrawTested`) draws twice: with
+  the tolerance where the stencil is clear, and against the true depth where it is
+  set. An opaque batch that draws there clears the mark, so the next packet gets the
+  tolerance against it. `RetainedScene.ModelMaskProbe` adds occlusion queries (a
+  stall each): over model pixels, a batch's samples the tolerance passes and those of
+  them behind the stored depth (`MaskSamples`, `MaskBehind`); a blended batch's
+  samples in front by less than the tolerance (`MaskAhead`); and before each model
+  list writes depth, its samples against the map and those that only a test pulled
+  8/32/128/512/960 units nearer passes (`ModelSamples`, `ModelUnderSlack`). Planar
+  captures are untouched. **No recompile.** Measured in Verdite3's `GPU_RENDERER.md`
+  ("Models under later packets").
+
+- `0087-retained-depth-ceiling.patch` — `0051`'s tolerance is the constant bias plus
+  half the fragment's own depth change across a pixel, and on a face seen nearly
+  edge-on that slope term spans hundreds of units: a model's silhouette drew over a
+  surface that far in front of it. `PrimFs` gains `uDepthCapZ`: the slope term stops
+  at the bias plus `vDepth * uDepthCapZ`. The main view sets it to
+  `RetainedScene.DepthCapPixels / H` (`BeginWorldMain`) and clears it with the rest
+  of its uniforms, so a capped term is the world width of that many game pixels at
+  the fragment's depth. **0, the default, is the program before**; packets
+  (`_progPrim`) never set it. `RetainedScene.ToleranceProbe` adds occlusion queries
+  (a stall each) before the colour pass of the main view's map, posed models and
+  instances (`ProbeTolerance`, through `PrimFs`'s `uDepthCap`, which only it
+  lowers): the samples passing (`ToleranceSamples`) and those passing only because
+  the tolerance exceeded each of `ToleranceCaps` (`ToleranceBehind`). **No
+  recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Seeing through doors, and
+  floor over models again").
+
+- `0088-retained-neighbour-blend.patch` — each map half has its own light record, so
+  the static map's colour and fog stepped at every tile edge where records differ.
+  `NeighbourBlend` blends them **per pixel** in `PrimFs`: the records of the half a
+  pixel lies on and of the three halves around its quarter of the tile (on the same
+  level; none past the map or where a half is missing), weighted bilinearly between
+  the tile centres from the pixel's world X and Z, so either side of an edge or
+  corner blends the same set. The fog averages the records' **results**, each
+  record's cue weight at the pixel's own depth clamped at 4096 (the colour it leaves
+  is black there): the average of the pictures the tiles would draw, with a record
+  that has no fog weighing in as none. Only curve-5 (`LinearDepthCue`) and curve-0
+  records blend; another curve leaves the pixel as it was. The light averages the
+  records' colour matrix and back colour, rounded to integers, under the own record's
+  dots, in `NormalColorCol`'s integers as `recordLit` does; just off a tile's centre
+  that rounds back to the own record, so the blend meets the unblended picture without
+  a step. A pixel whose records all fog and light alike is drawn as before. `WorldVs`
+  passes a record-lit static corner's half, record, RGBC, world X/Z and dots
+  (`recordLit` gains an `out` for its dots) while `uNeighbour` is set; `PrimVs` writes
+  zeros. The port sets `NeighbourBlend.Mode` (fog 1, light 2) and fills
+  `NeighbourBlend.Halves` (each half's record plus one, 160x80, uploaded as R8UI on
+  unit 22 when it changes); `BeginWorldMain` sends the mode, and `EndWorldUniforms`
+  clears it, so reflections and shadow passes are untouched. `_progPrim` puts the two
+  new integer samplers on their own units. **Mode 0, the default, is the program
+  before.** **No recompile.** Measured in Verdite3's `GPU_RENDERER.md` ("Blending
+  light and fog across tile edges").
+
+- `0089-retained-distance-fade.patch` — the main view could only draw the halves the
+  game's walk submitted, at full weight, so a port could neither draw past the game's
+  draw radius nor soften the edge where land pops in. Two additions. **The gate**:
+  `RetainedScene.CurrentMainHalves` hands the port the current frame's
+  `MainHalves`, so it can add halves past the walk's reach to the main view alone (not
+  reflected, not the mirror's). **The fade**: `DistanceFade`, per pixel in `PrimFs`,
+  weight `clamp((edge - d) / band, 0, 1)` with d the **horizontal** distance from the
+  camera's X and Z, so turning on the spot fades nothing and a model fades with the
+  ground under it; past a depth limit less 2048 the weight also falls to 0 by the
+  limit (`DepthLimit` 65,024), before the world program's 16-bit depth runs out. It
+  multiplies 0072's `vFade` into the same ordered dither (`fadeDropped`, the
+  crosshatch's table), so there is no blending and a drawn pixel keeps its depth.
+  `WorldVs` and `WorldNormalVs` pass the corner's world X/Z (`vFadeXZ`; the camera's
+  for the sky's models and a model placed in view space, which never fade); `PrimVs`
+  and `NormalVs` write zeros. `NormalFs` drops the same pixels, so AO and the
+  surface buffer do not see what the colour pass dithered away. The port sets a
+  frame's fade with `RetainedScene.SetFade` (edge, band, depth limit; cleared by
+  `BeginFrame`); `BeginWorldMain` sends it to the main view only (`uFade`,
+  `uFadeZ`), `EndWorldUniforms` clears it, and `DrawWorldNormals` sends it to the
+  normal program. `NormalFs` is now a `static readonly` composed string. **A frame
+  with no fade and no added half is the program before.** **No recompile.**
+  Measured in Verdite3's `WIDESCREEN.md` ("Render distance").
+
+- `0090-no-system-cnf.patch` — a disc with no `SYSTEM.CNF` could not be recompiled:
+  `SystemCfg.Parse` read it unconditionally. With none, the BIOS boots `PSX.EXE`
+  with TCB 4, EVENT 16 and the stack at `0x801FFF00`, the class's own defaults, so
+  `Parse` now returns them; `DiscProbe.SystemCfgBoot` answers `PSX.EXE` the same
+  way, so `--autoconfigure` names the boot file rather than guessing the first
+  executable. King's Field (`SLPS-00017`, Verdite1) has no `SYSTEM.CNF`. A disc
+  with one reads it as before. **Forces a recompile** only for such a disc.
+
+- `0091-vblank-from-the-poll.patch` — on `0021`'s timeline the vblank is delivered
+  only from inside `LibEtc.VSync`, so a game that waits for its own vblank handler
+  without calling `VSync` waits forever: King's Field (`SLPS-00017`) spins in its
+  frame gate on a counter its `RCntCNT3` handler bumps, and drew four frames after
+  the first area loaded. `LibEtc.VBlankFromPoll` (off by default; the port sets it)
+  has `Interrupts.PollSlow` deliver the vblanks that are due on the same wall-clock
+  grid, inside the poll's register snapshot and exception stack, before draining
+  pending IRQs. `AdvanceVBlanks` marks itself running, and a poll that arrives from
+  inside a delivery (a handler is recompiled code, and polls too) does not deliver
+  again. With the switch off the only change is that mark, so a game that does not
+  set it runs as before. Measured in Verdite1: about 20 frames a second in the first
+  area, the gate's three vblanks a frame. **No recompile.**
+
+- `0092-wrapped-image-load.patch` — an image load (GP0 `A0`) that runs past VRAM's
+  right or bottom edge wraps on the console, and `StoreImageHalfword` wraps it into
+  the shadow, but `HleLoadFlush` handed the backend the whole rectangle, and every
+  GL backend's `WriteRect` is one `TexSubImage2D`, which refuses a rectangle past
+  the texture with `GL_INVALID_VALUE`: the backend received none of it. King's
+  Field (`SLPS-00017`) loads its HUD and menu palettes as 16x16 TIM CLUT blocks at
+  rows 497-500, so the backend's palettes read zero, every texel transparent, and
+  the HUD and every menu were drawn and invisible. A wrapping load now goes to the
+  backend as up to four pieces, each at its wrapped position; a load that fits is
+  passed as before, so a game that never wraps one is unchanged. Measured in
+  Verdite1: 35 palette words differed between the backend's VRAM and the shadow,
+  and 0 after, with all of VRAM outside the display buffers equal through the boot,
+  the first area and the in-game menu. Fills and VRAM copies that wrap are not
+  split. **No recompile.**
+
+- `0093-disc-image-decorator.patch` — `DiscImage.Decorate`, a
+  `Func<IDiscImage, string, IDiscImage>` that `DiscImage.Open` hands each image it
+  opens, with its path, and returns the result of. Null, the default, passes the
+  image through, so a game that does not set it is unchanged. The disc is opened
+  inside the generated `Entry.Run`, so a port had no other place to stand between
+  the image and the runtime's reads. King's Field (`SLPS-00017`) lays the English
+  fan translation's PPF over the sectors this way, leaving its executable's
+  records out. **No recompile.**
+
+## Retained contract additions under verification (2026-10-04)
+
+The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual
+retained world and fragment programs. Its parameters are a near/far pair, with
+quarter-depth quantisation, truncating division, a 32000 cutoff and 7951 maximum.
+Quantised integer records use integer division to avoid driver reciprocal
+rounding at exact boundaries; fractional pairs remain supported. Existing cue
+curves retain their previous behaviour. Fog culling stays conservative for this
+curve. No game address or environment variable is introduced in the runtime.
+
+The main retained draw and its normal pass accept a frame with no opaque static
+map, so model-only frames can render. The port still owns scene validity.
+The numerical surface probe can request the surface attachment without enabling
+reflection features; normal/AO-only configurations can therefore measure it too.
+
+The retained world can be sampled for depth at two stages without an image. The
+game sets `RetainedScene.DepthStageProbe` (off by default; the port's switch, as
+`SurfaceCheck` is), and the runtime then reads the frame target back at most once
+every five seconds: immediately after the retained main draw, and again at the
+present for the source it is about to show, after the present's surface pass. The
+after-main stage reads depth only and counts its surface samples as stale, since
+the pass has not run for that frame. The present stage reads normal/surface ids
+only where `DrawSurfaces` drew for that present (the probe takes the draw's
+success as `surfaceFresh`); a surface attachment left over from an older frame is
+counted stale, never read. Both stages record the target, frame, retained serial
+and size they read, and the present stage records whether the pair read the same
+target and serial. A stage with no target, a target with no depth attachment, and
+a sample with no surface buffer are counted as absent rather than reported as
+zeros; a pair that did not match still counts its two stages. Every read puts the
+read framebuffer, that framebuffer's read buffer and the pack alignment back, and
+the normal/surface framebuffer's own read buffer with them, in the surface probe
+as well.
+
+The surface probe also runs with the occlusion and reflection features off. With
+neither consumer ready, the present draws the surface pass for the probe alone at
+the render scale when `SurfaceCheck` or the depth-stage probe's present stage asks
+for it, `RenderSurfaces` runs for either switch, and the geometry keeper
+(`AoGeometry.Active`) collects the frame's triangles and the retained map's frame
+entry for as long as either holds, so that pass has something to read. That is
+deliberately not `GteDepth.SurfacesWanted`, which would change what the packet
+path writes to the depth buffer, and it leaves `GteDepth.AmbientOcclusion` and
+`GteDepth.Reflections` unset.
+
+Applicable late fixes from the Verdite2 vendored copy preserve `NotRect` through
+surface classification/depth records and texture repair's dialogue ink holes.
+The existing `SurfaceMaterial.Classify` overload remains binary compatible.
+The bounded Verdite2 new-game check keeps retained map/poses/sky/water/mirror and
+normal passes active with zero reported legacy world projections/3D packets.
+Shared checkpoints belong in subtree-only commits and the Verdite fork, per
+repository guidance. Shader arithmetic is measured separately from visual acceptance.
 
 `0007`, `0008` and `patches/EndingHold.cs` are the shape to keep in mind
 generally: **anything the runtime refreshes only at `VSync` is invisible to a
