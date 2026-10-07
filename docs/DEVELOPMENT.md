@@ -429,15 +429,12 @@ spikes. They come from three causes:
    the same walk rebuilt once, at the load; the settled 5 s windows read 165.0 fps
    with a worst frame of 6.7-7.7 ms, against 10-19 ms before; areas 16, 22, 9 and 25
    rebuilt only on arrival.
-2. **The JIT.** Verdite2's `Prejit` (compile every recompiled function, patch and
-   runtime method on a background thread from the first overlay load; "The first
-   frame of an area was the JIT" in Verdite2's `DEVELOPMENT.md`) was never ported.
-   With `TieredCompilationQuickJit` off, every function compiles fully optimised on
-   its first call, on the game thread: 260 ms at the first frames of play (stages 3-5
-   and `Analog.ReplaceMove`), 50-170 ms the first time a creature acts (stages 5, 6,
-   8), 10-20 ms for a first pose. Every spike left on the walk after fix 1 was this.
-   **Not done.** The overlay names Verdite2's ranks by (`fdat*`, `game`, `main`,
-   `open`, `end`) are this game's too.
+2. **The JIT.** With `TieredCompilationQuickJit` off, every function compiles
+   fully optimised on its first call, on the game thread: 260 ms at the first
+   frames of play (stages 3-5 and `Analog.ReplaceMove`), 50-170 ms the first time a
+   creature acts (stages 5, 6, 8), 10-20 ms for a first pose. Every spike left on
+   the walk after fix 1 was this. **Fixed** by `patches/Prejit.cs`, Verdite2's pass
+   ("The first frame of an area was the JIT" in its `DEVELOPMENT.md`) ported, below.
 3. **An area's arrival rebuilds the whole map two to four times** as its tables
    fill in (100 chunks each: 20-115 ms of `post GpuWorld.Begin`, then 7-24 ms of
    upload), plus the JIT of whatever the area runs first. **Not done.** The
@@ -447,6 +444,64 @@ spikes. They come from three causes:
 
 GC is not a cause: 0-1.5 ms/s, with gen-0 pauses under 1 ms. The one 13.7 ms GC
 pause was inside the profiler's own reporting.
+
+### Compiling ahead: `Prejit`
+
+`patches/Prejit.cs` compiles the recompiled functions (`IOverlay.Functions`), the
+patches with Verdite Core (namespaces `Kf3` and `Verdite.Core` of this assembly)
+and the runtime with `RuntimeHelpers.PrepareMethod`, at lowest priority, from the
+first `OverlayLoadedEvent` (`main`). Ordered as Verdite2's: the 28 area modules
+(14-22 functions each, 0.8 s together on one thread), the patches (1851), the
+runtime (3477), then `game` (1132, but 4.6 s of the 8.9 s on one thread: its
+functions are large), `main`, `end`, `open`. Overlay names are this game's
+(`config/kf3.json`); `KF3_PREJIT=0` is the comparison.
+
+Three things differ from Verdite2's, each measured:
+
+- **Four threads, not one.** One thread took 8.9 s and was still in `game` when an
+  autostart reached `fdat17` (9.6 s from launch), so the first area's frames still
+  compiled. Spread over a quarter of the cores (at most four, `KF3_PREJIT_THREADS`)
+  taking from the head of the same ordered list, the pass is 2.7-2.9 s and done
+  about 1.7 s before the area.
+- **Constructors.** `GetMethods` returns no constructors, so every `.cctor` and
+  `.ctor` compiled on the game thread on its type's first use: a JIT event
+  listener (removed) named `RetainedAssets`, `RetainedNear`, `WaterSwell`,
+  `Stage15.Verifier`, `RenderDistance.Cone` and `PolyAssembler.Frame` at the
+  first area. The pass takes `GetConstructors` too (8326 methods, from 7754).
+- **The library's generics over this port's value types**, found through every
+  field of this assembly and the runtime (`Dictionary<(uint, uint, Family), …>`,
+  `List<Vertex>`, `HashSet<long>`): value-type instantiations share no code and
+  are not precompiled. 6200 more methods for about 0.2 s of the pass, and the
+  first area frame's own JIT went from 22.4 ms (79 methods) to 13.4 ms (55). What
+  is left is what no field names: locals, LINQ chains, Silk.NET's GL wrappers.
+
+The 15 refused (137 with the generics) are delegates' `BeginInvoke`/`EndInvoke`,
+Windows-only P/Invokes and generic methods that do not instantiate: nothing the
+game runs. The profiler's JIT figures are the game thread's own since this work
+(runtime `0045`, amended): the process-wide figure charged the pass's compiles to
+whatever frame was running (`JIT 453.26 ms` in a 208 ms frame).
+
+Measured with the user's `interface.ini`, `KF3_AUTOSTART=1` into `fdat17` and the
+70 s walk, four runs off and six on (the last three with the final build):
+
+| | `KF3_PREJIT=0` | on |
+|---|---|---|
+| first retained-world frame and the three after | 531-543, 219-224, 49-51, 16-17 ms | 87-91, 24-26, 15-26, 19-24 ms |
+| first frames of play (stages 3-5, `Analog`) | 250-267 ms | none |
+| a creature's first action (stage 5) | 70-81 ms, then 13-15 ms | none |
+| first pose (`MoPose`, `ModelWalk`) | 19-20 ms | none |
+| JIT, 5 s windows after the first | 22-24, then 0-0.4 ms/s | 0.00-0.02 ms/s |
+| boot to in-area | 9.50-10.03 s | 8.62-8.70 s |
+| peak RSS | 471 MB | 545-557 MB |
+
+Boot is faster with the pass in, as in Verdite2: it compiles ahead of the game
+thread's need rather than against it. The cost is about 80 MB of code. **What is
+left at the first area is not mostly the JIT**: of its 87-91 ms frame,
+`post GpuWorld.Begin` is 55-58 ms, the whole map built and sorted (cause 3), and
+the next frame's 22 ms of `DrawOTag` is its upload; the game thread's JIT there is
+13-15 ms and 8 ms. The two `PlanarMirror` frames after them (14-17 ms, no JIT) are
+the mirror's first frames, not read further. No frame of the walk itself passed
+21 ms in any run with the pass in, and none had JIT.
 
 ## Retained scene verification (2026-10-04)
 

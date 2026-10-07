@@ -278,6 +278,21 @@ Kf3.SettingsPage.Install();
 // kf3.* keys (docs/SETTINGS.md). Last, so its boot check follows every start-up.
 Kf3.PortSettings.Install();
 
+// Compile the recompiled code ahead of the game running it. QuickJit is off (a
+// tier-up loses a MonoMod detour), so every function is compiled by the full JIT
+// on its first call, on the game thread. This warms the lot on background
+// threads from the first overlay load. Installed last, so the patches' own attach
+// listeners have run before the first method is prepared. See "The stutters" in
+// docs/DEVELOPMENT.md.
+//
+//     KF3_PREJIT=0        leave every method to its first call -- the comparison
+//     KF3_PREJIT_PROBE=1  a line per batch as the pass reaches its end
+//     KF3_PREJIT_THREADS=n  threads for the pass (a quarter of the cores, 1-4)
+Kf3.Prejit.Configure(Environment.GetEnvironmentVariable("KF3_PREJIT"),
+                     Environment.GetEnvironmentVariable("KF3_PREJIT_PROBE"),
+                     Environment.GetEnvironmentVariable("KF3_PREJIT_THREADS"));
+Kf3.Prejit.Install();
+
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
 //     KF3_AUTOPAD=5:Start:1000,8:Circle:200

@@ -39,6 +39,9 @@ kept.
 | `KF3_PROFILE_OUT` | a path: every recorded frame's sections and GPU passes as CSV, for `scripts/profile_report.py` | none |
 | `KF3_PROFILE_SPIKE` | ms: a console line for each frame whose work passes it | off |
 | `KF3_PROFILE_FUNCS` | `stages`, or `[overlay:]hex` items joined by `+`: functions to time with an empty pre-hook | none |
+| `KF3_PREJIT` | `0`: leave every method to its first call instead of compiling the recompiled code, the patches and the runtime ahead on background threads from the first overlay load; a comparison only (`DEVELOPMENT.md`, "The stutters") | on |
+| `KF3_PREJIT_PROBE` | `1`: a line as the pass reaches the end of each batch (each area module, the patches, the runtime, the generics, `game`, `main`, `end`, `open`) | off |
+| `KF3_PREJIT_THREADS` | threads for that pass, at lowest priority | a quarter of the cores, 1-4 |
 | `KF3_TINTPROBE` | `1`: every 2 s that drew a full-screen tint, the frames and tinted frames, each split by whether a tick built it, and a strip a character a frame | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
 | `KF3_GEOPROBE_FUNCS` | `hex,hex,...` (up to 16): more functions for `KF3_GEOPROBE`, reported per call site | none |

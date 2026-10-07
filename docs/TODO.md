@@ -22,9 +22,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   user. Open: a hint for L1/R1.
 - **The stutters** (2026-10-06, "The stutters" in `DEVELOPMENT.md`): the map
   rebuilding as the player walked is fixed and measured; **to judge in play**:
-  whether walking feels smooth. Open: port Verdite2's `Prejit` (the JIT spikes
-  left, 10-260 ms the first time code runs), and the whole-map rebuilds and
-  upload at an area's arrival.
+  whether walking feels smooth. The JIT is compiled ahead (`Prejit`, measured
+  2026-10-06: no spike on the walk, the first area frame 531 -> 87-91 ms). Open:
+  the whole-map rebuilds and upload at an area's arrival.
 - **Complete retained GPU rendering** is the active implementation objective
   (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
   near map and near models are now retained, so no near packet draws in painter's
