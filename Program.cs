@@ -104,6 +104,8 @@ Kf3.RateCensus.Install();
 // Whether the full-screen tints are drawn between ticks: "The tints between
 // ticks" in docs/SMOOTHING.md.
 Kf3.TintProbe.Install();
+// Every presented picture across an area load, as numbers: "Crossing between areas" in docs/DEVELOPMENT.md.
+Kf3.CrossProbe.Install();
 
 // The frame profiler (Verdite2's): where each frame's time goes, by section. Every
 // hooked function is timed inside HookManager (its recompiled body and each patch's

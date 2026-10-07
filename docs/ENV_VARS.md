@@ -43,6 +43,7 @@ kept.
 | `KF3_PREJIT_PROBE` | `1`: a line as the pass reaches the end of each batch (each area module, the patches, the runtime, the generics, `game`, `main`, `end`, `open`) | off |
 | `KF3_PREJIT_THREADS` | threads for that pass, at lowest priority | a quarter of the cores, 1-4 |
 | `KF3_MAP_SETTLE` | ms that what the retained map is built from must hold before a rebuild of more than 8 chunks, or the area's first; the game's packets draw the map meanwhile. `0`: rebuild at every change, as before | 150 |
+| `KF3_CROSSPROBE` | `1`: every present read back across an `fdat` load (400 ms before, 3 s after): luminance, fingerprint, frame time, buffer, map ready, retained draws and triangles, packets, tick, camera. Stalls the GPU; use `scale 2` | off |
 | `KF3_MAPPROBE` | `1`: a line per retained map rebuild: chunks built, updates spent waiting, vertices, build and sort ms | off |
 | `KF3_TINTPROBE` | `1`: every 2 s that drew a full-screen tint, the frames and tinted frames, each split by whether a tick built it, and a strip a character a frame | off |
 | `KF3_GEOPROBE` | `1`: what each of stage 15's calls adds to the ordering tables, by GPU command and slot, every 5 s; `time`: each call's inclusive time instead (its hooks cost about 0.4 ms a frame) | off |
@@ -57,7 +58,7 @@ kept.
 | `KF3_CAMERABLOCK` | the camera block `func_800357E8` in C#: `1` (or unset), `0` recompiled, `verify` both on every call, compared | on |
 | `KF3_SMOOTH` | `0`: draw each frame from the last tick's camera instead of the one interpolated between the last two ticks (smoothing runs only under `KF3_FPS`, and needs stage 15 in C#); judged 2026-10-02 | on |
 | `KF3_SMOOTH_MODELS` | `0`: draw each creature, object, effect and billboard from its last tick instead of at its position, facing and clip time interpolated between the last two ticks (runs only under `KF3_FPS`, needs `KF3_MODELWALK` on; the clip time also needs `KF3_MOPOSE`); judged 2026-10-02 | on |
-| `KF3_SMOOTH_PROBE` | `1`: a line a second: frames drawn and cameras carried, tick samples and snaps; models carried, snaps, clip frames carried, wraps, turns, re-seeks and backward steps; mouse-led frames a second and the mean \|applied − asked\| a tick | off |
+| `KF3_SMOOTH_PROBE` | `1`: a line a second: frames drawn and cameras carried, tick samples, snaps and placements carried across; models carried, snaps, clip frames carried, wraps, turns, re-seeks and backward steps; mouse-led frames a second and the mean \|applied − asked\| a tick | off |
 | `KF3_SPRITEANIM` | `0`: let the billboard cels step on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints walks stepped and held) | held |
 | `KF3_MSGBOX` | `0`: step the bottom message box (`func_80041F9C`) on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints calls stepped and held while it is shown) | held |
 | `KF3_TEXSCROLL` | `0`: run the scrolling textures (`func_800351FC`) on every drawn frame under pacing; `carry`: also redraw them each frame at the phase interpolated between ticks (not judged). `KF3_FPS_PROBE=1` prints calls, runs and carried uploads | held |
