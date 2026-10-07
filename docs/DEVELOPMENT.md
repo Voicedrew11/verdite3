@@ -437,10 +437,8 @@ spikes. They come from three causes:
    ("The first frame of an area was the JIT" in its `DEVELOPMENT.md`) ported, below.
 3. **An area's arrival rebuilds the whole map two to four times** as its tables
    fill in (100 chunks each: 20-115 ms of `post GpuWorld.Begin`, then 7-24 ms of
-   upload), plus the JIT of whatever the area runs first. **Not done.** The
-   candidates are uploading only changed chunks instead of the whole map,
-   dropping the `List` concatenation, and not rebuilding until the area's tables
-   stop changing.
+   upload), plus the JIT of whatever the area runs first. **Fixed**: one build an
+   arrival, in parallel, below ("One build an arrival").
 
 GC is not a cause: 0-1.5 ms/s, with gen-0 pauses under 1 ms. The one 13.7 ms GC
 pause was inside the profiler's own reporting.
@@ -502,6 +500,53 @@ the next frame's 22 ms of `DrawOTag` is its upload; the game thread's JIT there 
 13-15 ms and 8 ms. The two `PlanarMirror` frames after them (14-17 ms, no JIT) are
 the mirror's first frames, not read further. No frame of the walk itself passed
 21 ms in any run with the pass in, and none had JIT.
+
+### One build an arrival
+
+`KF3_MAPPROBE=1` (a line per rebuild) on a warp tour of areas 16, 22, 9 and 17:
+every arrival rebuilt all 100 chunks **three to five times** within 50-250 ms,
+the first while the old area's module was still loaded (the new map is in RAM
+before its module), then as the meshes filled in (6-134 mesh signatures changed a
+step) and as `WaterRects` changed in the new area's first frames (0 meshes
+changed, the water rebuilt). The water was folded into every chunk's hash
+(`WaterSwell.Generation`), so each of its changes was all 100 too. Area 16:
+72+48, 55+40, 23+6 ms of build+sort; area 17: five rebuilds of 15-28 ms each.
+
+Three changes, all in `patches/` (no runtime change):
+
+- **Settle.** A rebuild of more than 8 chunks, or the area's first, waits until
+  every chunk's hash has held for `KF3_MAP_SETTLE` ms (150). Until the area's first
+  build `RetainedMap.Ready` is false and `Submit` hands each half back to the
+  game's own packets: **`Ready` gated nothing before this**, and an old map would
+  have been drawn where the new one's halves were noted. A change of 8 chunks or
+  fewer (a door, the water) builds at once: a tile's turn poked in RAM in `fdat17`
+  rebuilt 1 chunk with no wait (0.3-0.5 ms, sort 3 ms), and again when put back.
+- **Water per chunk.** `WaterSwell.ChunkHash` is what a chunk takes from the swell
+  (its water faces, its free corners), 0 for a chunk without water, in place of the
+  rect key and the generation.
+- **In parallel.** The stale chunks are built with `Parallel.For`, reading guest RAM
+  directly (the game thread waits in `Update`, so nothing writes it), into one
+  array kept between rebuilds instead of a `List` grown from empty.
+
+All 28 areas, warped to and seen at four headings (`KF3_SCENE_DRIVER=1`): **27
+built once, after 25-69 updates of settling**; area 26's warp passes through an
+`fdat17` load, which built once on its own. A build is 0.7-12.7 ms and its sort
+0.8-7.3 ms (38k-201k vertices); the worst frame of any arrival is 25 ms (`CD,
+card and pad ticks`), the worst with the map in it 21.9 ms (area 4), and the
+upload in the frame after 7-12 ms. Area 16 is 10.6+3.9 ms against 72+48, 55+40
+and 23+6. The 70 s walk in `fdat17` rebuilt once, at the load, with the settled
+windows at 165.0 fps and a worst frame of 6.7-9.1 ms. The scene probe (with
+`SettleMs = 0`, since its map is whole at once) and `shader_probe.py` pass.
+
+**What it costs**: an arrival draws its map through the game's packets for the
+settle, 25-69 updates (0.15-0.4 s at 165 fps): no ambient occlusion, murk or
+swell there, and no map past the game's own radius. Not yet judged by eye, and a
+real door crossing (through the loading screen, `func_8003DAEC`) is not measured:
+the warps skip it. At boot the first build is slower than the same build later
+(19.6 against 9.7 ms in `fdat17`), the thread pool's first use. Left: the upload
+is still the whole buffer (`BufferData`), which a fixed slot per chunk and
+`BufferSubData` would make the changed chunks' alone, a change to the runtime's
+`ChunkStart`/`ChunkCount` layout.
 
 ## Retained scene verification (2026-10-04)
 

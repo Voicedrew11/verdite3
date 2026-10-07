@@ -24,9 +24,14 @@ public static class WaterSwell
 {
     static readonly HashSet<long> _free = new();
 
-    /// <summary>Bumped by every build: the chunks carry which corners are free, so a new
-    /// set is a rebuild of every chunk.</summary>
+    /// <summary>Bumped by every build.</summary>
     public static int Generation { get; private set; }
+
+    /// <summary>What each of the map's 8x8-tile chunks (RetainedScene.Chunks) takes
+    /// from a build: which of its faces are water and which of their corners are
+    /// free. A chunk without water is 0 whatever the build, so a change to the water
+    /// rebuilds only the chunks that hold it, not the whole map.</summary>
+    public static readonly ulong[] ChunkHash = new ulong[RetainedScene.Chunks];
 
     public static int WaterPositions { get; private set; }
     public static int RimPositions { get; private set; }
@@ -47,6 +52,7 @@ public static class WaterSwell
     {
         long start = System.Diagnostics.Stopwatch.GetTimestamp();
         _free.Clear();
+        Array.Clear(ChunkHash);
         Generation++;
         Builds++;
         WaterPositions = RimPositions = SharedPositions = 0;
@@ -55,6 +61,7 @@ public static class WaterSwell
         var water = new HashSet<long>();
         var edges = new Dictionary<(long, long), int>();
         var other = new List<long>();
+        var corners = new List<(long Key, int Chunk)>();
         var store = RetainedScene.MeshCorners;
         Span<long> keys = stackalloc long[6];
         for (uint i = 0; i < 12800; i++)
@@ -64,10 +71,12 @@ public static class WaterSwell
             if (kind >= 240 || models[kind] is not { } mesh) continue;
             uint tile = i >> 1;
             int tx = (int)(tile % 80), tz = (int)(tile / 80);
+            int chunk = tz / RetainedScene.ChunkTiles * RetainedScene.ChunkSide + tx / RetainedScene.ChunkTiles;
             int rot = m.ReadU8(half + 2) & 3, y0 = -(m.ReadU8(half + 1) << 7);
             uint vertices = table + 12 + m.ReadU32(table + 12 + (uint)kind * 28);
-            foreach (var face in mesh.Faces)
+            for (int f = 0; f < mesh.Faces.Length; f++)
             {
+                var face = mesh.Faces[f];
                 if (face.Corners == 0 || (face.Command & 0xFD) == 0x3C) continue;
                 for (int j = 0; j < face.Corners; j++)
                 {
@@ -82,6 +91,8 @@ public static class WaterSwell
                     for (int j = 0; j < face.Corners; j++) other.Add(keys[j]);
                     continue;
                 }
+                ChunkHash[chunk] = (ChunkHash[chunk] ^ ((ulong)i << 16 | (uint)f)) * 1099511628211;
+                for (int j = 0; j < face.Corners; j++) corners.Add((keys[j], chunk));
                 // A quad is stored as the strip 0,1,2 / 1,3,2: its outline is 0,1,3,2.
                 ReadOnlySpan<int> loop = face.Corners == 6 ? [0, 1, 4, 2] : [0, 1, 2];
                 for (int k = 0; k < loop.Length; k++)
@@ -101,6 +112,9 @@ public static class WaterSwell
         foreach (long k in other) if (water.Contains(k)) shared.Add(k);
         foreach (long k in water)
             if (!rim.Contains(k) && !shared.Contains(k)) _free.Add(k);
+        // A sum, so the order a chunk's corners come in does not matter.
+        foreach (var (key, chunk) in corners)
+            if (_free.Contains(key)) ChunkHash[chunk] += (ulong)key * 0x9E3779B97F4A7C15ul | 1;
         WaterPositions = water.Count;
         RimPositions = rim.Count;
         SharedPositions = shared.Count;

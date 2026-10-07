@@ -934,6 +934,10 @@ The same format as Verdite2's, at another address:
   across a 12 s walk in `fdat17` (2026-10-06) found 22 bytes changed, every one of
   them `+2` of a tile on the player's path (`0x8 -> 0x4 -> 0x0`, `0x0 -> 0x4`), and
   none standing still. What they mean is not read; the rotation bits never moved.
+  **On a load the map and its meshes change over several frames**: the new half
+  table is in RAM before the area's module is loaded, then the mesh vertices and
+  the water rects fill in, for 50-250 ms of drawn frames (2026-10-06,
+  `KF3_MAPPROBE`; "One build an arrival" in `DEVELOPMENT.md`).
 - **The light records**: 64 of `0x6C` bytes at `0x801AEEFC`: four 20-byte light
   matrices by rotation at `+0`, the colour matrix at `+0x50`, the back colour as
   three bytes at `+0x64` (shifted left 4), and the depth cue's pair at `+0x68`,

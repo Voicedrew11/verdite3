@@ -23,8 +23,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - **The stutters** (2026-10-06, "The stutters" in `DEVELOPMENT.md`): the map
   rebuilding as the player walked is fixed and measured; **to judge in play**:
   whether walking feels smooth. The JIT is compiled ahead (`Prejit`, measured
-  2026-10-06: no spike on the walk, the first area frame 531 -> 87-91 ms). Open:
-  the whole-map rebuilds and upload at an area's arrival.
+  2026-10-06: no spike on the walk, the first area frame 531 -> 87-91 ms), and an
+  arrival builds the map once, in parallel (no arrival frame over 25 ms in 28
+  areas). **To judge in play**: walking through a door (the loading screen, not
+  measured), and the 0.15-0.4 s an arrival draws its map through the game's
+  packets while its tables settle. Open: uploading only changed chunks.
 - **Complete retained GPU rendering** is the active implementation objective
   (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
   near map and near models are now retained, so no near packet draws in painter's

@@ -72,7 +72,9 @@ crack opens. It is worked out over the whole map, from what places each half
 (kind, height, turn), the meshes and the rect. Measured: area 5, 61 of 178 water
 positions free (117 rim, 0 shared), built in 9-10 ms once per load; area 10, 217 of
 384 free in 1.6-1.9 ms. A load changes the half table a few times, and each change
-rebuilds the set and every chunk.
+rebuilds the set. Each chunk takes from it only its own water faces and free corners
+(`WaterSwell.ChunkHash`, 2026-10-06), so a change rebuilds the chunks that hold
+water, not the whole map ("The stutters" in `DEVELOPMENT.md`).
 
 **The ripples** are runtime 0078's, fed the frame's camera and the clock each frame.
 The clock is the world's own: ticks plus the fraction between them, scaled by the

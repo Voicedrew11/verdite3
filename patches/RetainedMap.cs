@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using RecompOne.Runtime;
 using RecompOne.Runtime.Memory;
 
@@ -31,8 +30,29 @@ public static class RetainedMap
         Ready = false; _lights = 0; Array.Clear(Signatures); Array.Clear(Chunks);
         Array.Clear(Models); Array.Clear(ModelSignatures);
     }
+    /// <summary>KF3_MAPPROBE=1: a line per rebuild, with what it waited for and cost.</summary>
+    static readonly bool _probe = Environment.GetEnvironmentVariable("KF3_MAPPROBE") == "1";
+
+    /// <summary>
+    /// An area's tables fill in over several frames after its load (the meshes, then
+    /// the water rects), and every step left most chunks stale: two to five whole-map
+    /// rebuilds an arrival, 20-115 ms of build and sort and 7-24 ms of upload each.
+    /// So a rebuild of more than <see cref="SettleChunks"/> chunks, or of a map not
+    /// yet built, waits until what the chunks are built from has held for
+    /// <see cref="SettleMs"/>; until then the halves are the game's own packets
+    /// (<see cref="Submit"/>), never an old map. A door or a water change is a chunk
+    /// or a few, built at once. KF3_MAP_SETTLE=ms, 0 for no wait.
+    /// </summary>
+    public static int SettleMs = int.TryParse(Environment.GetEnvironmentVariable("KF3_MAP_SETTLE"), out int settle) && settle >= 0 ? settle : 150;
+    const int SettleChunks = 8;
+    static readonly ulong[] Seen = new ulong[100];
+    static long _changedAt;
+    static int _waited;
+
     public static void Update(PSMemory m)
     {
+        int sigChanged = 0;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
         UpdateRecords(m);
         UpdateHalves(m);
         uint table = m.ReadU32(TablePointer);
@@ -49,7 +69,7 @@ public static class RetainedMap
             if (mesh == null || vertices > 8192 || !RetainedAssets.InRam(address, vertices * 8) || mesh.MaxVertex >= vertices)
             { Models[i] = null; ModelSignatures[i] = 0; GpuWorld.Fallback(0x8003BB04, 0, reason.Length > 0 ? reason : "map-vertex-range"); continue; }
             ulong signature = mesh.FaceHash ^ mesh.NormalHash ^ RetainedAssets.Hash(m.Ram, address, vertices * 8);
-            if (signature != ModelSignatures[i]) Bounds(m, (int)i, address, vertices);
+            if (signature != ModelSignatures[i]) { Bounds(m, (int)i, address, vertices); sigChanged++; }
             ModelSignatures[i] = signature;
         }
         // The water's free corners (WaterSwell) are worked out over the whole map, from
@@ -63,11 +83,13 @@ public static class RetainedMap
             water = (water ^ ModelSignatures[kind]) * 1099511628211;
         }
         if (water != _water) { _water = water; WaterSwell.Build(m, Map, table, Models); }
-        bool dirty = false;
+        Span<ulong> now = stackalloc ulong[100];
+        int stale = 0;
+        bool changed = false;
         for (int chunk = 0; chunk < 100; chunk++)
         {
-            // A chunk's corners carry which faces are water and which corners swell.
-            ulong hash = (14695981039346656037 ^ WaterRects.Key ^ (ulong)WaterSwell.Generation << 48) * 1099511628211;
+            // A chunk's water faces and free corners (WaterSwell), its tiles and meshes.
+            ulong hash = (14695981039346656037 ^ WaterSwell.ChunkHash[chunk]) * 1099511628211;
             int x0 = chunk % 10 * 8, z0 = chunk / 10 * 8;
             for (int z = z0; z < z0 + 8; z++)
                 for (int x = x0; x < x0 + 8; x++)
@@ -85,18 +107,56 @@ public static class RetainedMap
                         if (kind < 240) hash = (hash ^ ModelSignatures[kind]) * 1099511628211;
                     }
                 }
-            if (Chunks[chunk] != null && Signatures[chunk] == hash) continue;
-            Chunks[chunk] = BuildChunk(m, table, x0, z0); Signatures[chunk] = hash;
-            ChunkBuilds++; dirty = true;
+            now[chunk] = hash;
+            if (hash != Seen[chunk]) { Seen[chunk] = hash; changed = true; }
+            if (Chunks[chunk] == null || Signatures[chunk] != hash) stale++;
         }
-        if (dirty)
+        if (changed) _changedAt = t0;
+        if (stale == 0) return;
+        if ((!Ready || stale > SettleChunks) &&
+            System.Diagnostics.Stopwatch.GetElapsedTime(_changedAt, t0).TotalMilliseconds < SettleMs)
+        { _waited++; return; }
+
+        // Each stale chunk on its own core: they read guest RAM and the meshes only,
+        // and the game thread waits here, so nothing writes either meanwhile.
+        Span<int> todo = stackalloc int[stale];
+        for (int chunk = 0, n = 0; chunk < 100; chunk++)
+            if (Chunks[chunk] == null || Signatures[chunk] != now[chunk]) todo[n++] = chunk;
+        int[] work = todo.ToArray();
+        unsafe
         {
-            var vertices = new List<RetainedScene.Vertex>();
-            foreach (var chunk in Chunks) if (chunk != null) vertices.AddRange(chunk);
-            RetainedScene.SetStatic(CollectionsMarshal.AsSpan(vertices)); MapUpdates++;
+            fixed (byte* ram = m.Ram)
+            {
+                nint at = (nint)ram;
+                Parallel.For(0, work.Length, i =>
+                {
+                    int chunk = work[i];
+                    Chunks[chunk] = BuildChunk((byte*)at, table, chunk % 10 * 8, chunk / 10 * 8);
+                });
+            }
         }
+        for (int i = 0; i < work.Length; i++) Signatures[work[i]] = now[work[i]];
+        ChunkBuilds += work.Length;
+        long t1 = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        int total = 0;
+        foreach (var chunk in Chunks) if (chunk != null) total += chunk.Length;
+        if (_all.Length < total) _all = new RetainedScene.Vertex[total + total / 4];
+        total = 0;
+        foreach (var chunk in Chunks)
+            if (chunk != null) { chunk.CopyTo(_all, total); total += chunk.Length; }
+        RetainedScene.SetStatic(_all.AsSpan(0, total)); MapUpdates++;
+        if (_probe)
+            Console.WriteLine($"[KF3] mapprobe: built {work.Length} chunk(s) after {_waited} update(s) waiting, " +
+                $"{total} verts, models changed {sigChanged}, " +
+                $"build {System.Diagnostics.Stopwatch.GetElapsedTime(t0, t1).TotalMilliseconds:0.0} ms, " +
+                $"concat+sort {System.Diagnostics.Stopwatch.GetElapsedTime(t1).TotalMilliseconds:0.0} ms, " +
+                $"overlays {string.Join("+", RecompOne.Runtime.Dispatch.Dispatcher.ActiveNames)}");
+        _waited = 0;
         Ready = RetainedScene.StaticCount[0] > 0;
     }
+    /// <summary>The chunks laid end to end for SetStatic, kept between rebuilds.</summary>
+    static RetainedScene.Vertex[] _all = [];
     static void Bounds(PSMemory m, int kind, uint address, uint vertices)
     {
         int low = short.MaxValue, high = short.MinValue, reach = 0;
@@ -108,7 +168,10 @@ public static class RetainedMap
         if (low > high) low = high = 0;
         MeshYMin[kind] = (short)low; MeshYMax[kind] = (short)high; MeshReach[kind] = (short)Math.Min(reach, short.MaxValue);
     }
-    static RetainedScene.Vertex[] BuildChunk(PSMemory m, uint table, int x0, int z0)
+    static unsafe byte U8(byte* ram, uint a) => ram[a & 0x1FFFFF];
+    static unsafe ushort U16(byte* ram, uint a) => *(ushort*)(ram + (a & 0x1FFFFF));
+    static unsafe uint U32(byte* ram, uint a) => *(uint*)(ram + (a & 0x1FFFFF));
+    static unsafe RetainedScene.Vertex[] BuildChunk(byte* ram, uint table, int x0, int z0)
     {
         var list = new List<RetainedScene.Vertex>(); var store = RetainedScene.MeshCorners;
         for (int z = z0; z < z0 + 8; z++)
@@ -116,9 +179,9 @@ public static class RetainedMap
                 for (uint upper = 0; upper < 2; upper++)
                 {
                     uint half = Map + (uint)(z * 80 + x) * 10 + upper * 5;
-                    byte kind = m.ReadU8(half); if (kind >= 240 || Models[kind] is not { } mesh) continue;
-                    int rot = m.ReadU8(half + 2) & 3, record = m.ReadU8(half + 4) & 63;
-                    uint vertices = table + 12 + m.ReadU32(table + 12 + (uint)kind * 28);
+                    byte kind = U8(ram, half); if (kind >= 240 || Models[kind] is not { } mesh) continue;
+                    int rot = U8(ram, half + 2) & 3, record = U8(ram, half + 4) & 63;
+                    uint vertices = table + 12 + U32(ram, table + 12 + (uint)kind * 28);
                     uint light = RetainedScene.PackLight(record, rot, 0, 0, 0, false, false, false, false, false);
                     // Last face first, as the table walk draws one slot's faces
                     // (RetainedAssets.Build): the first face is drawn on top.
@@ -134,9 +197,9 @@ public static class RetainedMap
                         for (int j = 0; j < face.Corners; j++)
                         {
                             var v = store[face.Corner + j]; uint p = vertices + (uint)v.X * 8;
-                            int px = (short)m.ReadU16(p), py = (short)m.ReadU16(p + 2), pz = (short)m.ReadU16(p + 4);
+                            int px = (short)U16(ram, p), py = (short)U16(ram, p + 2), pz = (short)U16(ram, p + 4);
                             (px, pz) = rot switch { 1 => (pz, -px), 2 => (-px, -pz), 3 => (-pz, px), _ => (px, pz) };
-                            int wx = x * 2048 + 1024 + px, wy = -(m.ReadU8(half + 1) << 7) + py, wz = z * 2048 + 1024 + pz;
+                            int wx = x * 2048 + 1024 + px, wy = -(U8(ram, half + 1) << 7) + py, wz = z * 2048 + 1024 + pz;
                             v.X = wx; v.Y = wy; v.Z = wz;
                             v.Dqa = v.Dqb = v.Curve = 0; v.Light = light; v.Rgbc = 0x808080;
                             // recordLit returns a colour, whereas a model mesh carries
@@ -207,6 +270,8 @@ public static class RetainedMap
     public static bool Submit(PSMemory m, uint half, bool near, uint caller)
     {
         if (!GpuWorld.Capture) return false;
+        // Not built for this area yet (settling): the game's own packets, not an old map.
+        if (!Ready) return false;
         GpuWorld.Submissions++;
         uint index = half - Map;
         if (index >= 64000 || index % 5 != 0) { GpuWorld.Fallback(0x8003BB04, caller, "independent-map-cell"); return false; }

@@ -61,6 +61,8 @@ for (uint j = 0; j < 64000; j++) memory.WriteU8(0x801D4464 + j, 255);
 memory.WriteU32(0x801A929C, table);
 memory.WriteU8(0x801D4464, 0); memory.WriteU8(0x801D4465, 0);
 memory.WriteU8(0x801D4466, 0); memory.WriteU8(0x801D4468, 0);
+// One Update builds it: this map is whole at once, so there is nothing to settle.
+RetainedMap.SettleMs = 0;
 RetainedMap.Update(memory);
 Check(RetainedScene.Static.Length == 12, "bulk map GT4 skip/topology changed");
 Check(RetainedScene.Static.ToArray().All(v => (v.Light & RetainedScene.LightRecord) != 0
