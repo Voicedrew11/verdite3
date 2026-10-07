@@ -151,6 +151,7 @@ public static class MenuWorld
             _worldSeen = false;
             _session = false;
             _depth = 0;
+            Mouse.Suspend(false);
             if (_tests.Count > 0 && !_testClock.IsRunning && e.Name.StartsWith("fdat", StringComparison.Ordinal))
                 _testClock.Start();
         });
@@ -206,6 +207,7 @@ public static class MenuWorld
             // A session left some other way ends here.
             _session = false;
             _depth = 0;
+            Mouse.Suspend(false);
         }
         _worldFraction = FramePacing.TickFraction;
         _inStage15Frame = true;
@@ -228,6 +230,9 @@ public static class MenuWorld
     public static void AfterEnter(CpuContext c, IMemory m)
     {
         if (_depth++ > 0) return;
+
+        // A menu wants a pointer; the mouse gets it back when the menu closes.
+        Mouse.Suspend(true);
         bool can = Enabled && _hooked && _worldSeen && Stage15.CanDraw;
         _session = can && Layout(m);
         if (can && !_session) _refused++;
@@ -238,7 +243,11 @@ public static class MenuWorld
 
     public static void AfterLeave(CpuContext c, IMemory m)
     {
-        if (_depth > 0 && --_depth == 0) _session = false;
+        if (_depth > 0 && --_depth == 0)
+        {
+            _session = false;
+            Mouse.Suspend(false);
+        }
     }
 
     /// <summary>The shrunk buffers the enter leaves: <c>start .. start + 0x7400</c> and

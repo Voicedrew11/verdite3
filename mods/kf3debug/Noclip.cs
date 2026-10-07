@@ -167,10 +167,6 @@ internal static class Noclip
             if (value == _cinematic) return;
             _cinematic = value;
             _lookPrimed = false;
-            // A flythrough being filmed must not have anything fading in over
-            // the picture: the pointer-capture glyph here. (Precedent for a mod
-            // driving a host type: Warp calls the runtime's area code.)
-            Verdite.Core.MouseIndicator.Suppressed = value;
         }
     }
 
@@ -655,8 +651,5 @@ internal static class Noclip
         _vx = _vy = _vz = 0;
         _cinematic = false;
         _lookPrimed = false;
-        // The host outlives the mod: unloading mid-filming must not leave its
-        // capture glyph muted for the rest of the session.
-        Verdite.Core.MouseIndicator.Suppressed = false;
     }
 }

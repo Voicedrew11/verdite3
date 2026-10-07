@@ -137,8 +137,7 @@ internal sealed class DebugPanel : IPanel
                 ImGui.SetTooltip("Ease the flight and the turn instead of landing on the input: "
                                + "the velocity builds up and coasts down, and the view trails "
                                + "where you are looking. For filming a flythrough, not for "
-                               + "getting somewhere. The hotkey toasts and the mouse-capture "
-                               + "glyph stay silent while it is on.");
+                               + "getting somewhere. The hotkey toasts stay silent while it is on.");
 
             if (Noclip.Cinematic)
             {

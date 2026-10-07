@@ -99,7 +99,11 @@ yaw in one tick lands the heading in the same tick.
 
 The port's layout (`KF3_KEYS=fps`, the default for a fresh install): **W/S** walk,
 **A/D** strafe, the **arrows** walk and turn, **Space** attack, **F** examine,
-**Q** magic, **Tab** the in-game menu, **Enter** Start, **Right Shift** Select.
+**Q** magic, **Tab** or **Escape** the in-game menu, **Enter** Start, **Right Shift** Select.
+Escape is a second key on Circle, pressed inside `PAD_dr` by `KeyLayout` as the
+arrows are: the runtime's table holds one key a button. Only with this layout in
+place, and not for a press that closed a popup or while Escape is the mouse's
+capture key.
 **L2 and R2 are left unbound**, because pitch is the mouse's and only the mouse's.
 
 It is the port's *default*, not an override: `Configure` runs before
@@ -124,8 +128,53 @@ slow hand still turns.
 The mouse's buttons press pad buttons through `PadReadEvent`, attached only while
 the pointer is captured: **left Square (attack), right Triangle (magic), middle
 Cross (examine)** by default. The game's own config decides the verb, so
-remapping in-game moves the mouse with it. **Escape** captures and releases by
-default (`KF3_MOUSE_KEY`); a popup opening takes the pointer back.
+remapping in-game moves the mouse with it.
+
+### Capture behaves as a desktop game's
+
+Since 2026-10-07 there is no capture key by default (`KF3_MOUSE_KEY`, `None`):
+
+- **A click on the picture captures**: `OutputView.Hovered`, or the click's own
+  position inside `OutputView`'s rectangle, since just after a release ImGui can
+  still hold the locked pointer's virtual position. Not while a popup is open,
+  `PopupManager`'s or ImGui's own (a menu bar's dropdown), and not while a menu
+  holds the pointer. **Focus is not asked**: a click is focus. The buttons held
+  at that moment stay out of the pad word until they are let go, so the click is
+  not an attack.
+- **Losing focus releases** (fork `0101`, `HostWindow.FocusChanged`), and the
+  player comes back with a click.
+- **A popup opening releases**, as before.
+- **A menu releases and gives it back.** `MenuWorld`'s hooks on the framework's
+  enter `func_80027198` and leave `func_80027310` call `Mouse.Suspend`: the first
+  enter releases a captured pointer and holds it free (no click captures, no key
+  either), and the last leave, or the main loop's own stage-15 call after a
+  session left some other way, or an overlay load, captures it again if the
+  enter took it. Every full-screen menu runs on that framework, so the top menu,
+  its pages, the settings page, save and load all release; a sign or a line of
+  dialogue (`func_800441D4`) does not, since examine (the middle button)
+  dismisses it. The free pointer is for the menu when it takes the mouse.
+  **The look routine ends a suspension too** (`Mouse.TakeLook`): it runs only
+  while the player walks about, so a leave the game never made cannot keep the
+  pointer from the world.
+- **Escape opens the menu** (see the keyboard layout), so Escape gives the
+  pointer back the way a desktop game's does, and closing the menu captures it
+  again. Circle cancels in every chooser, so Escape also backs out.
+
+Measured 2026-10-07 with `KF3_AUTOSTART=new` and four Circles through the shell
+once the loop ran: the start menu (entered from `0x8001FA8C`) and the in-game
+menu twice (from `0x8001A7B0`) each suspended on enter and resumed on leave. A
+headless run has no click, so the release and recapture of a captured pointer
+are to be judged in play.
+
+**First play, the same day: the menu released the pointer and nothing captured
+it again**, not closing the menu and not a click. Unread: the first build's click
+and resume both required `HostWindow.Focused` and no popup, and the click also
+`OutputView.Hovered`. The second build drops focus from the click, adds the
+rectangle and the look routine's end of a suspension, and logs every refusal:
+`mouse: click not captured: <why>` for a click on the world, and `mouse: not
+captured again after the menu: <why>` when the leave could not capture. A
+suspension the look routine ended says so too. The pointer-capture glyph
+(`MouseIndicator`) is gone: a hidden cursor is the state.
 
 ## The mouse leads the tick
 

@@ -1,4 +1,8 @@
 using RecompOne.Runtime.Config;
+using RecompOne.Runtime.Events;
+using RecompOne.Runtime.Hardware;
+using RecompOne.Runtime.Host.Window;
+using Silk.NET.Input;
 using Rt = RecompOne.Runtime.Runtime;
 
 namespace Kf3;
@@ -119,13 +123,44 @@ public static class KeyLayout
         KeyLayoutApply.Configure(Layout, Version, Superseded, Announce, GetApplied, SetApplied);
 
     const string Announce = "WASD layout applied (W/S walk, A/D strafe, arrows walk and turn, " +
-                            "Space attack, F examine, Q magic, Tab menu). Input settings has both layouts.";
+                            "Space attack, F examine, Q magic, Tab or Escape menu). Input settings has both layouts.";
 
     /// <summary>
     /// Migrate an existing settings.json, once, and only if nothing in it was
     /// chosen by hand.
     /// </summary>
-    public static void Install() => KeyLayoutApply.Install();
+    public static void Install()
+    {
+        KeyLayoutApply.Install();
+        Event.AddListener<KeyboardEvent>(OnKey);
+        Event.AddListener(_escape);
+    }
+
+    // ---- Escape, the menu's second key ----------------------------------------
+    //
+    // A desktop game's Escape opens its menu and backs out of it, and Circle does
+    // both here: preset 3's menu button, and the cancel of every chooser. The
+    // runtime's table holds one key a button and Tab has Circle, so Escape presses
+    // it inside PAD_dr, as KeyLayoutApply's arrows press Up and Down. Only with
+    // this layout in place, and only for a press that began over the game: a popup
+    // closes on Escape, and the key still held after it closed is not a menu.
+
+    static bool _escHeld;
+
+    static void OnKey(KeyboardEvent e)
+    {
+        if (e.Key != (int)Key.Escape) return;
+        _escHeld = e.Pressed && !PopupManager.AnyOpen && !MouseLook.Game.TextEditing() &&
+                   Mouse.CaptureKey != Key.Escape;
+    }
+
+    static readonly Action<PadReadEvent> _escape = e =>
+    {
+        if (e.Port != 0 || !_escHeld || !IsApplied()) return;
+        // Active low, the two button bytes swapped from Controller's layout.
+        ushort bit = Controller.Circle;
+        e.Buttons &= (ushort)~(ushort)((bit >> 8) | (bit << 8));
+    };
 
     /// <summary>Write the layout and save it. What a settings button calls.</summary>
     public static void Apply() => KeyLayoutApply.Apply();

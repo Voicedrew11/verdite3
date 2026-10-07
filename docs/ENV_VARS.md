@@ -102,7 +102,7 @@ kept.
 | `KF3_MOUSE_INVERTY` | `1`: flip look-Y | off |
 | `KF3_MOUSE_LEAD` | `0`: show mouse motion when the next tick spends it, not the frame it happens | on |
 | `KF3_MOUSE_BUTTONS` | the pad button the left, right and middle mouse buttons press, e.g. `Square,Triangle,Cross` (attack, magic, examine) | Square,Triangle,Cross |
-| `KF3_MOUSE_KEY` | a Silk.NET key name: the key that captures and releases the pointer | Escape |
+| `KF3_MOUSE_KEY` | a Silk.NET key name, or `None`: a key that captures and releases the pointer besides the click | None |
 | `KF3_ANALOG` | `0`: hand the sticks back (the default layout wires the left stick to the D-pad, which in this game turns); on by default | on |
 | `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
 | `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |

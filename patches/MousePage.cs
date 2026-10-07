@@ -10,9 +10,9 @@ namespace Kf3;
 /// controls now live here.
 ///
 /// Two things are not settings. The **capture line** says whether the pointer is
-/// locked right now and which key changes that: mouse look does nothing until it
-/// is, so a player who switched it on and saw no change needs that sentence before
-/// a sensitivity. And the **buttons** are named as pad buttons rather than as
+/// locked right now and how that changes: mouse look does nothing until it is, so
+/// a player who switched it on and saw no change needs that sentence before a
+/// sensitivity. And the **buttons** are named as pad buttons rather than as
 /// actions, because the game's own control configuration decides what each does.
 /// MenuMouse is Verdite2's and has no equivalent here.
 ///
@@ -26,8 +26,8 @@ public static class MousePage
         Check("Mouse look", Mouse.OnKey, ref Mouse.Enabled,
               "Turns and looks with the mouse, through the same per-frame velocities the sticks " +
               "drive — so the game's own movement code, collision and pitch limit are untouched. " +
-              "The pointer has to be captured before anything happens, and the mouse buttons only " +
-              "reach the game while it is.");
+              "Click the game to capture the pointer; the mouse buttons only reach the game while " +
+              "it is captured, and the click that captures is not a press.");
         if (was && !Mouse.Enabled) Mouse.SetCaptured(false);
 
         ImGui.BeginDisabled(!Mouse.Enabled);
@@ -59,9 +59,11 @@ public static class MousePage
             Note("Mouse look is off; the pointer stays a pointer.");
         else
             Note(Mouse.Captured
-                ? $"The pointer is captured — press {Mouse.CaptureKey} to get it back."
-                : $"The pointer is free — press {Mouse.CaptureKey} with the game in front to capture it. " +
-                  "Opening any of these settings gives it back on its own.");
+                ? "The pointer is captured — Escape opens the game's menu, which gives it back, " +
+                  "and so does switching to another window."
+                : "The pointer is free — click the game to capture it. The game's menu, these " +
+                  "settings and switching to another window give it back; closing the game's menu " +
+                  "captures it again.");
     }
 
     /// <summary>
@@ -84,7 +86,7 @@ public static class MousePage
     static void CaptureKey()
     {
         var keys = Mouse.CaptureKeys;
-        var names = keys.Select(k => k.ToString()).ToArray();
+        var names = keys.Select(Mouse.KeyName).ToArray();
         int index = Array.IndexOf(keys, Mouse.CaptureKey);
         if (index < 0) index = 0;
 
@@ -94,9 +96,10 @@ public static class MousePage
             Mouse.CaptureKey = keys[index];
             Set(Mouse.CaptureKeyKey, (int)Mouse.CaptureKey);
         }
-        Tip("Locks the pointer to the window and hides it, and gives it back again. The list is " +
-            "deliberately short — a key the game's controls or the port's shortcuts already use " +
-            "would let someone lock themselves in.");
+        Tip("A key that locks the pointer and gives it back, besides the click. None by default: " +
+            "Escape opens the game's menu, which already gives it back. The list is deliberately " +
+            "short — a key the game's controls or the port's shortcuts already use would let " +
+            "someone lock themselves in. Escape here takes it from the menu.");
     }
 
     static void Check(string label, string key, ref bool value, string? tip = null)

@@ -45,7 +45,8 @@ public static class MouseLook
         DefaultMiddleButton: 1,         // Cross: examine, open, talk
         TextEditing: () => ImGui.GetCurrentContext() != nint.Zero && ImGui.GetIO().WantTextInput,
         Frames: () => FramePacing.Frames,
-        LogicHz: () => FramePacing.LogicHz);
+        LogicHz: () => FramePacing.LogicHz,
+        DefaultCaptureKey: Silk.NET.Input.Key.Unknown);   // a click captures; Escape opens the menu (KeyLayout)
 
     const uint Routine = 0x8002F5C0;
     const uint Pad = 0x801B265C;            // u16, the pad word stage 4 tests
