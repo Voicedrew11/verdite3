@@ -115,7 +115,17 @@ public static class RetainedMap
         if (stale == 0) return;
         if ((!Ready || stale > SettleChunks) &&
             System.Diagnostics.Stopwatch.GetElapsedTime(_changedAt, t0).TotalMilliseconds < SettleMs)
-        { _waited++; return; }
+        {
+            // A change this large over a built map is the next area's map, in RAM a
+            // frame or more before its module: the built one is the old area's, and
+            // drawn at the new walk's halves it left the crossing's frame black.
+            if (Ready && stale > SettleChunks)
+            {
+                Ready = false;
+                if (_probe) Console.WriteLine($"[KF3] mapprobe: {stale} chunk(s) changed over a built map; packets until it is rebuilt");
+            }
+            _waited++; return;
+        }
 
         // Each stale chunk on its own core: they read guest RAM and the meshes only,
         // and the game thread waits here, so nothing writes either meanwhile.
