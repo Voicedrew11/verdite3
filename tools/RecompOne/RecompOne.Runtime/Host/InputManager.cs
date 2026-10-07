@@ -20,6 +20,12 @@ internal static unsafe class InputManager
     private static GameController* _pad0;
     private static GameController* _pad1;
 
+    // The handle whose gyroscope this file last switched, and whether it is on.
+    // A handle comes back from GameControllerOpen with its sensors off, so a
+    // rescan forgets both (0102).
+    private static GameController* _gyroPad;
+    private static bool _gyroOn;
+
     private const int AxisThreshold = 8000;
     private const int StickThreshold = 16000;
     private const int LeftTrigger = 100;
@@ -183,6 +189,7 @@ internal static unsafe class InputManager
         PollGamepadEvents();
         PollKeyboard();
         PollGamepads();
+        PollGyro();
         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
     }
 
@@ -271,6 +278,9 @@ internal static unsafe class InputManager
 
     private static void CloseControllers()
     {
+        _gyroPad = null;
+        _gyroOn = false;
+
         if (_pad0 != null)
         {
             _sdl?.GameControllerClose(_pad0);
@@ -462,6 +472,40 @@ internal static unsafe class InputManager
         {
             Controller.LeftX2 = Controller.LeftY2 = Controller.RightX2 = Controller.RightY2 = 0x80;
         }
+    }
+
+    /// <summary>Pad 1's gyroscope into <see cref="Controller.GyroX"/> and its
+    /// siblings, switched on only while a port asks (<see cref="Controller.WantGyro"/>):
+    /// a pad streams its motion in a larger report once it is on (0102).</summary>
+    private static void PollGyro()
+    {
+        if (_pad0 != _gyroPad)
+        {
+            _gyroPad = _pad0;
+            _gyroOn = false;
+        }
+
+        var want = Controller.WantGyro && _sdl != null && _pad0 != null &&
+                   _sdl.GameControllerHasSensor(_pad0, SensorType.Gyro) == SdlBool.True;
+        if (want != _gyroOn && _sdl != null && _pad0 != null)
+        {
+            var ok = _sdl.GameControllerSetSensorEnabled(_pad0, SensorType.Gyro,
+                want ? SdlBool.True : SdlBool.False) == 0;
+            _gyroOn = want && ok;
+        }
+
+        Controller.Gyro = _gyroOn;
+        if (!_gyroOn)
+        {
+            Controller.GyroX = Controller.GyroY = Controller.GyroZ = 0f;
+            return;
+        }
+
+        var data = stackalloc float[3];
+        if (_sdl!.GameControllerGetSensorData(_pad0, SensorType.Gyro, data, 3) != 0) return;
+        Controller.GyroX = data[0];
+        Controller.GyroY = data[1];
+        Controller.GyroZ = data[2];
     }
 
     private static byte Axis(GameController* ctrl, int index)

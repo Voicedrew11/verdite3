@@ -1864,6 +1864,18 @@ Four files in the directory have no entry below:
   focus loss and captures again on a click over the picture. Input only — **no
   recompile**. See "Mouse look" in Verdite3's `docs/INPUT.md`.
 
+- `0102-pad-gyro.patch` — the runtime opened pad 1 through SDL but read only its
+  buttons and sticks, so a port had no way to the gyroscope a DualShock 4,
+  DualSense or Switch Pro carries. `Controller.WantGyro` is the port's request:
+  while it is true and the pad has one, `InputManager.PollGyro` switches the
+  sensor on (`GameControllerSetSensorEnabled`) and fills `Controller.GyroX`,
+  `GyroY` and `GyroZ` (radians a second, SDL's axes: x across the pad, y up, z
+  toward the player) with `Controller.Gyro` true; when it goes false the sensor is
+  switched off, since a pad streams a larger report while it is on. A rescan
+  forgets the state (`CloseControllers`), as a reopened handle starts with its
+  sensors off. Input only — **no recompile**. Verdite3's `ItemTurn` is the only
+  caller; see "Turning a picked-up item" in Verdite3's `docs/INPUT.md`.
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual

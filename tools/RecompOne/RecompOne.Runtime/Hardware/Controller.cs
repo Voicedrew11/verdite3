@@ -28,6 +28,18 @@ public static class Controller
     public static byte LeftX = 0x80;
     public static byte LeftY = 0x80;
 
+    /// <summary>Set by a port that reads the gyroscope; the host switches pad 1's
+    /// on while this is true and off again when it is not (0102).</summary>
+    public static bool WantGyro;
+
+    /// <summary>Whether pad 1's gyroscope is on and reporting.</summary>
+    public static bool Gyro;
+
+    /// <summary>Pad 1's angular rate in radians a second, on SDL's axes: X
+    /// across the pad (pitch), Y up out of it (yaw), Z toward the player (roll).
+    /// Zero while <see cref="Gyro"/> is false.</summary>
+    public static float GyroX, GyroY, GyroZ;
+
     public static ushort State2 = 0xFFFF;
     public static bool Connected2;
     public static byte RightX2 = 0x80;
