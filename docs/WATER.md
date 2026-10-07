@@ -186,6 +186,36 @@ nothing measurable, the waves about 0.1 ms, the mirror the rest. The profiler
 present. With the atlas, its hook was 1.77 ms of CPU a frame, 1.62 of it the
 backend's draw.
 
+## The HUD over the water
+
+Reported 2026-10-07: the text at the bottom of the screen (the message box an item
+or coin pickup shows) was garbled over the water and took its colour, only the
+outlines of the letters readable. Measured with a message queued by hand over
+area 5's pool (`view 74752 -13060 99328 700 1536 0`; the kind table `0x801AEAED +
+cursor`, the cursor `0x801AEAF6`, as `func_80041EEC` writes them) and the presented
+picture read back:
+
+- The box is `SPRT`s from tpage `0x1A` (4-bit at (640, 256)), CLUT `0x7804`, in
+  the main table's entry 1, drawn by `func_80041AD4` once subtracted (tpage `0x5A`)
+  and once added (`0x3A`): on the console that is a lighten, the text at full
+  strength over anything darker than it.
+- The runtime marked add/subtract texels as covers in the surface buffer, so murk
+  and reflection skipped them while the water round them was darkened: the letters
+  were the raw water's colour against the murk. With murk, waves and planar on,
+  the murked water read 15 (mean RGB) against 60 plain; the subtracted letters read
+  56, brighter than the water round them, and the added ones stood 30 over it
+  against 270 over plain water.
+- Fixed in the runtime, `0099` (`tools/RecompOne/docs/RECOMPONE_PATCHES.md`): the
+  picture is copied before the frame's first see-through 2D primitive, the passes
+  shade the copy where a HUD primitive lies, and what the primitive changed is
+  added back. After: the letters stand 261 over the murked water against 270 over
+  plain, and the copy costs about 0.05 ms a frame (342 → 336 fps uncapped at scale 6).
+
+The item pickup's own loop (`func_8005DB30`) queues the same box; it was not driven
+here (called by hand from the player stage, it waited without showing it). The
+full-screen message's two text quads (`MenuWorld.MessageFade`, added and
+subtracted) take the same path.
+
 ## Shell verbs and switches
 
 `murk [on|off|tilt X|distance X]`, `waves [on|off|swell|swellsize|ripple|ripplesize|shade|speed <value>]`,
@@ -206,6 +236,9 @@ With each switch on and off, in areas 0, 2, 5, 8, 10 and 13 (the most water):
   opening, the ripples breaking up the tiled pattern.
 - **The additive liquid** of areas 1 and 17 (and part of 2 and 6): what it is, and
   whether it should be water.
+- **The bottom message over the water** (`0099`): picking an item up with the camera
+  over a pool, the text readable and the water under and round it murked and
+  reflected alike.
 
 ## Open
 
