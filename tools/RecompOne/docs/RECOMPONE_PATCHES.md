@@ -54,6 +54,12 @@ Four files in the directory have no entry below:
   `GlCore.Flush`, `LibGpu.DrawOTag` and the two host waits. The frame boundary is
   the end of `PresentFrame`. One bool per site while off. **No recompile.** See
   "Profiling a frame" in `docs/DEVELOPMENT.md`.
+  Since amended (2026-10-06): a frame's JIT is the game thread's own
+  (`JitInfo.GetCompilationTime(currentThread: true)`, and the method count), not the
+  process's. With Verdite3's `Prejit` compiling on four threads, the process-wide
+  figure charged their work to whichever frame was running: `JIT 453.26 ms` inside a
+  208 ms frame, and the first 5 s windows' `JIT ms/s` was the pass, not the game.
+  Without a background compiler the two are the same.
 - `0046-frame-capture-trace.patch` — a diagnostic: `Hle/GpuTrace.cs`, an
   `IGpuTrace` sink that receives every GP0 word with its source address, every GP1
   write, the end of each command, and each `GlCore` batch submit with **why** it
