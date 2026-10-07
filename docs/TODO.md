@@ -20,6 +20,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - ~~**The port settings page in the game's menu** (PORT SETTINGS, under SYSTEM).~~ Built and measured
   2026-10-06 (`docs/SETTINGS.md`, "The page in the game's menu"). Judged by the
   user. Open: a hint for L1/R1.
+- **The stutters** (2026-10-06, "The stutters" in `DEVELOPMENT.md`): the map
+  rebuilding as the player walked is fixed and measured; **to judge in play**:
+  whether walking feels smooth. Open: port Verdite2's `Prejit` (the JIT spikes
+  left, 10-260 ms the first time code runs), and the whole-map rebuilds and
+  upload at an area's arrival.
 - **Complete retained GPU rendering** is the active implementation objective
   (`docs/GPU_RENDERER.md`). The reported floor gaps are gone (user report). The
   near map and near models are now retained, so no near packet draws in painter's

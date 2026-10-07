@@ -930,7 +930,10 @@ The same format as Verdite2's, at another address:
 - **The map**: 80x80 tiles of 10 bytes at `0x801D4464`. `+0` the lower half's
   mesh (240 or more is not drawn), `+1` its height (`y = -(h << 7)`), `+2` its
   rotation (bits 0-1), `+4` its light record (bits 0-5); `+5..+9` the upper half.
-  A tile is 2048 units.
+  A tile is 2048 units. **Bits 2-3 of `+2` change at run time**: a RAM diff
+  across a 12 s walk in `fdat17` (2026-10-06) found 22 bytes changed, every one of
+  them `+2` of a tile on the player's path (`0x8 -> 0x4 -> 0x0`, `0x0 -> 0x4`), and
+  none standing still. What they mean is not read; the rotation bits never moved.
 - **The light records**: 64 of `0x6C` bytes at `0x801AEEFC`: four 20-byte light
   matrices by rotation at `+0`, the colour matrix at `+0x50`, the back colour as
   three bytes at `+0x64` (shifted left 4), and the depth cue's pair at `+0x68`,

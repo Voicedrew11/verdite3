@@ -405,6 +405,49 @@ there about 0.94-1.01 ms a frame after. The largest left are `post GpuWorld.Begi
 0.25 ms, almost all `RetainedMap.Update` re-hashing the map to see whether it
 changed, and the retained world's draw inside DrawOTag, 0.17 ms.
 
+## The stutters (2026-10-06)
+
+Reported from play: "lots of little stutters", and a frame rate that does not feel
+good. Measured with the user's `interface.ini` (165 fps, render scale 6, Retained
+GPU, AO, planar, murk, waves, render distance 16, neighbour blend) on an RX 9070 XT,
+`KF3_PROFILE=1 KF3_PROFILE_SPIKE=8`. First a warp tour of all 28 areas
+(`KF3_SCENE_DRIVER=1`, four headings each), then a 70 s walk in `fdat17`.
+
+**The frame rate itself holds.** Every area held 155-165 fps against the cap of 165;
+settled work is 1-3 ms a frame and the GPU 1.3-2.7 ms a present. What was felt is the
+spikes. They come from three causes:
+
+1. **The retained map rebuilt itself as the player walked.** `RetainedMap.Update`
+   hashed each tile's whole 10-byte record, and the game rewrites bits 2-3 of `+2`
+   on the tiles round the player ("The map" in `GAME_INTERNALS.md`). One or two
+   chunks then went stale, and a stale chunk re-concatenates the whole map,
+   re-sorts it (`RetainedScene.SetStatic`, 132,393 vertices in `fdat17`) and
+   re-uploads it whole (`BufferData`, in the next frame's `DrawOTag`): a 10-25 ms
+   frame pair **50 times in 70 s of walking** (`SetStatic` alone 3-34 ms). In area 16
+   creatures did the same with the player standing still. The hash now takes only
+   what `BuildChunk` reads (`+0`, `+1`, `+2 & 3`, `+4 & 63` of each half). After it:
+   the same walk rebuilt once, at the load; the settled 5 s windows read 165.0 fps
+   with a worst frame of 6.7-7.7 ms, against 10-19 ms before; areas 16, 22, 9 and 25
+   rebuilt only on arrival.
+2. **The JIT.** Verdite2's `Prejit` (compile every recompiled function, patch and
+   runtime method on a background thread from the first overlay load; "The first
+   frame of an area was the JIT" in Verdite2's `DEVELOPMENT.md`) was never ported.
+   With `TieredCompilationQuickJit` off, every function compiles fully optimised on
+   its first call, on the game thread: 260 ms at the first frames of play (stages 3-5
+   and `Analog.ReplaceMove`), 50-170 ms the first time a creature acts (stages 5, 6,
+   8), 10-20 ms for a first pose. Every spike left on the walk after fix 1 was this.
+   **Not done.** The overlay names Verdite2's ranks by (`fdat*`, `game`, `main`,
+   `open`, `end`) are this game's too.
+3. **An area's arrival rebuilds the whole map two to four times** as its tables
+   fill in (100 chunks each: 20-115 ms of `post GpuWorld.Begin`, then 7-24 ms of
+   upload), plus the JIT of whatever the area runs first. **Not done.** The
+   candidates are uploading only changed chunks instead of the whole map,
+   dropping the `List` concatenation, and not rebuilding until the area's tables
+   stop changing.
+
+GC is not a cause: 0-1.5 ms/s, with gen-0 pauses under 1 ms. The one 13.7 ms GC
+pause was inside the profiler's own reporting.
+
 ## Retained scene verification (2026-10-04)
 
 Build the game, then snapshot its entire output into an isolated temporary

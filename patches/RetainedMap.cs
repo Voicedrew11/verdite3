@@ -73,9 +73,17 @@ public static class RetainedMap
                 for (int x = x0; x < x0 + 8; x++)
                 {
                     uint tile = Map + (uint)(z * 80 + x) * 10;
-                    hash = (hash ^ RetainedAssets.Hash(m.Ram, tile, 10)) * 1099511628211;
                     for (uint half = 0; half <= 5; half += 5)
-                    { byte kind = m.ReadU8(tile + half); if (kind < 240) hash = (hash ^ ModelSignatures[kind]) * 1099511628211; }
+                    {
+                        // Only what BuildChunk reads: the game rewrites bits 2-3 of +2
+                        // on the tiles round the player as they walk, and hashing the
+                        // whole record re-sorted and re-uploaded the map each time.
+                        byte kind = m.ReadU8(tile + half);
+                        uint read = kind | (uint)m.ReadU8(tile + half + 1) << 8 | (uint)(m.ReadU8(tile + half + 2) & 3) << 16
+                            | (uint)(m.ReadU8(tile + half + 4) & 63) << 18;
+                        hash = (hash ^ read) * 1099511628211;
+                        if (kind < 240) hash = (hash ^ ModelSignatures[kind]) * 1099511628211;
+                    }
                 }
             if (Chunks[chunk] != null && Signatures[chunk] == hash) continue;
             Chunks[chunk] = BuildChunk(m, table, x0, z0); Signatures[chunk] = hash;
