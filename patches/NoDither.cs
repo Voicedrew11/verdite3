@@ -13,9 +13,9 @@ namespace Kf3;
 /// <c>Gpu.SuppressDither</c> (0094) masks, so the game's memory is never touched.
 /// It used to clear the bit in RAM around each call, which walked the whole
 /// ordering table a second time before every DrawOTag (0.05 ms a frame, measured
-/// 2026-10-06); the walk now runs only for the probe. Off until judged.
+/// 2026-10-06); the walk now runs only for the probe. On by default.
 ///
-///     KF3_NODITHER=1         no dither; 0 or unset keeps the crosshatch
+///     KF3_NODITHER=0         keep the crosshatch; 1 or unset is no dither
 ///     KF3_NODITHER_PROBE=1   once every 2 s: draw envs and table words that asked
 ///                            for dither, and GPUSTAT bit 9 after each frame
 ///
@@ -56,7 +56,7 @@ public static class NoDither
 
     public static void Configure(string? on, string? probe)
     {
-        if (!string.IsNullOrWhiteSpace(on)) Enabled = on.Trim() is not ("0" or "off");
+        Enabled = string.IsNullOrWhiteSpace(on) || on.Trim() is not ("0" or "off");
         ProbeOn = probe?.Trim() == "1";
     }
 

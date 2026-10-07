@@ -106,7 +106,8 @@ Kf3.SceneDriver.Install();
 Kf3.PrimBufferProbe.Configure(Environment.GetEnvironmentVariable("KF3_PRIMBUF_PROBE"));
 Kf3.PrimBufferProbe.Install();
 
-// Frame pacing: off unless KF3_FPS is set. See "Frame pacing" in docs/DEVELOPMENT.md.
+// Frame pacing: on at 144 fps unless KF3_FPS says otherwise (KF3_FPS=off is uncapped;
+// Settings ▸ Testing turns it off). See "Frame pacing" in docs/DEVELOPMENT.md.
 Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
                           Environment.GetEnvironmentVariable("KF3_TICKRATE"),
                           Environment.GetEnvironmentVariable("KF3_FPS_PROBE"));
@@ -237,10 +238,12 @@ Kf3.MapCoverage.Install();
 
 // Widescreen: off (4:3) until judged, like the rest of the picture. The runtime
 // renders the margin; this sets the aspect, clears the margin latch on an
-// executable load and stretches the game's full-screen tints.
+// executable load, stretches the game's full-screen tints and, when chosen, moves
+// the HUD out to the new edges.
 Kf3.Widescreen.Configure(Environment.GetEnvironmentVariable("KF3_WIDESCREEN"),
                          Environment.GetEnvironmentVariable("KF3_WIDESCREEN_PROBE"),
-                         Environment.GetEnvironmentVariable("KF3_WIDESCREEN_EFFECTS"));
+                         Environment.GetEnvironmentVariable("KF3_WIDESCREEN_EFFECTS"),
+                         Environment.GetEnvironmentVariable("KF3_WIDESCREEN_HUD"));
 Kf3.Widescreen.Install();
 // The world drawn live behind menus and full-screen messages (signs, dialogue)
 // instead of the frozen 320-wide copy; KF3_MENUWORLD=0 compares. See "Menus and

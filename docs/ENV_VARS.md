@@ -25,7 +25,7 @@ kept.
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
 | `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |
 | `KF3_AUTORELOAD_DELAY` | seconds of the death sequence before the reload (0-10); not a setting | 2.5 |
-| `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is no pacing | unset |
+| `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is the kept rate (`kf3.fps`), else 144. Pacing is turned off only in Settings ▸ Testing (kept as `kf3.pacing=0`) | 144 (2026-10-06) |
 | `KF3_TICKRATE` | the world's rate under pacing (5-60 Hz); changes gameplay speed. Testing ▸ Frame pacing ▸ Tick rate, kept as `kf3.tickrate`; the variable wins at boot | 15 |
 | `KF3_FPS_PROBE` | `1`: a pacing line a second | off |
 | `KF3_PACING_NOBOUNDARY` | `1`: leave the frame boundary unhooked, to test the watchdog | off |
@@ -61,25 +61,26 @@ kept.
 | `KF3_SMOOTH_PROBE` | `1`: a line a second: frames drawn and cameras carried, tick samples, snaps and placements carried across; models carried, snaps, clip frames carried, wraps, turns, re-seeks and backward steps; mouse-led frames a second and the mean \|applied − asked\| a tick | off |
 | `KF3_SPRITEANIM` | `0`: let the billboard cels step on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints walks stepped and held) | held |
 | `KF3_MSGBOX` | `0`: step the bottom message box (`func_80041F9C`) on every drawn frame under pacing (held to the tick by default; `KF3_FPS_PROBE=1` prints calls stepped and held while it is shown) | held |
-| `KF3_TEXSCROLL` | `0`: run the scrolling textures (`func_800351FC`) on every drawn frame under pacing; `carry`: also redraw them each frame at the phase interpolated between ticks (not judged). `KF3_FPS_PROBE=1` prints calls, runs and carried uploads | held |
-| `KF3_TRUECOLOR` | `1`: 24-bit shading on the GL backend (`GteDepth.TrueColor`, fork `0021`); Testing ▸ Picture ▸ Shading ▸ Smooth | off (not judged) |
-| `KF3_NODITHER` | `1`: clear the GPU's dither bit in PutDrawEnv's `dtd` and in the table's E1 words, put back after; Shading ▸ None | off (not judged) |
+| `KF3_TEXSCROLL` | `0`: run the scrolling textures (`func_800351FC`) on every drawn frame under pacing; `hold`: run them on the first stage 15 of a tick only; `carry`: also redraw them each frame at the phase interpolated between ticks. `KF3_FPS_PROBE=1` prints calls, runs and carried uploads | carry (2026-10-06) |
+| `KF3_TRUECOLOR` | `0`: the console's 15-bit, not 24-bit shading on the GL backend (`GteDepth.TrueColor`, fork `0021`); Testing ▸ Picture ▸ Shading ▸ Smooth | on (2026-10-06) |
+| `KF3_NODITHER` | `0`: keep the dither, not clear the GPU's dither bit in PutDrawEnv's `dtd` and in the table's E1 words; Shading ▸ Dither | on (2026-10-06) |
 | `KF3_NODITHER_PROBE` | `1`: every 2 s, the draw envs and table E1 words that asked for dither, and GPUSTAT bit 9 after each frame | off |
-| `KF3_PERSPECTIVE` | `1`: perspective-correct textures through the address map (`GteDepth.Enabled`, fork `0009`/`0012`) | off (not judged) |
-| `KF3_SUBPIXEL` | `1`: sub-pixel vertices through the address map (`GteDepth.Subpixel`, fork `0010`) | off (not judged) |
+| `KF3_PERSPECTIVE` | `0`: the console's affine textures, not perspective-correct through the address map (`GteDepth.Enabled`, fork `0009`/`0012`) | on (2026-10-06) |
+| `KF3_SUBPIXEL` | `0`: whole-pixel vertices, not sub-pixel through the address map (`GteDepth.Subpixel`, fork `0010`) | on (2026-10-06) |
 | `KF3_SUBPIXEL_CULL` | `0`: decide facing on whole pixels under sub-pixel, as the game does (the fractional test is `0052`) | fractional |
 | `KF3_PERSPECTIVE_PROBE`, `KF3_SUBPIXEL_PROBE` | `1`: every 2 s, the address map's roots, propagations, hits and misses; sub-pixel adds the fractions carried and the facing test's changes | off |
 | `KF3_MAPCOVERAGE` | `1`: every 2 s, packets and corners the map answered for, by the routine that wrote them | off |
-| `KF3_WIDESCREEN` | the presented aspect: `4:3`/`off` (the untouched path), `16:9`, `16:10`, `21:9`, or any `W:H` or decimal ratio; Testing ▸ Picture ▸ Aspect (kept as `kf3.widescreen.aspect`) | 4:3 (off, not judged) |
-| `KF3_WIDESCREEN_PROBE` | `1`: every 2 s, the share of primitives reaching the margin and full-screen tints stretched; `2`: also lists every wide primitive once per shape | off |
+| `KF3_WIDESCREEN` | the presented aspect: `4:3`/`off` (the untouched path), `16:9`, `16:10`, `21:9`, or any `W:H` or decimal ratio; Testing ▸ Picture ▸ Aspect (kept as `kf3.widescreen.aspect`) | 16:9 (2026-10-06) |
+| `KF3_WIDESCREEN_PROBE` | `1`: every 2 s, the share of primitives reaching the margin and full-screen tints stretched; `2`: also lists every wide primitive once per shape. Both also print each distinct set of drawn HUD records' positions, per drawer | off |
 | `KF3_MENUWORLD` | `0`: a menu pastes the frozen 320-wide frame and a sign or line of dialogue its 1x copy, as the game does; a comparison. Testing ▸ Picture, kept as `kf3.menuworld`; the variable wins | on |
 | `KF3_MESSAGE_FADE` | `1`-`4`: vblanks each step of a sign's or message's fade is shown for, live behind it; 1 is the game's own (10 steps in, 7 out, at 60 a second). Gameplay ▸ Message fade length, kept as `kf3.messagefade`; the variable wins | 1 |
 | `KF3_MENUWORLD_PROBE` | `1`: a line a second while passes run (passes, peak primitive bytes, overflows, sessions refused, message fades live and left to the game) and a line per message fade with its steps and time, and each menu's caller as it opens; `2` also compares the first three passes with the last main-loop frame's packets, padding masked | off |
 | `KF3_SETTINGSPAGE_PROBE` | `1`: a line for each open of the port settings page (PORT SETTINGS, under SYSTEM in the in-game menu), page turned, value stepped, save and discard; a refused step is logged without it. `docs/SETTINGS.md` | off |
 | `KF3_MENUWORLD_TEST` | `file:entry,…`: open those full-screen messages (`func_800441D4`) from the player's tick, 10 s after the first area load and 5 s after each closes; dismiss with `KF3_AUTOPAD` (e.g. `6:305` and `17:Triangle:300`) | none |
 | `KF3_WIDESCREEN_EFFECTS` | `0`: leave the death fade and the damage flash 320 wide, to compare against the default (they are stretched across the margin whenever an aspect is chosen) | on |
+| `KF3_WIDESCREEN_HUD` | `1`: move the compass and the HP/MP panel out to the new edges by the margin, `0`: leave them in their 4:3 box; over DISPLAY ▸ HUD AT EDGES, kept as `kf3.widescreen.hud`. Nothing at 4:3 | off (not judged) |
 | `KF3_PRESENT_PROBE` | `1` or `2`: every 2 s, what each present picked -- wide, plain, VRAM fallback; the wide setting is `GpuHle.PresentProbe` | off |
-| `KF3_ZBUFFER` | `1`: per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | off (not judged) |
+| `KF3_ZBUFFER` | `0`: the ordering table alone, not per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | on (2026-10-06) |
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |
 | `KF3_NEARPATH` | the near path (`func_8003AB04`, `func_800366A8`, libgte's division) in C#: `1` (or unset), `0` recompiled, `verify` compares it | on |
@@ -105,7 +106,7 @@ kept.
 | `KF3_ANALOG` | `0`: hand the sticks back (the default layout wires the left stick to the D-pad, which in this game turns); on by default | on |
 | `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
 | `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |
-| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.0 |
+| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.25, 1.25, 1.0 (2026-10-06) |
 | `KF3_ANALOG_DEADZONE`, `KF3_ANALOG_MOVEDEADZONE` | radial deadzones, look (and move unless the second is set) and move | 0.15 |
 | `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
 | `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look ramp: on, the peak multiplier and the seconds to reach it | 1 / 2.2 / 0.5 |
@@ -171,26 +172,30 @@ See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
 
 See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolved.
 
-- `KF3_PERPIXEL=1`: per-pixel retained lighting; unset uses saved choice, default off.
-- `KF3_FOG_DEPTH=0`: compare corner fog with fog from pixel depth (default on).
+- `KF3_PERPIXEL=0`: no per-pixel retained lighting; unset uses saved choice, default on (2026-10-06).
+- `KF3_FOG=corners|depth|distance` (or `0|1|2`): the fog worked out at a face's corners
+  as the game does, by each pixel's view depth, or by each pixel's distance from the eye,
+  which holds still as the view turns (runtime `0100`); unset uses the saved choice
+  (`kf3.fog`, Video ▸ World enhancements ▸ *Fog*), default `depth`. See "Radial fog" in
+  `WIDESCREEN.md`. `KF3_FOG_DEPTH=0` (the old switch) still means `corners`.
 - `KF3_AO=1`, `KF3_AO_QUALITY=low|medium|high`: shared SSAO and its resolution/
-  sample quality (off, medium by default).
+  sample quality (on, medium by default, 2026-10-06).
 - `KF3_AO_NORMALS=0`: compare depth-reconstructed normals with geometry normals.
-- `KF3_ANISO=1..16`, `KF3_MIPMAPS=1`: decoded texture filtering and mip atlas.
+- `KF3_ANISO=1..16`, `KF3_MIPMAPS=0|1`: decoded texture filtering and mip atlas (16 and on by default, 2026-10-06).
 - `KF3_ENHANCEDIST=tiles`: enhanced shading/filtering range; 0 everywhere.
 - `KF3_NEIGHBOUR_BLEND=1`: blend each map pixel's light and fog with the light records
   of the tiles around it, so they no longer step at a tile edge (runtime `0088`); unset
   uses the saved choice (`kf3.neighbourblend`), default on (2026-10-06).
 - `KF3_RENDERDIST=<tiles>`: the retained map and models drawn out to that many tiles
   (up to 30; 0 or below the game's own edge is the game's reach); unset uses the saved
-  choice (`kf3.renderdistance`), default off until judged. See "Render distance" in
+  choice (`kf3.renderdistance`), default 16 (2026-10-06). See "Render distance" in
   `WIDESCREEN.md`.
 - `KF3_RENDERDIST_MODELS=0`: the models kept at the game's reach while the map is drawn
   past it (the comparison); creatures, objects, effects and billboards are drawn out to
   the render distance otherwise, with the C# model walk.
 - `KF3_RENDERDIST_FADE=<tiles>`: the map and models faded out over that band before
   the edge of what is drawn (0 none); unset uses `kf3.renderdistance.fade`, default
-  off until judged.
+  3 (2026-10-06).
 - `KF3_RENDERDIST_PROBE=1`: a line every five seconds (halves added, the edge, the
   deepest box, the walk's halves outside the predicted reach, which must be 0; models
   past the reach, those refused for a texture page not loaded, creatures faded) and
@@ -198,7 +203,8 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
   and the `rd*` members of `gpu`.
 - `KF3_PLANAR=1`, `KF3_MURK=1`, `KF3_WAVES=1`: the water (`docs/WATER.md`): planar
   reflections from a mirrored camera, murky water, the swell and ripples. Video ▸
-  World enhancements, kept as `kf3.planar`, `kf3.murk`, `kf3.waves`; off by default.
+  World enhancements, kept as `kf3.planar`, `kf3.murk`, `kf3.waves`; `0` turns one off,
+  on by default (2026-10-06).
   Retained renderer only.
 - `KF3_PLANAR_TOLERANCE=48`, `KF3_PLANAR_RIPPLE=4`, `KF3_PLANAR_BIAS=8`: how far off the
   plane a surface takes the mirror, how far the water's texture bends it, and how far

@@ -1,6 +1,10 @@
+using System.Reflection;
 using RecompOne.Runtime;
+using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Hle;
+using RecompOne.Runtime.Memory;
+using RecompOne.Runtime.Modding;
 
 namespace Kf3;
 
@@ -9,13 +13,14 @@ namespace Kf3;
 /// disc. The runtime already does the work: a display buffer is drawn into a render
 /// target carrying a margin of extra columns either side (<c>GpuHle.WideMargin</c>),
 /// only the original columns go back to VRAM, and the widened target is presented
-/// at <c>Display.WideAspect</c>. This file is the switch, the latch clear and the
-/// full-screen tint stretch.
+/// at <c>Display.WideAspect</c>. This file is the switch, the latch clear, the
+/// full-screen tint stretch and the HUD at the screen edges.
 ///
 ///     KF3_WIDESCREEN=16:9       aspect for the run; "1.777" and "off" also parse
 ///     KF3_WIDESCREEN_PROBE=1    the margin census, on the console
 ///     KF3_WIDESCREEN_PROBE=2    the census plus every wide primitive, once per shape
 ///     KF3_WIDESCREEN_EFFECTS=0  leave the death fade and the damage flash 320 wide
+///     KF3_WIDESCREEN_HUD=1      move the HUD out to the new edges (0 leaves it), over the kept choice
 ///
 /// The runtime's implement is not a stretch: the projection is untouched, so pixels
 /// keep their aspect and the extra picture is only there where the game submits
@@ -25,10 +30,14 @@ namespace Kf3;
 /// rectangle exactly; keyed on that shape rather than a drawer address. On
 /// whenever an aspect is chosen; <c>KF3_WIDESCREEN_EFFECTS=0</c> is the comparison.
 ///
-/// The HUD anchoring and the DrawOTag replacement are NOT ported. Verdite2 ships
-/// the anchoring off, so the HUD keeps its authored 4:3 box here, and the
-/// replacement exists only to feed it the ordering-table position -- with no
-/// anchoring there is nothing to walk the table for.
+/// <see cref="AnchorHud"/> is Verdite2's HUD at the screen edges, by the same means:
+/// the records each HUD drawer reads have their screen X moved out by the margin
+/// for the call and put back after it, so nothing downstream is told and a menu's
+/// primitives are never touched. Here there are two drawers of the HUD's, not one:
+/// the compass model (<c>func_8003C35C</c>, X at <c>+0x10</c>) and the gauge and
+/// digit sprites (<c>func_80041E68</c>, X at <c>+6</c>). The bottom message box's
+/// drawer, <c>func_80041D9C</c>, is left alone: the box is centred. Verdite2's
+/// DrawOTag replacement is not ported; it fed only the older, guessed anchoring.
 ///
 /// It is a setting, under Testing ▸ Picture. The saved aspect is read on
 /// <see cref="RuntimeReadyEvent"/> rather than in <see cref="Configure"/>, since
@@ -41,6 +50,10 @@ public static class Widescreen
     /// <summary>Where the choice is kept between runs. Named as Verdite2 named it,
     /// to follow the port's convention.</summary>
     public const string AspectKey = "kf3.widescreen.aspect";
+
+    /// <summary>Whether the HUD is moved out to the new edges; Verdite2's key, under
+    /// this port's prefix.</summary>
+    public const string HudKey = "kf3.widescreen.hud";
 
     /// <summary>The game's own aspect, and the one that means "off".</summary>
     public const float FourThree = 4f / 3f;
@@ -59,14 +72,24 @@ public static class Widescreen
         ("21:9",      64f / 27f),
     ];
 
-    /// <summary>The target aspect. 4:3 is off, and in this project a picture feature
-    /// ships off until a person has judged it, so 4:3 is the default.</summary>
+    /// <summary>What a player who never chose gets: 16:9, the user's choice, 2026-10-06.</summary>
+    public const float DefaultAspect = 16f / 9f;
+
+    /// <summary>The target aspect. 4:3 is off.</summary>
     public static float Aspect { get; private set; } = FourThree;
 
     /// <summary>Widen the game's full-screen tints -- the death fade, the damage
     /// flash -- across the margin. On whenever an aspect is chosen;
     /// <c>KF3_WIDESCREEN_EFFECTS=0</c> is the comparison.</summary>
     public static bool StretchEffects { get; private set; } = true;
+
+    /// <summary>Move the compass and the gauges out to the new edges. Off by default:
+    /// everything else widescreen does presents what the game submitted, and this
+    /// alone moves something the game placed. Costs nothing at 4:3.</summary>
+    public static bool AnchorHud { get; private set; }
+
+    /// <summary>Takes effect on the next frame the HUD is drawn.</summary>
+    public static void SetAnchorHud(bool on) => AnchorHud = on;
 
     /// <summary>Whether the aspect is actually widening anything.</summary>
     public static bool On => Display.WideAspect > 0f;
@@ -86,6 +109,9 @@ public static class Widescreen
 
     /// <summary>KF3_WIDESCREEN_EFFECTS: the comparison, since there is no check box.</summary>
     static bool? _forcedEffects;
+
+    /// <summary>KF3_WIDESCREEN_HUD: the anchoring for the run, over the kept choice.</summary>
+    static bool? _forcedHud;
 
     /// <summary>KF3_WIDESCREEN_PROBE=2: also list the wide primitives themselves.</summary>
     static bool _listWide;
@@ -107,7 +133,16 @@ public static class Widescreen
 
     static double Now => Environment.TickCount64 / 1000.0;
 
-    public static void Configure(string? aspect, string? probe, string? effects = null)
+    // HookManager attributes hooks to a mod; this is in-project, so it names itself.
+    static readonly ModInfo _self = new()
+    {
+        Id = "kf3.widescreen",
+        Name = "Widescreen",
+        Version = "1.0",
+        Description = "Renders a margin either side of the game's 320-pixel screen.",
+    };
+
+    public static void Configure(string? aspect, string? probe, string? effects = null, string? hud = null)
     {
         if (Parse(aspect) is { } ratio) _forced = ratio;
 
@@ -122,6 +157,9 @@ public static class Widescreen
 
         if (!string.IsNullOrWhiteSpace(effects))
             _forcedEffects = !effects.Equals("0", StringComparison.Ordinal);
+
+        if (!string.IsNullOrWhiteSpace(hud))
+            _forcedHud = !hud.Equals("0", StringComparison.Ordinal);
     }
 
     /// <summary>Apply the aspect and attach the overlay listener. The saved setting
@@ -137,17 +175,22 @@ public static class Widescreen
 
         Event.AddListener<RuntimeReadyEvent>(_ =>
         {
-            Aspect = _forced ?? RecompOne.Runtime.Runtime.View.GetFloat(AspectKey, FourThree);
+            Aspect = _forced ?? RecompOne.Runtime.Runtime.View.GetFloat(AspectKey, DefaultAspect);
 
             // The comparison, not a saved key: a player who ticked the old option off
             // would otherwise be stuck with it with nothing left to put it back.
             StretchEffects = _forcedEffects ?? true;
+            AnchorHud = _forcedHud ?? RecompOne.Runtime.Runtime.View.GetInt(HudKey, 0) != 0;
             Apply();
             Console.WriteLine(On
                 ? $"[KF3] widescreen: {Aspect:0.###}:1, margin {Margin} px a side, " +
+                  $"HUD {(AnchorHud ? "at the edges" : "in its 4:3 box")}, " +
                   $"screen tints {(StretchEffects ? "stretched across it" : "left 320 wide")}"
                 : "[KF3] widescreen: off (4:3)");
         });
+
+        // Attached at every aspect: the aspect and the anchoring change mid-session.
+        HookAttach.OnOverlayLoad("widescreen HUD", AttachHud);
 
         // Attached whether or not an aspect is set: the aspect is a setting that can
         // be changed mid-session, and the latch clear must run under every overlay.
@@ -318,6 +361,116 @@ public static class Widescreen
         // latch its buffer and the present would flap between widths again.
         GpuHle.PortWidenedPrim = true;
         _stretched++;
+    }
+
+    // ---- the HUD, moved by its records -----------------------------------------
+
+    /// <summary>One table of HUD records and the routine that draws it: records of
+    /// <paramref name="Stride"/> bytes from <paramref name="Table"/> until a first byte
+    /// of 0xFF, a first byte of 0 hidden, the screen X a halfword at
+    /// <paramref name="X"/> and, for a sprite, its width a byte at <paramref name="W"/>.</summary>
+    sealed record HudTable(string Name, uint Drawer, uint Table, uint Stride, uint X, uint W, int Max)
+    {
+        public readonly short[] Saved = new short[Max];
+        public int Moved;
+        public long Records, Calls;
+        public readonly HashSet<string> Seen = [];
+    }
+
+    static readonly HudTable[] HudTables =
+    [
+        // The compass, a model placed by its translation; the transform has no
+        // divide, so the translation's X is where it lands. Width 0: a model's X is
+        // its middle.
+        new("models", 0x8003C35C, 0x80081C20, 0x24, 0x10, 0, 4),
+        // The gauges and digits, SPRT from the records' X, Y and width.
+        new("sprites", 0x80041E68, 0x800819B4, 0x14, 0x06, 0x04, 32),
+    ];
+
+    /// <summary>The middle of the 320-pixel screen: a record left of it belongs to
+    /// the left edge.</summary>
+    const int ScreenCentre = 160;
+
+    static bool _hudQueued;
+
+    static bool AttachHud()
+    {
+        SymbolRegistry.Build();
+        var targets = HudTables.Select(t => SymbolRegistry.Resolve("game", null, t.Drawer)).ToArray();
+        if (targets.Any(t => t == null)) return false;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Static;
+        if (!_hudQueued)
+        {
+            for (int i = 0; i < HudTables.Length; i++)
+            {
+                HookManager.AddPre(_self, targets[i]!, typeof(Widescreen).GetMethod(i == 0 ? nameof(BeforeModels) : nameof(BeforeSprites), flags)!);
+                HookManager.AddPost(_self, targets[i]!, typeof(Widescreen).GetMethod(i == 0 ? nameof(AfterModels) : nameof(AfterSprites), flags)!);
+            }
+            _hudQueued = true;
+        }
+        HookManager.Commit();
+        return targets.All(HookAttach.Installed);
+    }
+
+    public static void BeforeModels(CpuContext c, IMemory m) => MoveOut(HudTables[0], m);
+    public static void AfterModels(CpuContext c, IMemory m) => PutBack(HudTables[0], m);
+    public static void BeforeSprites(CpuContext c, IMemory m) => MoveOut(HudTables[1], m);
+    public static void AfterSprites(CpuContext c, IMemory m) => PutBack(HudTables[1], m);
+
+    /// <summary>Move every record out to its edge for the drawer: left of the screen's
+    /// middle by the margin to the left, right of it to the right. Hidden records
+    /// are moved too, so the put-back needs no record of which were drawn.</summary>
+    static void MoveOut(HudTable t, IMemory m)
+    {
+        t.Moved = 0;
+        if (_measure) ProbeHud(t, m);
+        if (!(AnchorHud && On)) return;
+        int margin = Margin;
+        if (margin <= 0) return;
+
+        for (int i = 0; i < t.Max; i++)
+        {
+            uint rec = t.Table + (uint)i * t.Stride;
+            if (m.ReadU8(rec) == 0xFF) break;
+            short x = (short)m.ReadU16(rec + t.X);
+            int middle = x + (t.W != 0 ? m.ReadU8(rec + t.W) / 2 : 0);
+            t.Saved[i] = x;
+            m.WriteU16(rec + t.X, (ushort)(x + (middle < ScreenCentre ? -margin : margin)));
+            t.Moved = i + 1;
+        }
+        t.Records += t.Moved;
+        t.Calls++;
+    }
+
+    /// <summary>Put every record's X back the moment the drawer has drawn it.</summary>
+    static void PutBack(HudTable t, IMemory m)
+    {
+        for (int i = 0; i < t.Moved; i++)
+            m.WriteU16(t.Table + (uint)i * t.Stride + t.X, (ushort)t.Saved[i]);
+        t.Moved = 0;
+    }
+
+    /// <summary>KF3_WIDESCREEN_PROBE: each distinct set of drawn records' positions
+    /// (index@x,y), once per table, up to 24 sets. Not their widths: a gauge's fill
+    /// changes width as it moves.</summary>
+    static void ProbeHud(HudTable t, IMemory m)
+    {
+        var line = new System.Text.StringBuilder();
+        for (int i = 0; i < t.Max; i++)
+        {
+            uint rec = t.Table + (uint)i * t.Stride;
+            byte on = m.ReadU8(rec);
+            if (on == 0xFF) break;
+            if (on == 0) continue;
+            line.Append($" {i}@{(short)m.ReadU16(rec + t.X)},{(short)m.ReadU16(rec + t.X + 2)}");
+        }
+        string s = line.ToString();
+        if (t.Seen.Count < 24 && t.Seen.Add(s))
+        {
+            Console.WriteLine($"[KF3] widescreen: HUD {t.Name} drawn at{(s.Length == 0 ? " (none)" : s)}" +
+                              $"; {t.Records} record(s) moved in {t.Calls} call(s) so far");
+            Console.Out.Flush();
+        }
     }
 
     /// <summary>"16:9" and "1.777" both, since the environment variable is typed by

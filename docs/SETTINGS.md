@@ -45,7 +45,7 @@ store that touches the dictionary only on the host thread.
 | file | what |
 |---|---|
 | `patches/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
-| `patches/PortSettings.cs` | the list (32 settings), the game page's ten rows on two pages (PICTURE, WORLD), five of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
+| `patches/PortSettings.cs` | the list (33 settings), the game page's eleven rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), five of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
 | `patches/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
 | `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
 | `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
@@ -132,20 +132,30 @@ At the question, Cross chooses and Circle goes back to the page with the changes
 still staged. The page last shown is kept for the next open. A step the session
 refuses (`set by KF3_X`, `not usable`, `at the end`) makes no sound and is logged.
 
-**What is on it** (cut to what a player chooses, on the user's word, 2026-10-06):
+**What is on it** (cut to what a player chooses, on the user's word, 2026-10-06;
+grouped by subject, a page short of six rows being fine, on the user's word,
+2026-10-07, GAMEPLAY to gain more rows later):
 
 | page | row | values | stands for |
 |---|---|---|---|
-| PICTURE | DISPLAY | WINDOWED, FULLSCREEN, BORDERLESS | the runtime's `Fullscreen` and `Borderless` |
+| DISPLAY | DISPLAY | WINDOWED, FULLSCREEN, BORDERLESS | the runtime's `Fullscreen` and `Borderless` |
 | | RESOLUTION | 240P … 1920P | `RenderScale` 1..8: the game's 240 lines times the scale, taken at the next present (fork `0097`), at most the context's MaxScale |
 | | ASPECT | 4/3, 16/9, 16/10, 21/9 | |
+| | HUD AT EDGES | ON, OFF | `kf3.widescreen.hud`, dimmed at 4/3 (`docs/WIDESCREEN.md`) |
 | | FRAME RATE | ORIGINAL, 30 … 360, UNCAPPED | `kf3.pacing` and `kf3.fps`: ORIGINAL is no pacing |
-| | TEXTURE FILTER | OFF, MIPMAPS, 2X … 16X | `kf3.mipmaps` and `kf3.aniso`: the taps walk the mip chain, so any turns the mipmaps on |
+| GRAPHICS | TEXTURE FILTER | OFF, MIPMAPS, 2X … 16X | `kf3.mipmaps` and `kf3.aniso`: the taps walk the mip chain, so any turns the mipmaps on |
 | | PER-PIXEL LIGHT | ON, OFF | |
-| WORLD | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
-| | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
+| | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
+| WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the surface, FULL the reflections too |
-| | RELOAD ON DEATH | ON, OFF | |
+| GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
+
+Until 2026-10-07 the same rows filled two pages, PICTURE (DISPLAY to TEXTURE
+FILTER) and WORLD (the rest). The page shown is not kept between runs, so the
+regrouping moved no player's file. Measured in an isolated run directory with the
+player's `interface.ini`: `33 declared on 4 pages`; PORT SETTINGS opened on
+DISPLAY, R1 four times went GRAPHICS, WORLD, GAMEPLAY and back to DISPLAY, then
+Circle gave `left, nothing changed`, with `interface.ini` identical and 0 writes.
 
 Off the page, and kept in the Settings window with their variables: the smoothers
 (on whenever pacing is), mouse look and instant look, fog from depth, blend tile
@@ -226,6 +236,24 @@ kept in interface.ini, 0 default(s) wrong`. The `[RecompOne]` lines against the 
 
 No exception. **Not judged**: the page drawn with the new rows, and the window
 changing mode (the user's to look at).
+
+## The defaults are the user's (2026-10-06)
+
+The user's own settings became every player's default: 16:9, pacing on at 144 fps
+with the scrolling textures carried, smooth shading (24-bit, no dither),
+perspective, sub-pixel and the Z-buffer, per-pixel light, AO at medium, mipmaps
+with 16 taps, render distance ENHANCED (16 tiles faded over 3), all three
+water features (FULL), and the sticks' turn and look at 1.25. Each is changed twice, where the feature starts up and in
+its declared `Default`, which the boot check holds equal. A variable still wins,
+and a `0` turns any one off.
+
+Left as they were, being the machine's rather than the game's: the frame rate
+(144, against the user's 165), the render scale (4, against 6), the display mode
+(windowed), the interface scale, and the debug mod.
+
+Measured from an empty data folder (no `interface.ini`): `33 declared on 2 pages,
+0 kept in interface.ini, 0 default(s) wrong`; `widescreen: 1.778:1`, `pacing: 144
+fps`, `texture scroll: carry`, and perspective, sub-pixel and the Z-buffer `on`.
 
 ## Next
 

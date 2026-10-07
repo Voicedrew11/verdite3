@@ -81,7 +81,7 @@ public static class Subpixel
 
     public static void Install()
     {
-        Enabled = _forced ?? false;
+        Enabled = _forced ?? true;
         GteDepth.Probe = _probe;
         Baseline();
         // Attached in every state, so the probe can be switched on live.

@@ -14,8 +14,9 @@ namespace Kf3;
 /// keeps its picture between.
 ///
 ///     KF3_TEXSCROLL=0       the routine on every frame -- comparison only
+///     KF3_TEXSCROLL=hold    held to the tick, not redrawn between
 ///     KF3_TEXSCROLL=carry   also redraw each frame at the phase interpolated
-///                           between the last two ticks (not judged)
+///                           between the last two ticks (the default)
 ///
 /// See "3e" in docs/SMOOTHING.md.
 /// </summary>
@@ -27,7 +28,7 @@ public static class TextureScroll
     const int Stride = 0x18, Count = 2;
 
     enum Mode { Off, Hold, Carry }
-    static Mode _mode = Mode.Hold;
+    static Mode _mode = Mode.Carry;
     static bool _queued;
     static long _seen = -1;
     static Action<CpuContext, IMemory>? _moveImage;
@@ -55,8 +56,8 @@ public static class TextureScroll
         _mode = mode?.Trim().ToLowerInvariant() switch
         {
             "0" or "off" => Mode.Off,
-            "carry" => Mode.Carry,
-            _ => Mode.Hold,
+            "hold" or "1" => Mode.Hold,
+            _ => Mode.Carry,
         };
         _probe = Environment.GetEnvironmentVariable("KF3_FPS_PROBE") == "1";
     }

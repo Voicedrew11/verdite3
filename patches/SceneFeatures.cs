@@ -14,7 +14,10 @@ public static class SceneFeatures
     {"strings": {
       "kf3scene.title": {"en":"World enhancements", "pt-BR":"Melhorias do mundo", "es-419":"Mejoras del mundo"},
       "kf3scene.perpixel": {"en":"Per-pixel lighting", "pt-BR":"Iluminação por pixel", "es-419":"Iluminación por píxel"},
-      "kf3scene.fog": {"en":"Fog from pixel depth", "pt-BR":"Névoa pela profundidade do pixel", "es-419":"Niebla según la profundidad del píxel"},
+      "kf3scene.fog": {"en":"Fog", "pt-BR":"Névoa", "es-419":"Niebla"},
+      "kf3scene.fogcorners": {"en":"At the corners (the game's)", "pt-BR":"Nos vértices (a do jogo)", "es-419":"En los vértices (la del juego)"},
+      "kf3scene.fogdepth": {"en":"By pixel depth", "pt-BR":"Pela profundidade do pixel", "es-419":"Según la profundidad del píxel"},
+      "kf3scene.fogdistance": {"en":"By distance from the eye", "pt-BR":"Pela distância do olho", "es-419":"Según la distancia al ojo"},
       "kf3scene.ao": {"en":"Ambient occlusion", "pt-BR":"Oclusão ambiente", "es-419":"Oclusión ambiental"},
       "kf3scene.normals": {"en":"Geometry normals", "pt-BR":"Normais da geometria", "es-419":"Normales de la geometría"},
       "kf3scene.mips": {"en":"Mipmaps", "pt-BR":"Mipmaps", "es-419":"Mipmaps"},
@@ -55,12 +58,13 @@ public static class SceneFeatures
             foreach (var s in PortSettings.SceneSwitches)
                 s.Apply(Env(s.Envs[0]) is { Length: > 0 } forced ? (forced is not ("0" or "off") ? 1 : 0)
                     : Rt.View.GetInt(s.Key, (int)s.Default) != 0 ? 1 : 0);
+            SetFog(BootFog());
             SetQuality(Env("KF3_AO_QUALITY")?.ToLowerInvariant() switch
                 { "low" => 0, "medium" => 1, "high" => 2, _ => Rt.View.GetInt("kf3.ao.quality", 1) });
-            GteDepth.Anisotropy = (int)Math.Clamp(Number("KF3_ANISO", "kf3.aniso", 1), 1, 16);
+            GteDepth.Anisotropy = (int)Math.Clamp(Number("KF3_ANISO", "kf3.aniso", (float)PortSettings.Anisotropy.Default), 1, 16);
             SetDistance(Number("KF3_ENHANCEDIST", "kf3.enhancedistance", 0));
-            RenderDistance.SetTiles(Number("KF3_RENDERDIST", "kf3.renderdistance", 0));
-            RenderDistance.SetFade(Number("KF3_RENDERDIST_FADE", "kf3.renderdistance.fade", 0));
+            RenderDistance.SetTiles(Number("KF3_RENDERDIST", "kf3.renderdistance", (float)PortSettings.RenderDist.Default));
+            RenderDistance.SetFade(Number("KF3_RENDERDIST_FADE", "kf3.renderdistance.fade", (float)PortSettings.RenderFade.Default));
             RetainedScene.SurfaceCheck = Env("KF3_GPU_SURFACE_PROBE") == "1";
             SettingsRegistry.Extend("display", Draw);
             SettingsRegistry.Extend("kf3testing", DrawTesting);
@@ -69,6 +73,25 @@ public static class SceneFeatures
     static float Number(string env, string key, float fallback) =>
         float.TryParse(Env(env), NumberStyles.Float, CultureInfo.InvariantCulture, out float value) && float.IsFinite(value)
             ? value : Rt.View.GetFloat(key, fallback);
+    /// <summary>The fog (PortSettings.Fog): 0 at the corners, 1 by pixel depth, 2 by
+    /// distance from the eye.</summary>
+    public static int Fog => GteDepth.RadialFog ? 2 : RetainedScene.MainFogFromZ ? 1 : 0;
+    public static void SetFog(int mode)
+    {
+        mode = Math.Clamp(mode, 0, 2);
+        RetainedScene.MainFogFromZ = mode >= 1;
+        GteDepth.RadialFog = mode == 2;
+    }
+    // KF3_FOG, then the old KF3_FOG_DEPTH switch, then the kept choice, then the old
+    // kept switches (kf3.radialfog, kf3.fogdepth), so a player's file keeps what it chose.
+    static int BootFog() => Env("KF3_FOG")?.Trim().ToLowerInvariant() switch
+    {
+        "0" or "corners" => 0,
+        "1" or "depth" => 1,
+        "2" or "distance" or "radial" => 2,
+        _ => Env("KF3_FOG_DEPTH") is { Length: > 0 } old ? (old is "0" or "off" ? 0 : 1)
+            : Rt.View.GetInt("kf3.fog", Rt.View.GetInt("kf3.radialfog", 0) != 0 ? 2 : Rt.View.GetInt("kf3.fogdepth", 1) != 0 ? 1 : 0),
+    };
     public static void SetQuality(int quality)
     {
         _quality = Math.Clamp(quality, 0, 2);
@@ -83,6 +106,7 @@ public static class SceneFeatures
     {
         ImGui.SeparatorText(T("title"));
         foreach (var s in PortSettings.SceneSwitches) PortSettings.Draw(s);
+        PortSettings.Draw(PortSettings.Fog);
         PortSettings.Draw(PortSettings.AoQuality);
         PortSettings.Draw(PortSettings.Anisotropy);
         bool everywhere = GteDepth.PlainDepth <= 0;

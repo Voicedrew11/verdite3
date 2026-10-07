@@ -148,16 +148,16 @@ public static class FramePacing
                 throw new ArgumentException($"KF3_TICKRATE: cannot read '{tickRate}'");
             SetTickRate(hz);
         }
-        if (string.IsNullOrWhiteSpace(fps)) return;
         Enabled = true;
+        if (string.IsNullOrWhiteSpace(fps)) { TargetFps = DefaultFps; return; }
         if (fps.Equals("off", StringComparison.OrdinalIgnoreCase)) TargetFps = 0.0;
         else if (double.TryParse(fps, NumberStyles.Float, CultureInfo.InvariantCulture, out double rate))
             TargetFps = Math.Clamp(rate, 5.0, 1000.0);
         else throw new ArgumentException($"KF3_FPS: cannot read '{fps}'");
     }
 
-    /// <summary>The frame rate pacing aims for when the Testing tab turns it on with
-    /// none chosen; KF3_FPS unset leaves pacing off.</summary>
+    /// <summary>The frame rate pacing aims for when none is chosen: KF3_FPS unset and
+    /// no rate kept.</summary>
     public const double DefaultFps = 144.0;
 
     static double _hostFps = -1.0;

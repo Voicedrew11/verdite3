@@ -50,7 +50,7 @@ public static class ZBuffer
     /// <summary>Live: write the report to the console, once every two seconds.</summary>
     public static bool ProbeOn { get; set; }
 
-    /// <summary>KF3_ZBUFFER was set, so it wins; unset leaves the switch off.</summary>
+    /// <summary>KF3_ZBUFFER, or on when it is unset.</summary>
     static bool _forced;
 
     static float _threshold;
@@ -62,7 +62,7 @@ public static class ZBuffer
 
     public static void Configure(string? on, string? probe)
     {
-        _forced = !string.IsNullOrWhiteSpace(on) && on.Trim() is not ("0" or "off");
+        _forced = string.IsNullOrWhiteSpace(on) || on.Trim() is not ("0" or "off");
         ProbeOn = !string.IsNullOrWhiteSpace(probe) && probe.Trim() is not ("0" or "off");
 
         // 0079: on by default, since it is what the depth test needs; KF3_BLENDORDER=0 compares.

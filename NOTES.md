@@ -28,7 +28,7 @@ their own dump of `SLUS-00255`.
 `GAME.EXE`, `END.EXE` and 28 area code modules from `CD/COM/FDAT.T` are
 recompiled, with 63 PSY-Q entry points bound by address. The port's own patches
 are the agent harness (`KF3_AGENT`, `KF3_SHELL`, `KF3_AUTOSTART`, `KF3_AUTOPAD`)
-frame pacing (`KF3_FPS`, a 15 Hz world, off until judged) and the two bulk
+frame pacing (`KF3_FPS`, a 15 Hz world, on at 144 fps) and the two bulk
 polygon assemblers in C# (`KF3_POLYASM`, verified, on), stage 15 and its camera block
 in C# (`KF3_STAGE15`, verified, on) and the camera carried between ticks
 (`KF3_SMOOTH`, judged, on under pacing), with the compass needle and the gauges;
@@ -41,10 +41,11 @@ Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and m
 `KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
-near path in C# (`docs/PICTURE.md`; all measured, none judged, all off; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world
+near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by default since 2026-10-06; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world
 drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
-`docs/WIDESCREEN.md`); every
+`docs/WIDESCREEN.md`); the HUD at the screen edges, Verdite2's, moved by its
+records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `7dcb1c8` (this repo's
 retained-scene work through `0098` and the `0045` amendment pushed, merged with the
@@ -64,18 +65,18 @@ perspective and the Z-buffer are on; native scene and persistent mesh/pose submi
 descriptor fixtures, shader probes and measured retained-depth coverage. The near
 map and near models are retained (no near fallback); front-table and exceptional
 contexts remain open. Light and fog blended across tile edges
-(`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built and measured, off until judged, and
-so are a render distance past the game's radius, for the map and (since 2026-10-06)
+(`KF3_NEIGHBOUR_BLEND`, runtime `0088`) is built, measured and on, and so is a
+render distance past the game's radius, for the map and (since 2026-10-06)
 the models, creatures fading at the 16 tiles where they wake, and a fade at the edge
 of what is drawn (`KF3_RENDERDIST`, `KF3_RENDERDIST_FADE`, runtime `0089` and `0098`;
-`docs/WIDESCREEN.md`).
+`docs/WIDESCREEN.md`), on at 16 tiles faded over 3.
 No visual acceptance or full GPU coverage is claimed; see `docs/GPU_RENDERER.md`.
 
 **Water** (2026-10-06): Verdite2's murky water, water waves (the swell and the
 ripples) and planar reflections, on the retained renderer, from the runtime's
 existing passes with no runtime change. Water is the averaging blended faces on the
 scrolling texture's rect, and the mirror is the retained frame seen from a mirrored
-camera, not a second walk. Measured in all nine areas with water, off until judged
+camera, not a second walk. Measured in all nine areas with water, on by default
 (`KF3_PLANAR`, `KF3_MURK`, `KF3_WAVES`, Video); see `docs/WATER.md`.
 
 ## The documents

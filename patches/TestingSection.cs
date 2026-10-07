@@ -280,6 +280,7 @@ public sealed class TestingSection : ISettingsSection
             Rt.SaveView();
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("kf3testing.widescreen.tip"));
+        PortSettings.Draw(PortSettings.HudAnchor);
         Toggle("The world live behind menus and messages", K("kf3.menuworld"),
             "Draws the world behind a menu, a sign or a line of dialogue instead of the game's 320-wide still of it, so it fills the margin. Takes effect on the next menu.");
 

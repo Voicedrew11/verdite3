@@ -74,7 +74,7 @@ public static class Perspective
 
     public static void Install()
     {
-        Enabled = _forced ?? false;
+        Enabled = _forced ?? true;
         Baseline();
         // Attached in every state, so the probe can be switched on live.
         HookAttach.OnOverlayLoad("perspective", Attach);

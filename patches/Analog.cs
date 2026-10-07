@@ -197,8 +197,8 @@ public static class Analog
     // slow to get going and never fast.
     public static float LookCurve = 1.35f;
     public static float MoveCurve = 1.0f;
-    public static float TurnSens = 1.0f;
-    public static float PitchSens = 1.0f;
+    public static float TurnSens = 1.25f;   // the user's, 2026-10-06
+    public static float PitchSens = 1.25f;
     public static float MoveSens = 1.0f;
 
     public static bool InvertTurn;

@@ -16,7 +16,7 @@ wins over the kept `kf3.widescreen.aspect`.
 | the margin | the runtime's (`Display.WideAspect`) | the same, shared fork |
 | the present latch cleared on an executable load | `Widescreen.cs` | ported (`open`, `game`, `end`) |
 | full-screen tints stretched | `Widescreen.Stretch` | ported, by shape |
-| the HUD anchored | off, `KF2_WIDESCREEN_HUD=1` | not ported |
+| the HUD anchored | moved by its records, off | ported, by its records, off; DISPLAY ▸ HUD AT EDGES; see below |
 | the tile cone widened | `CullCone.cs` | a different build; see below |
 | the view-space clipper | `ViewClip.cs`, a no-op below 8:3 | **no clipper in this game**; the near path's libgte division has a screen test, widened with the aspect (`NearScreen.cs`) |
 | the primitive buffer | ran out; moved to 4 MB (`PrimBuffer.cs`) | measured, see below |
@@ -32,10 +32,9 @@ flat and spans the clip rectangle's full width, setting `GpuHle.PortWidenedPrim`
 so the latch does not count it. `KF3_WIDESCREEN_EFFECTS=0` is the comparison. At
 4:3 no `RenderPrimEvent` listener is attached.
 
-The HUD anchoring and Verdite2's `DrawOTag` replacement are not ported: Verdite2
-ships the anchoring off, and the replacement exists only for it. This game's HUD
-is 3D models (stage 15's call 9, the front of the table) and sprites (call 10),
-so Verdite2's two clusters would not find it anyway.
+The HUD at the screen edges is in its own section below. Verdite2's `DrawOTag`
+replacement is not ported: it fed only the anchoring Verdite2 guessed at from the
+ordering table, which its records replaced.
 
 Measured, 16:9, slot 1, `fdat02`, turning and walking, 144 fps
 (`KF3_WIDESCREEN_PROBE=1 KF3_PRESENT_PROBE=1`):
@@ -53,7 +52,51 @@ Measured, 16:9, slot 1, `fdat02`, turning and walking, 144 fps
 
 **To judge by eye**: the margins in play; the fade-in and a death fade or damage
 flash reaching the window's edges; the title and menus (pillar-boxed, by design);
-the HUD at its authored place.
+the HUD at its authored place, and at the edges (below).
+
+## The HUD at the screen edges
+
+Ported 2026-10-06 from Verdite2's "The HUD is moved by its records": the records
+a HUD drawer reads have their screen X moved out by the margin for the call and
+put back after it, left of the screen's middle (160) to the left and right of it
+to the right. Nothing downstream is told, and a menu's primitives are never
+touched. Verdite2 has one HUD drawer; this game has two, both stage 15's (and
+`MenuWorld`'s pass, which draws through the same calls):
+
+| drawer | records | X | drawn in `fdat17`, slot 1 |
+|---|---|---|---|
+| `func_8003C35C`, the HUD models (call #9) | `0x80081C20`, `0x24` each | `+0x10`, the translation; orthographic, so the screen X of the model's middle | record 1, the compass, at (290, 32) |
+| `func_80041E68`, the sprites (call #10) | `0x800819B4`, `0x14` each | `+6`; the side is decided by the middle, `X + w/2` (`w` at `+4`) | records 15-29, the HP/MP panel and its digits, at X 5..80 |
+
+The bottom message box's drawer, `func_80041D9C` (call #11, records from
+`0x80081928`), is left alone: the box is centred, and moving its halves apart
+would tear it. The record layouts are "The HUD's sprites" in
+[GAME_INTERNALS.md](GAME_INTERNALS.md).
+
+**A setting, off by default**: DISPLAY ▸ HUD AT EDGES on the game's page, under
+the aspect, dimmed at 4:3; Testing ▸ Picture in the Settings window. Kept as
+`kf3.widescreen.hud` (Verdite2's key under this prefix); `KF3_WIDESCREEN_HUD`
+wins for a run. It takes effect on the next frame the HUD is drawn. To make room
+under the aspect, PER-PIXEL LIGHT moved from PICTURE to WORLD (since 2026-10-07 the pages are DISPLAY, GRAPHICS, WORLD and GAMEPLAY, `docs/SETTINGS.md`).
+
+Measured 2026-10-06, isolated run directory, slot 1, `fdat17`, 16:9 (margin 54),
+`KF3_WIDESCREEN_PROBE=1`, driven with the shell:
+
+- **The records are put back**: peeked between frames, the panel's frame (record
+  29) reads X 5 and the compass 290 with the anchoring off and on, and after the
+  menu.
+- Turned on through the shell's `settings` session (as the game's page does):
+  **3.1% of packet primitives reach the margin** before, **93.8%** after (the
+  retained renderer draws the world, so the packets left are mostly the HUD: 2
+  model records and 30 sprite records moved on each of about 340 calls a second).
+- **With the menu open the game hides every HUD record** (both tables drawn
+  "none"), as in Verdite2, so the menu has nothing moved and nothing to flash.
+- Save wrote one line, `kf3.widescreen.hud=1`; the next boot printed `HUD at the
+  edges`, and `KF3_WIDESCREEN_HUD=0` over it `HUD in its 4:3 box`.
+
+**To judge by eye**: where the panel and the compass land at 16:9 and 21:9 (the
+panel 5 px from the new left edge, the compass 30 px from the right, their 4:3
+insets), and a menu's first and last frames.
 
 ## The cull cone: a classifier, not a trapezoid
 
@@ -343,6 +386,57 @@ at their spawn distance; far objects, and whether any pop in at the game's edge
 for a texture not loaded; gaps or backs of geometry the
 designers never meant to be seen; caves and doorways (far land through walls);
 performance outdoors; the fade pulling in when looking down.
+
+## Radial fog
+
+`KF3_FOG=distance` (Video ▸ World enhancements ▸ *Fog* ▸ *By distance from the
+eye*, `kf3.fog` = 2), runtime `0100`, **not the default (by pixel depth); measured;
+seen working by the user, the look not yet judged** (2026-10-07). It was a checkbox of
+its own beside *Fog from pixel depth* at first; the two were one choice with a
+combination that half worked (distance over corner fog is the level rescale's
+approximation), so they are one dropdown.
+
+The GTE cues by SZ, the view depth, so a pixel is fogged by how far in front of the
+camera's plane it is, not how far from the eye: at the side of the picture, or below
+a camera looking down, the same wall is fogged as if nearer. With this game's H of
+200, a 4:3 side edge is fogged as at 78% of its distance and a corner at 71%; at
+16:9 the side edge is at 68% and a corner at 63%. So the fog moves as the view
+turns (a wall darkens as it comes to the centre), and it goes black further out at
+the sides than the render distance's horizontal circle (above) does.
+
+With the switch on, the retained world, the packets that carry a depth, the
+neighbour blend (`0088`) and the reflection pass's own fog (the murk's colour, a
+reflection's longer path) take the cue at the eye's distance instead; the planar
+mirror takes it at the mirrored eye's, which is the path through the water. At the
+picture's centre nothing changes; off the centre there is more fog than the game's.
+
+### Measured
+
+Seven areas warped to with the scene driver, a level camera at the player, a frame
+before and after a turn of 128 (11.25°), the second frame mapped back onto the
+first through H; once with the switch off and once on. "Turn" is how a world
+point's log brightness moves per unit change of the cosine of its angle off the
+view axis (0 is a fog that does not move as you turn); the change is radial minus
+depth, in the sum of RGB, at the picture's centre and its outer columns:
+
+| area | pixels changed | change centre / edges | turn, off → on | mean change of a point across the turn, off → on |
+|---|---|---|---|---|
+| 0 | 8.2% | 0.0 / -28.2 | -0.73 → 0.01 | 28.3 → 18.4 |
+| 4 | 9.4% | -2.3 / -10.7 | -0.75 → 0.01 | 19.2 → 14.6 |
+| 11 | 1.6% | -2.8 / 0.0 | -0.01 → 0.00 | 14.0 → 13.5 |
+| 14 | 17.6% | 0.0 / -9.9 | 0.71 → 0.25 | 24.7 → 7.6 |
+| 20 | 6.0% | 0.0 / -1.3 | -1.72 → 0.04 | 14.6 → 9.5 |
+
+Areas 8 and 24 are too dark at their entry for the turn measure (under 9% of the
+picture lit); radial took area 8's mean from 20.4 to 17.4. The start area, area 5,
+is bright and barely fogged near its start: 0.04 mean change. Cost: 392 → 380 fps
+uncapped over area 5's pool (scale 6), about 0.08 ms a frame.
+
+### For the user to judge
+
+In a foggy area, at 16:9: turning in place, whether walls still brighten towards the
+edges; the corners of the picture darker than the game's; the edge of the render
+distance at the sides; looking down at the floor; water's reflections and murk.
 
 ## The primitive buffer
 

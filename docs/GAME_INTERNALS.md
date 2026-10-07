@@ -1211,6 +1211,31 @@ HUD's vertex transform is inline, two copies of one loop at `0x8003C6FC` and
   `rot.y` the heading. Its `R` always has elements off the diagonal.
   The gauges are not drawn by this routine.
 
+### The HUD's sprites
+
+`func_80041E68` (stage 15's call #10) walks records of `0x14` bytes from
+`0x800819B4` until a first byte of `0xFF`, and hands each shown one (first byte
+non-zero) to `func_80041AD4(record, record[1], colour)`, which writes a
+`DR_MODE` and a `SPRT`. `func_80041D9C` (call #11) walks `0x80081928` the same
+way, drawing a record once per bit of its first byte (1, 2, 4), the last with a
+second colour: the bottom message box. Read from `generated/game.cs`, 2026-10-06.
+
+| offset | what |
+|---|---|
+| `+0x00` | shown (call #11: the bits) |
+| `+0x01` | the mode argument; 2 with `u8[0x8018FAD8] == 10` draws one pixel down and right |
+| `+0x02`, `+0x03` | u, v |
+| `+0x04`, `+0x05` | width, height (the gauges write the fill's width here) |
+| `+0x06`, `+0x08` | X, Y, s16: the `SPRT`'s position |
+| `+0x0E` | CLUT |
+| `+0x10` | the tpage for `SetDrawMode` |
+| `+0x12` | the ordering-table slot (dropped at 0 or less, or `0x2000` and up) |
+
+Stage 15's HUD block shows one of two sets by `u8[0x801B25DD]`: records 0-12
+(`0x800819B4..0x80081AA4`) or 15-29 (`0x80081AE0..0x80081BF8`), and hides 13 and
+14 (`0x80081AB8`, `0x80081ACC`). In slot 1's save the second set is drawn: the HP/MP panel and its
+digits at X 5..80, Y 12..51. The compass model (above) is at X 290.
+
 ### What a C# assembler would have to keep
 
 - **The scratchpad is not in `PSMemory.Ram`**: it is a separate 1 KB array
