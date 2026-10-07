@@ -366,6 +366,101 @@ hack overriding the bytes `Analog` reads, not committed; no pad was attached):
   go through the runtime's D-pad binding);
 - the feel: sensitivities, the ramp, the deadzones, at 60 and 144 fps.
 
+## Turning a picked-up item
+
+`patches/ItemTurn.cs` (2026-10-07): while the game holds an item up in the middle
+of the screen, **the mouse, the right stick and, when asked, the pad's
+gyroscope turn it**. Left and right turn it on its own vertical, as the game's
+spin does; up and down tip it toward and away from the eye, a quarter turn
+either way, so the top and the underside can be seen. Turning stops the game's
+spin, and the spin comes back 1.5 s after the hand lets go. When the item is put
+away or taken, the turn eases back to nothing over about a tenth of a second while
+the game turns it to face the camera or flies it out. Settings ▸ Gameplay:
+**Turn a picked-up item** (`kf3.itemturn.on`, on) and under it **Gyro turns it
+too** (`kf3.itemturn.gyro`, off).
+
+**The pickup is `func_8005DB30`**, a loop that draws its own frames (the
+return addresses of its stage-15 calls name its parts):
+
+| stage 15 returns to | what is drawing |
+|---|---|
+| `0x8005DECC` | waiting for the item's model to be resident (`func_800405E8`) |
+| `0x8005DF84` | the fly-in, a scale from 0 to `0x1000` by `0x200` |
+| `0x8005DFE8` | **the hold**: yaw `+0x40` a pass until a new button |
+| `0x8005E194` | the item put back: yaw `+0x100` a pass until it faces the camera (`0x801B260A + 0x800`) |
+| `0x8005E278` | the fly-out, the scale back to 0 |
+
+Examine (mask entry 7) takes the item; another button puts back an item already
+in the world (`a0` a record, so `fp` stays `-1`), and takes one the routine made
+itself (`a0 = 0`, `fp` the item id in `a1`). The record is at the routine's
+`sp+0x80`, an Objects-table record (`0x80191A5C`, `0x44` each): `+0x14` the
+position, **`+0x24`/`+0x26`/`+0x28` the rotation x, y, z**, `+0x06` the item id.
+
+**The turn is drawn, not written.** `ModelWalk.Carry` asks `ItemTurn.Present`
+for the rotation of the record being drawn, after the smoother's, every drawn
+frame; the record keeps what the game wrote, so the spin, the turn back and its
+comparison see their own angles. The one write is the spin's step taken back
+(`+0x26 - 0x40`) on the hold's own call while the player is turning (a loop
+pacing redraw comes back with the same return address, so `LoopPacing.InRedraw`
+tells them apart). Without smoothing the walk widens its frame to the carry
+frame while an item is up, to hold the substitute rotation.
+
+**The geometry.** The game's `RotMatrix` is `func_800166F4`, `Ry'(y) Rx(x) Rz(z)`
+with `Ry'(t) = [[c,0,-s],[0,1,0],[s,0,c]]` (`func_8001660C`; `func_80016598` and
+`func_80016680` are the usual Rx and Rz). The camera's yaw is the s16 at
+`0x801AEC5E`; the item is placed along `yaw + 0x400` and the pose it turns back
+to is `Ry'(yaw)` (the walk adds `0x800` to the record's y), so the camera's right
+is `Ry'(yaw)` applied to x. The drawn rotation is
+`Ry'(yaw) Rx(tilt) Ry'(-yaw) · Ry'(y + turn) Rx(x) Rz(z)`, read back into the
+game's three angles. Checked numerically: 20000 random turns come back from the
+12-bit angles within 0.0015 of the matrix (one angle unit), and a positive turn
+brings the side nearest the eye right, a positive tilt brings it down.
+
+**The inputs.** The mouse is `Mouse.TakeLook`, taken every drawn frame while
+the item is up (so `Mouse.Live` holds); the view's lead (`ViewSmoothing`) is off
+for the whole pickup, which would otherwise show that motion as a turn of the
+camera. The stick is `Analog.RightStick`, shaped as the look shapes it, full
+deflection `0x800` a second times the look sensitivities and inversions. The
+gyroscope is the runtime's (`Controller.GyroX`/`GyroY`, radians a second, fork
+patch `0102`), read only while the setting is on, which is also when the runtime
+switches the sensor on; SDL's axes for a pad held in front are x across, y up, z
+toward the player, so y is the turn and x the tilt, one to one (the item turns as
+far as the pad does). A rate under 0.05 rad/s is taken as a hand at rest, so a
+pad's drift neither creeps the item nor holds its spin.
+
+### Measured
+
+2026-10-07, slot 1 in `fdat02`, 165 fps, `KF3_ITEMTURN_TEST=0x6B` (an item lying
+in that area, so its model is loaded) and `KF3_AUTOPAD=17:Cross:300`:
+
+- The pickup reached by a run for the first time: loop pacing held it at 15
+  passes a second, 10 redraws each, and the picture at 165.0 fps throughout.
+- The walk asks for the record every drawn frame (about 165 a second), and with
+  the stick (synthesised: full right and half down for one second) it drew the
+  turned rotation on every frame: yaw `+0x800` a second, the tilt to its limit
+  `0x400`.
+- The spin was held on 15 passes a second while turning and for 1.5 s after,
+  then the game's spin came back (1, then 0 held).
+- Cross took the item: the fly-out drew it easing from yaw -1536, tilt 1024, to
+  -1 and 1 by the time the routine returned, and the walk was back in the
+  world. No exceptions.
+- **Not reached**: an item already in the world. Called with its record from the
+  player's tick, the routine waited in the model loop (`0x8005DECC`) for good
+  (two records tried), where the game calls it from the examine handler
+  (`func_8005E2D0`); the put-back path differs only in drawing `0x8005E194` first. The
+  mouse (no pointer in a scripted run) and the gyroscope (no pad with one) were
+  not driven; they feed the same two sums the stick does.
+
+### Not yet judged by eye
+
+- **the directions**: right should bring the near side right and down bring it
+  down, for the mouse, the stick and the gyro, as derived from the camera's axes
+  above; not checked on screen;
+- the gyroscope on a real pad: which way is which, the drift, whether one to one
+  feels right;
+- the feel: the stick's rate, the 1.5 s before the spin comes back, the ease on
+  letting go.
+
 ## The Input pane is the port's
 
 `patches/InputSection.cs` **replaces** the runtime's Input section rather than

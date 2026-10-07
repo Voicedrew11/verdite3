@@ -279,6 +279,12 @@ Kf3.Analog.Install();
 Kf3.AnalogProbe.Configure();
 Kf3.AnalogProbe.Install();
 
+// Turning a picked-up item while the game holds it up: the mouse, the right stick
+// and the gyroscope (KF3_ITEMTURN, on; KF3_ITEMTURN_GYRO, off). Drawn by the model
+// walk (ModelWalk.Carry). See "Turning a picked-up item" in docs/INPUT.md.
+Kf3.ItemTurn.Configure();
+Kf3.ItemTurn.Install();
+
 // The Input pane, the port's in place of the runtime's: Keyboard (the layout and
 // the bindings), Gamepad (the sticks and the bindings), Mouse. See "The Input pane
 // is the port's" in docs/INPUT.md.

@@ -78,5 +78,11 @@ public sealed class GameplaySection : ISettingsSection
 
         // How long a sign's or a message's fade takes (MenuWorld.FadeVBlanks).
         PortSettings.Draw(PortSettings.MessageFade);
+
+        // Turning a picked-up item (ItemTurn), the gyro dimmed under it while it is off.
+        PortSettings.Draw(PortSettings.ItemTurnOn);
+        ImGui.Indent();
+        PortSettings.Draw(PortSettings.ItemTurnGyro);
+        ImGui.Unindent();
     }
 }

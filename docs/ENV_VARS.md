@@ -115,6 +115,10 @@ kept.
 | `KF3_ANALOG_INSTANTSTOP` | `0`: let a released look axis coast on the game's decay (movement is never stopped) | on |
 | `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
+| `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |
+| `KF3_ITEMTURN_GYRO` | `1`: the pad's gyroscope turns it too, and the runtime switches the sensor on | off |
+| `KF3_ITEMTURN_PROBE` | `1`: a line a second while an item is held up: the phase, the record, the turn and tilt, frames drawn turned, spin passes held, frames each input drove | off |
+| `KF3_ITEMTURN_TEST` | an item id (`0x6B` in `fdat02`): hold it up from the player's tick 10 s after the first area load, the right stick taken as full right and half down for the hold's second second; turns the probe on; dismiss with `KF3_AUTOPAD` (e.g. `17:Cross:300`) | none |
 
 The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,

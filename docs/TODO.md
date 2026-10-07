@@ -67,6 +67,11 @@ recompiled and running, following Verdite2's method but applied to this disc.
   built and measured with a synthetic stick; **to judge on a real pad**: the
   pitch direction, the left stick's leak into turning, the feel, and whether the
   Input pane's three tabs read well.
+- **Turning a picked-up item** (2026-10-07, `docs/INPUT.md`): the mouse, the
+  right stick and the gyroscope turn the item the game holds up; built and
+  measured with a synthetic stick on the take path; **to judge by eye**: the
+  directions, the gyroscope on a real pad, the feel, and putting an item back
+  (not reached by a run).
 - ~~The world runs at the drawn rate.~~ It ran at 30, twice the game's 15 (the
   vblank delivered twice); frame pacing holds it to 15 at any rate, off until
   judged. See "Frame pacing" in `docs/DEVELOPMENT.md`.

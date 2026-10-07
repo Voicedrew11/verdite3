@@ -604,6 +604,11 @@ public static class Analog
     /// settings page draws this so a deadzone can be set against the pad in hand
     /// rather than by guessing at where its centre rests.
     /// </summary>
+    /// <summary>The right stick shaped as the look shapes it, for a turn that is not
+    /// the view's (ItemTurn).</summary>
+    internal static (float X, float Y) RightStick =>
+        Shape(Controller.RightX, Controller.RightY, LookDeadzone, LookCurve);
+
     public static (float Lx, float Ly, float Rx, float Ry) Sticks => (
         (Controller.LeftX - 128) / 127f, (Controller.LeftY - 128) / 127f,
         (Controller.RightX - 128) / 127f, (Controller.RightY - 128) / 127f);

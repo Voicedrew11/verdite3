@@ -136,7 +136,9 @@ public static class ViewSmoothing
     // Verdite2's FrameSmoothing.MouseLead; see "The mouse leads the tick" in
     // docs/INPUT.md.
 
-    static bool Leading => Mouse.Lead && FramePacing.Enabled && Stage15.InCSharp;
+    // Not while a picked-up item is held up: the mouse is turning the item then
+    // (ItemTurn), and the look routine is not running to spend it.
+    static bool Leading => Mouse.Lead && FramePacing.Enabled && Stage15.InCSharp && !ItemTurn.HoldsMouse;
     static int _tickYaw, _tickPitch;
     static long _ledFrames, _ledTicks;
     static double _ledMiss;

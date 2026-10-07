@@ -219,7 +219,7 @@ public static class ModelWalk
     {
         uint entry = c.SP;
         _carry = _mode == Mode.On && ModelSmoothing.Active;
-        uint frame = _carry ? CarryFrame : Frame;
+        uint frame = _carry || ItemTurn.Showing ? CarryFrame : Frame;
         uint sp = entry - frame;
         RenderDistance.InWalk = _mode == Mode.On;
         c.SP = sp;
@@ -804,16 +804,21 @@ public static class ModelWalk
 
     /// <summary>Hand the submitter the record's position and rotation interpolated
     /// between its last two ticks, as copies in the walk's frame: the record and
-    /// the scratchpad lane keep the tick's values. False when nothing is carried.</summary>
+    /// the scratchpad lane keep the tick's values. A picked-up item held up is drawn
+    /// with the player's turn added (ItemTurn), carried or not. False when nothing is
+    /// carried.</summary>
     static bool Carry(PSMemory mem, uint sp, ref uint pos, ref uint rot)
     {
         int table = _table;
         _table = -1;
-        if (!_carry || table < 0) return false;
+        bool carry = _carry && table >= 0;
+        bool turn = table >= 0 && ItemTurn.Shows(_rec);
+        if (!carry && !turn) return false;
 
         int x = (int)mem.ReadU32(pos), y = (int)mem.ReadU32(pos + 4u), z = (int)mem.ReadU32(pos + 8u);
         short p = (short)mem.ReadU16(rot), w = (short)mem.ReadU16(rot + 2u), r = (short)mem.ReadU16(rot + 4u);
-        ModelSmoothing.Carry(table, _slot, _ident, ref x, ref y, ref z, ref p, ref w, ref r);
+        if (carry) ModelSmoothing.Carry(table, _slot, _ident, ref x, ref y, ref z, ref p, ref w, ref r);
+        if (turn) ItemTurn.Present(mem, ref p, ref w, ref r);
 
         uint cp = sp + CarriedPos, cr = sp + CarriedRot;
         mem.WriteU32(cp, (uint)x);
@@ -826,6 +831,7 @@ public static class ModelWalk
         mem.WriteU16(cr + 6u, mem.ReadU16(rot + 6u));
         pos = cp;
         rot = cr;
+        if (!carry) return false;
         ModelSmoothing.Enter(table, _slot);
         return true;
     }

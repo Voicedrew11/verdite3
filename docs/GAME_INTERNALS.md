@@ -1173,6 +1173,14 @@ pointer at the caller's `sp+0x10`, the segment record in v0. The clip record
 layout and the blender's re-morph are in "3c" in `docs/SMOOTHING.md`. The same MO format; three of Verdite2's small callees
 (the vertex-cache helpers) are not called.
 
+**A record's rotation** goes through the game's own `RotMatrix`, `func_800166F4`
+(read 2026-10-07): `Ry'(y) Rx(x) Rz(z)` from the s16s at `+0`, `+2`, `+4`, with
+`Ry'(t) = [[c,0,-s],[0,1,0],[s,0,c]]` (`func_8001660C`, the usual Ry with the
+angle negated), `func_80016598` the usual Rx and `func_80016680` the usual Rz. The
+walk hands an object's `+0x24..+0x28` through the scratchpad lane `0x1F800114`
+with `0x800` added to y. The item pickup `func_8005DB30` and the camera's axes are
+in "Turning a picked-up item" in `docs/INPUT.md`.
+
 ### The camera block
 
 `func_800357E8(VECTOR *pos, SVECTOR *rot)` (Verdite2's `func_8002E22C`, the same

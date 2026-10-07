@@ -50,6 +50,10 @@ public static class LoopPacing
     /// on those too, this one's pre and post included, so without it the nested calls
     /// would overwrite the recorded arguments and recurse.</summary>
     static bool _inRedraw;
+
+    /// <summary>A redraw of this class's own is under way: a hook on stage 15 that
+    /// acts once per pass of the loop (ItemTurn) skips these.</summary>
+    internal static bool InRedraw => _inRedraw;
     static bool _modal;
     static uint _arg0, _arg1;
     static uint _callerRa;

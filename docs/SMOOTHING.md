@@ -458,9 +458,11 @@ on arriving (`func_80046C00`, RA `0x80046C84`, its own stack blocks
 `0x801FFF50`/`0x801FFF60`) ran **15-16 iterations a second with 7.9-8.6 redraws
 each at `KF3_FPS=144`** (144.0 fps drawn, 15.0-15.9 ticks/s), and 18.8 a second
 with 49 redraws each uncapped (~935 fps); before, its body ran once per drawn
-frame. Opening the menu passes `func_80030568` (RA `0x800305A8`). The item pickup
-and the popup were not reached by a scripted run. **Not judged by eye**: the
-pickup's spin, the popup and the fades.
+frame. Opening the menu passes `func_80030568` (RA `0x800305A8`). The popup was
+not reached by a scripted run. The item pickup was on 2026-10-07
+(`KF3_ITEMTURN_TEST`, "Turning a picked-up item" in `docs/INPUT.md`): its hold
+(RA `0x8005DFE8`) ran 15 passes a second with 10 redraws each at 165 fps. **Not
+judged by eye**: the pickup's spin, the popup and the fades.
 
 ## The message box at the bottom
 
