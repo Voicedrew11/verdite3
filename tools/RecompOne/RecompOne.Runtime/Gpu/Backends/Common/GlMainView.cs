@@ -39,6 +39,7 @@ public sealed partial class GlCore
         _uwBk = L("uLightBk"); _uwLcmR = L("uLcmR"); _uwLcmG = L("uLcmG"); _uwLcmB = L("uLcmB");
         _uwClipOn = L("uClipOn"); _uwClipPlane = L("uClipPlane"); _uwClipCentre = L("uClipCentre");
         _uwClipH = L("uClipH"); _uwClipLevel = L("uClipLevel"); _uwClipDq = L("uClipDq");
+        _uwRadialFog = L("uRadialFog");
         _gl.UseProgram(_progWorld);
         if (_uwSwellOn >= 0) _gl.Uniform1(_uwSwellOn, 0);
         if (_uwWaveOn >= 0) _gl.Uniform1(_uwWaveOn, 0);
@@ -177,6 +178,7 @@ public sealed partial class GlCore
     }
 
     int _uwClipOn = -1, _uwClipPlane = -1, _uwClipCentre = -1, _uwClipH = -1, _uwClipLevel = -1, _uwClipDq = -1;
+    int _uwRadialFog = -1;
 
     /// <summary>
     /// The planar walk's mirror, drawn as the main view is: the map's opaque faces of
@@ -461,6 +463,17 @@ public sealed partial class GlCore
             if (_uwClipLevel >= 0) _gl.Uniform3(_uwClipLevel, la[0], la[1], la[2]);
             if (_uwClipDq >= 0) _gl.Uniform2(_uwClipDq, (float)GteDepth.ProjDqa, GteDepth.ProjDqb / 4096f);
         }
+        // 0100. Radial fog, through the same centre and H; the mirror's are sent above.
+        if (_uwRadialFog >= 0)
+        {
+            _gl.Uniform1(_uwRadialFog, GteDepth.RadialFog ? 1 : 0);
+            if (GteDepth.RadialFog && !mirror && _uwClipCentre >= 0)
+            {
+                _gl.Uniform2(_uwClipCentre, cx, cy);
+                _gl.Uniform1(_uwClipH, Math.Max(1f, v.H));
+                if (_uwClipDq >= 0) _gl.Uniform2(_uwClipDq, (float)GteDepth.ProjDqa, GteDepth.ProjDqb / 4096f);
+            }
+        }
         SetWorldView(r, v.CamX, v.CamY, v.CamZ, v.Tx, v.Ty, v.Tz, v.H, cx, cy, rt.Wide1x, rt.H, v.H, true, GlVram.Scale);
         if (_uwModelGteC >= 0) _gl.Uniform2(_uwModelGteC, v.Cx, v.Cy);
         if (_uwNear >= 0) _gl.Uniform1(_uwNear, RetainedScene.MainNear);
@@ -536,6 +549,7 @@ public sealed partial class GlCore
         if (_uwCueFromZ >= 0) _gl.Uniform1(_uwCueFromZ, 0f);
         if (_uwSwellOn >= 0) _gl.Uniform1(_uwSwellOn, 0);
         if (_uwClipOn >= 0) _gl.Uniform1(_uwClipOn, 0);
+        if (_uwRadialFog >= 0) _gl.Uniform1(_uwRadialFog, 0);
         if (_uwDepthCapZ >= 0) _gl.Uniform1(_uwDepthCapZ, 0f);
         EndWorldLights();
     }

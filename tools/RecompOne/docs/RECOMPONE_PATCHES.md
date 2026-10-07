@@ -1838,6 +1838,22 @@ Four files in the directory have no entry below:
   water, where before they stood 30, and with only the subtracted pass drawn they
   were 106 *brighter* than the murk around them; 342 → 336 fps uncapped, the copy.
   **No recompile.** See "The HUD over the water" in Verdite3's `WATER.md`.
+- `0100-radial-fog.patch` — the GTE's depth cue is a function of SZ, so the
+  retained shaders, which recompute it per pixel, fogged a pixel at the side of the
+  picture as if nearer than it is, and the fog moved as the view turned.
+  `GteDepth.RadialFog`, which the port sets: `PrimFs` (the retained world's and the
+  packets') takes a pixel with a depth back to its view position through
+  `uClipCentre`/`uClipH`, now sent for it outside a planar capture too
+  (`GlCore`'s flush, `BeginWorldMain`; `EndWorldUniforms` clears it), and sets
+  `0068`'s `gCueScale` to depth over distance, so the corner-fogged and pre-fogged
+  colours are re-fogged as the level fog re-fogs them. Fog from pixel depth
+  (`uCueFromZ`) and the linear curve 5 are taken at the distance itself
+  (`fogDepth()`, `gFogAtDepth`), each record's own DQA and DQB, and so is the
+  neighbour blend (`nbPrepare`). In a planar capture the distance replaces the level
+  depth, being never less. `SsrFs` fogs the murk's colour at the surface's distance
+  and a reflection at its image's (`fogZ`, `fogImage`). **Off is the program
+  before.** **No recompile.** Measured in Verdite3's `WIDESCREEN.md` ("Radial
+  fog").
 
 ## Retained contract additions under verification (2026-10-04)
 

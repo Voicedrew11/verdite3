@@ -81,7 +81,7 @@ public sealed partial class GlCore : IGpuBackend
     bool _ssrInfo;
     int _uSsrOrigin, _uSsrSize, _uSsrTexSize, _uSsrProjH, _uSsrCentre;
     int _uSsrMaxDist, _uSsrThickness, _uSsrSky, _uSsrSteps, _uSsrMarchOn, _uSsrMurkDist, _uSsrMurkColor, _uSsrMurkUp;
-    int _uSsrDqa, _uSsrDqb, _uSsrFogCurve;
+    int _uSsrDqa, _uSsrDqb, _uSsrFogCurve, _uSsrRadialFog = -1;
     int _uPresentSsrOn;
     int _uPresentAoMatOn;
     // The reflection blur's mip chains of the picture and of the planar texture,
@@ -94,6 +94,8 @@ public sealed partial class GlCore : IGpuBackend
     int _uSsrPlanarOn, _uSsrPlanarPlane, _uSsrPlanarTol, _uSsrRipple, _uSsrCompare;
     int _uClipOn, _uClipPlane, _uClipCentre, _uClipH, _uClipLevel, _uClipDq;
     int _clipOnSent = -1;
+    // 0100. GteDepth.RadialFog, as last sent to the prim program; -1 unsent.
+    int _uRadialFog = -1, _radialSent = -1;
     // 0071. Authored lights.
     int _uLightN, _uLightPos, _uLightCol, _uLightDir, _uLightCentre, _uLightH;
     // 0078. Ripples on water.
@@ -248,6 +250,8 @@ public sealed partial class GlCore : IGpuBackend
         _uClipLevel = _gl.GetUniformLocation(_progPrim, "uClipLevel");
         _uClipDq = _gl.GetUniformLocation(_progPrim, "uClipDq");
         _clipOnSent = -1;
+        _uRadialFog = _gl.GetUniformLocation(_progPrim, "uRadialFog");
+        _radialSent = -1;
         _uLightN = _gl.GetUniformLocation(_progPrim, "uLightN");
         _uLightPos = _gl.GetUniformLocation(_progPrim, "uLightPos");
         _uLightCol = _gl.GetUniformLocation(_progPrim, "uLightCol");
@@ -433,6 +437,7 @@ public sealed partial class GlCore : IGpuBackend
                 _uSsrDqa = _gl.GetUniformLocation(_progSsr, "uDqa");
                 _uSsrDqb = _gl.GetUniformLocation(_progSsr, "uDqb");
                 _uSsrFogCurve = _gl.GetUniformLocation(_progSsr, "uFogCurve");
+                _uSsrRadialFog = _gl.GetUniformLocation(_progSsr, "uRadialFog");
                 _uSsrAtmosOn = _gl.GetUniformLocation(_progSsr, "uAtmosOn");
                 _uSsrAtmosColour = _gl.GetUniformLocation(_progSsr, "uAtmosColour");
                 _uSsrAtmosShape = _gl.GetUniformLocation(_progSsr, "uAtmosShape");
@@ -1922,6 +1927,20 @@ public sealed partial class GlCore : IGpuBackend
                 if (_uClipDq >= 0) _gl.Uniform2(_uClipDq, (float)GteDepth.ProjDqa, GteDepth.ProjDqb / 4096f);
             }
         }
+        // 0100. Radial fog takes a pixel back to the view through the clip's centre
+        // and H, which a planar batch has just sent for its own view.
+        int radial = GteDepth.RadialFog ? 1 : 0;
+        if (_uRadialFog >= 0 && (radial != 0 || _radialSent != 0))
+        {
+            if (radial != _radialSent) _gl.Uniform1(_uRadialFog, radial);
+            _radialSent = radial;
+            if (radial != 0 && clipOn == 0)
+            {
+                _gl.Uniform2(_uClipCentre, GteDepth.ProjCx + (rt?.Margin ?? 0), GteDepth.ProjCy);
+                _gl.Uniform1(_uClipH, Math.Max(1f, GteDepth.ProjH));
+                if (_uClipDq >= 0) _gl.Uniform2(_uClipDq, (float)GteDepth.ProjDqa, GteDepth.ProjDqb / 4096f);
+            }
+        }
         // 0071. The light list, sent when the port publishes a new one. Not into
         // VRAM or a planar texture, whose view is not the one the lights are in.
         int lightN = RemasterUniforms.Active && rt is { IsPlanar: false } ? RemasterUniforms.LightCount : 0;
@@ -3220,6 +3239,7 @@ public sealed partial class GlCore : IGpuBackend
         if (_uSsrDqa >= 0) _gl.Uniform1(_uSsrDqa, (float)GteDepth.ProjDqa);
         if (_uSsrDqb >= 0) _gl.Uniform1(_uSsrDqb, (float)GteDepth.ProjDqb);
         if (_uSsrFogCurve >= 0) _gl.Uniform1(_uSsrFogCurve, ScreenReflections.FogCurve);
+        if (_uSsrRadialFog >= 0) _gl.Uniform1(_uSsrRadialFog, GteDepth.RadialFog ? 1 : 0);
         if (_uSsrAtmosOn >= 0)
         {
             bool on = RemasterUniforms.FogActive;
