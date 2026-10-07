@@ -36,6 +36,17 @@ if (channels.Count > 0)
 Kf3.KeyLayout.Configure();
 Kf3.KeyLayout.Install();
 
+// The top menu bar starts hidden whatever the last session saved; F1 shows it.
+// Once, at the first ready: a hard reset raises the event again.
+bool topBarHidden = false;
+RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.RuntimeReadyEvent>(_ =>
+{
+    if (topBarHidden) return;
+    topBarHidden = true;
+    RecompOne.Runtime.Config.ConfigManager.View.HideTopBar = true;
+    Console.WriteLine("[KF3] top bar: hidden at startup (F1 shows it)");
+});
+
 // libapi's interrupt-callback table, per executable: the table setIntr indexes by
 // irq*4, intrEnv + 4. See "The interrupt-callback table" in docs/RECOMPILATION.md.
 RecompOne.Runtime.Events.Event.AddListener<RecompOne.Runtime.Events.OverlayLoadedEvent>(e =>
