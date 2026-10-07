@@ -167,6 +167,7 @@ public static class HostWindow
                 _window.Render += OnRender;
                 _window.Closing += OnClosing;
                 _window.Move += OnMove;
+                _window.FocusChanged += OnFocusChanged;
                 HintAppId(AppId);
                 _window.Initialize();
                 if (ConfigManager.View.Fullscreen && ConfigManager.View.Borderless) SetFullscreen(true);
@@ -739,6 +740,21 @@ public static class HostWindow
     {
         get => InputManager.MouseCaptured;
         set => InputManager.MouseCaptured = value;
+    }
+
+    /// <summary>Whether the window has the desktop's focus. A captured pointer
+    /// that outlives its focus is the desktop's to give back, so a port that
+    /// captures wants to know when this goes false (0101).</summary>
+    public static bool Focused { get; private set; } = true;
+
+    /// <summary>Raised on the window's thread when <see cref="Focused"/>
+    /// changes, from inside the host's event pump.</summary>
+    public static event Action<bool>? FocusChanged;
+
+    private static void OnFocusChanged(bool focused)
+    {
+        Focused = focused;
+        FocusChanged?.Invoke(focused);
     }
 
     /// <summary>Motion since the last call, in window pixels, and cleared by

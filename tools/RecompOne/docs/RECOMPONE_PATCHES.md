@@ -1855,6 +1855,15 @@ Four files in the directory have no entry below:
   before.** **No recompile.** Measured in Verdite3's `WIDESCREEN.md` ("Radial
   fog").
 
+- `0101-window-focus.patch` — a port that locks the pointer had no way to learn
+  that the window lost focus, so a pointer captured before Alt-Tab stayed
+  captured in the port's own state while the desktop had it, and the click that
+  brought the window back reached the game as a button. `HostWindow.Focused` and
+  `HostWindow.FocusChanged` forward Silk's `IView.FocusChanged`, raised from the
+  host's event pump. Verdite Core's `Mouse` is the only caller: it releases on
+  focus loss and captures again on a click over the picture. Input only — **no
+  recompile**. See "Mouse look" in Verdite3's `docs/INPUT.md`.
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual
