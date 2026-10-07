@@ -103,8 +103,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
   The near path's screen test now follows the aspect (`NearScreen.cs`), measured,
   waiting to be judged with the rest.
 - **Keyboard and mouse**: built 2026-10-02 (`docs/INPUT.md`); the pitch direction,
-  sensitivity and feel are to be judged; the menu pointer (Verdite2's `MenuMouse`)
-  and twin-stick analog are not ported.
+  sensitivity and feel are to be judged. The menu pointer (Verdite2's `MenuMouse`)
+  is ported and measured 2026-10-07 through the shell's pointer; **to judge by
+  eye**: the cursor under the real pointer, at 16:9 and in a resized window, and
+  the wheel on a long list.
 - **Debug tools** (`mods/kf3debug`): built and measured 2026-10-03
   (`docs/MODS.md`); **to judge by eye**: the panel, noclip's feel and speed,
   learned spells in the magic menu, the equipment slot names, and area-warp

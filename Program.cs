@@ -264,6 +264,12 @@ Mouse.Configure(Kf3.MouseLook.Game);
 Mouse.Install();
 Kf3.MouseLook.Install();
 
+// The menu pointer: point at the game's menus, left click confirms, right click
+// backs out, the wheel pages a list (KF3_MENUMOUSE, on; KF3_MENUMOUSE_PROBE=1 logs
+// what it saw). Verdite2's MenuMouse. See "The menu pointer" in docs/INPUT.md.
+Kf3.MenuMouse.Configure();
+Kf3.MenuMouse.Install();
+
 // Analog twin-stick control: the sticks drive the game's own turn/look velocity
 // through MouseLook's shared hook, and walking through a replace on func_8002F9BC.
 // See "Analog twin-stick control" in docs/INPUT.md.

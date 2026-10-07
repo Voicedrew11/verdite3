@@ -271,6 +271,8 @@ public static class PortSettings
     public static readonly PortSetting InstantMouseLook = Switch(Mouse.LeadKey, "KF3_MOUSE_LEAD", "Instant mouse look",
         null, null, () => Mouse.Lead, v => Mouse.Lead = v, true,
         tip: "Turns the view the frame you move the mouse, instead of on the game's next tick.", usable: () => Mouse.Enabled);
+    public static readonly PortSetting MenuPointer = Switch(Kf3.MenuMouse.OnKey, "KF3_MENUMOUSE", "Point at the menus",
+        null, null, () => Kf3.MenuMouse.Enabled, v => Kf3.MenuMouse.Enabled = v, true, ui: Ui.None);
 
     // ---- The combined rows ----
 
@@ -339,7 +341,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook,
+        AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
     ];
 
     /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>

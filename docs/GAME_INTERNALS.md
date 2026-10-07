@@ -637,6 +637,32 @@ Verdite2's, at different addresses and with eight items, not ten.
 | 6 | SHOP | BUY, SELL |
 | 7 | (none) | STAY, DO NOT STAY |
 
+**The scrolling lists** (items, magic, equipment, storage, the shop, the save
+slots) are a descriptor on the caller's stack, read 2026-10-07 for
+`patches/MenuMouse.cs`: `u8` X `+0x1C`, Y `+0x1D`, count `+0x1E`, visible rows
+`+0x1F`, the page (the entry on row 0) `+0x20`, the cursor `+0x21`, its row
+`+0x22`; `+0x24`, `+0x28`, `+0x2C` and `+0x30` are the columns' sources. The
+stepper **`func_800222FC(desc, items, &confirmed, &cancel)`**, a mode at
+`sp+0x10` (1 and 2 a quantity, Left/Right on `gp+0x48`), reads the pad once
+through `func_800279A4` and steps the three bytes: Up and Down wrap and scroll
+the page at its edges, each with sound `0xC` and then
+**`func_80027A9C(items[cursor])`**, the item shown and the quantity reset to 1.
+The confirm mask writes `*confirmed = 1` with no sound (the caller blips `0xD`),
+the cancel mask `*cancel = -1` with `0xE`; L1/R1/L2/R2 and others turn the item
+model (`gp+0x180..0x190`). Fifteen callers. The drawer **`func_80025468(desc,
+mode)`** puts row `r`'s text at `(X + 13, Y + 8 + 16 r)` and the cursor's
+highlight at `(X + 6, Y + 5 + 16 r)`, sized by the template `0x8007E5E8` (254 x
+17), inside a frame `func_80026ACC(X, Y, 266, visible × 16 + 12)`.
+
+**The two-box prompt** is drawn by **`func_80025B24(rec0, rec1, flag)`** (an
+address OPEN.EXE also uses, so it is called through the dispatcher): two list
+records boxed with the 54 x 24 template `0x8007E594`, `rec0` selected when the
+flag is 0. Its loops keep the flag in a register: the item prompt
+`func_80024C70` toggles it on Up or Down and returns
+`-flag` on confirm, -1 on cancel; QUIT GAME `func_8001F8B4` toggles on any
+direction (YES at (171, 162), NO beside it, NO first) and leaves on NO or
+cancel. The format prompt `func_80020560` draws it over the chooser.
+
 **The label font** (template `0x8007E570`: tpage `0x1D`, 4-bit at VRAM
 (832, 256); CLUT `0x7D05` at (80, 500); cells 7 × 15) is a 16-column grid:
 glyph `c` is at u = `(c & 0xF) × 8`, v = `(c >> 4) × 15`, advanced 7 pixels

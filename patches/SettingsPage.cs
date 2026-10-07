@@ -282,6 +282,7 @@ public static class SettingsPage
                 Item(c, m, AskX, AskY, "SAVE CHANGES", cursor == 0, usable: true);
                 Item(c, m, AskX, AskY + AskStep, "DISCARD CHANGES", cursor == 1, usable: true);
                 Hint(c, m, choose: true);
+                Pointed(m, AskX, AskY, AskStep, 2, (int)cursor, values: false, "settings question");
                 Game.func_800270F8(c, m);
             }
         }
@@ -309,7 +310,19 @@ public static class SettingsPage
         }
 
         Hint(c, m, choose: false);
+        Pointed(m, RowX, FirstRowY, RowStep, rows.Length, row, values: true, $"settings page {_page}");
         Game.func_800270F8(c, m);           // the presenter
+    }
+
+    /// <summary>The rows just drawn, for the menu pointer: the boxes <see cref="Box"/>
+    /// draws, at X - 6, Y - 6. A click on the selected row of the page steps its value,
+    /// as Cross and Right do.</summary>
+    static void Pointed(IMemory m, int x, int y, int step, int count, int cursor, bool values, string what)
+    {
+        var (w, h) = MenuMouse.BoxSize(m, BoxTemplate);
+        Span<(int, int, int, int)> rows = stackalloc (int, int, int, int)[count];
+        for (int i = 0; i < count; i++) rows[i] = (x - 6, y + i * step - 6, w, h);
+        MenuMouse.Rows(rows, cursor, values, what);
     }
 
     /// <summary>One list item as <c>func_800252F4</c> draws it: the selected one in the

@@ -72,6 +72,7 @@ public static class AgentServer
         "planar [on|off] - planar reflections, unsaved, and the mirror's cumulative counters",
         "kill - kill the player through the game's death latch (tests auto reload)",
         "hurt <amount> - damage the player through the game's take-damage routine (the damage flash)",
+        "point [<x> <y>|left|right|off] - the menu pointer at game pixels, a click, or the host's pointer again; alone, what it saw",
     ];
 
     public static void Configure(string? spec)
@@ -192,7 +193,7 @@ public static class AgentServer
         switch (cmd.Name)
         {
             case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
-                or "renderdist" or "murk" or "waves" or "planar" or "scale":
+                or "renderdist" or "murk" or "waves" or "planar" or "scale" or "point":
                 Enqueue(_fast, cmd);
                 break;
             default:
@@ -245,6 +246,7 @@ public static class AgentServer
         "waves" => Waves.Shell(cmd.Args),
         "planar" => DoPlanar(cmd.Arg1),
         "scale" => DoScale(cmd.Arg1),
+        "point" => MenuMouse.Shell(cmd.Args),
         "scene-yaw" => SceneDriver.Yaw(cmd.Arg1, RecompOne.Runtime.Runtime.Mem),
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +

@@ -216,6 +216,92 @@ drawn at 15 ticks/s, the look hook attached in every run.
 - the feel at 60 fps;
 - turning into a menu or a load.
 
+## The menu pointer
+
+`patches/MenuMouse.cs`, Verdite2's `MenuMouse` on this game's widgets
+(2026-10-07): point at an item in a menu and the game's own cursor goes to it,
+**left click** chooses, **right click** backs out, a left click clear of the
+menu's boxes backs out too, and the **wheel** pages a list longer than its
+window. On by default (`KF3_MENUMOUSE`, Input ▸ Mouse ▸ "Point at the menus"),
+and not under mouse look: the menus give a captured pointer back
+(`Mouse.Suspend`, above), so the desktop pointer is what the player points
+with. While the pointer is captured nothing is sampled, its position then
+being a virtual one.
+
+The game draws its menus out of three widgets, each with its own cursor, so
+there are three mechanisms, as in Verdite2 (the routines are in "The in-game
+menu, its lists and its font" in `docs/GAME_INTERNALS.md`):
+
+| widget | drawn by | stepped by | driven by |
+|---|---|---|---|
+| fixed list | `func_800252F4(group, count, cursor, mode)` | the chooser `func_800221E8` | a post writing the chooser's return and, for a click, its out-parameters as its confirm arm does |
+| scrolling list | `func_80025468(desc, mode)` | `func_800222FC(desc, items, &confirmed, &cancel)` | a post writing `desc+0x21`/`+0x22` and replaying the move arm (sound `0xC`, `func_80027A9C(items[cursor])`); the wheel writes the page `+0x20` |
+| prompt | `func_80025B24(rec0, rec1, flag)` | the chooser, or the prompt's own loop | as the fixed list |
+
+**A page with a loop of its own** keeps its cursor in a register: OPTION 1,
+OPTION 2, QUIT GAME's prompt, the item prompt `func_80024C70` and the port's
+settings page. A post on the menu's pad read `func_800279A4` ORs in one Up or
+Down a read while the hovered row and the drawn cursor disagree, then, for a
+click once they agree, the confirm mask, or Right on a page of values (a list
+drawn in mode 1, OPTION 1 and 2, and the settings page, whose loop steps on
+Right). Three pushes that do not move the drawn cursor stop it until the pointer
+moves. The chooser's and the stepper's own reads (return addresses `0x80022234`
+and `0x80022384`) are left to their posts.
+
+**The rows are the boxes the game drew**, read off what it draws them from:
+a list item is its table record's X, Y less 6 by the template `0x8007E5A0`'s
+118 x 24, a prompt's box the same off `0x8007E594` (54 x 24), a scrolling row
+`(X + 6, Y + 5 + 16 r)` off the descriptor, 254 wide (the highlight template
+`0x8007E5E8`) and 16 tall. The port's settings page draws its boxes itself
+and hands them over (`MenuMouse.Rows`). A widget counts only if it was drawn
+since the last menu pad read, so a page's leftovers never steer the next loop;
+the chooser takes it only with `last + 1` rows. The gutters between boxes are
+no row, and a back-out needs a click 8 pixels clear of all of them.
+
+**Backing out is one flag the pad read spends**: right click over the picture
+or a left click clear of the menu ORs the cancel mask (`gp+0x3C`) into the next
+`func_800279A4`, so every screen with a cancel arm takes it as its own cancel
+button. **Whichever device moved last owns the cursor**: hover takes it only
+once the pointer has moved, for 2 s, and hands it back when the pad moves it.
+
+The conversion to game pixels is Verdite2's: OutputView's rectangle is
+`GameW + 2 * margin` game pixels wide with column 0 at the margin
+(`Display.WideMargin`).
+
+### Measured
+
+2026-10-07, slot 1 in `fdat02`, the shell's `point` (a pointer in game pixels,
+`docs/DEVELOPMENT.md`) and `KF3_MENUMOUSE_PROBE=1`; all five hooks attached.
+
+- **The top menu**: 7 rows at x 25, y 26 + 26 n, 118 x 24, PORT SETTINGS
+  included. The pointer at y 115, 64 and 38 put the cursor on rows 3, 1 and 0;
+  at y 51, the gutter, it stayed. A click on USE ITEM opened it.
+- **The item list**: 2 entries, 3 visible, rows at x 33, y 152, 254 x 16 (the
+  highlight is 17 tall). Hovering row 1 and row 0 wrote `+0x21`/`+0x22` to 1/1
+  and 0/0; right click backed out to the top menu.
+- **SYSTEM ▸ OPTION 2** (group 5, mode 1, rows at x 39): its own loop followed
+  the pointer through injected Downs and Ups (0 to 2 on entry, 2 to 4, 4 to 0);
+  two clicks on DISPLAY HP/MP injected two Rights, and the option bytes
+  `0x801B25DF..E4` read the same before and after.
+- **PORT SETTINGS**: the page's 5 rows, hover to row 1, right click `left,
+  nothing changed`.
+- **QUIT GAME's prompt**: two boxes at y 156, YES from x 165; hovering YES and
+  NO toggled the drawn flag, a click on NO left the prompt. Two right clicks
+  closed SYSTEM and the menu, and the beacon's `loop` was true again.
+- **A left click clear of the menu** (game 280, 120) backed out of it.
+
+The cards, `settings.json` and `interface.ini` were byte-identical afterwards.
+
+### Not yet measured or judged
+
+- **By eye**: whether the cursor lands under the real pointer at every aspect
+  and window size (the shell's pointer skips the conversion), the 2 px gutters
+  when sweeping down a list, and whether a click on a value row reads well.
+- The wheel (the shell cannot scroll; no list measured was longer than its
+  window) and the chooser over a prompt (the format prompt `func_80020560`).
+- **BUTTON CONFIG** (`func_8001F31C`) draws no list through `func_800252F4`, so
+  only backing out reaches it.
+
 ## Analog twin-stick control
 
 `patches/Analog.cs`, Verdite2's `Analog` ported (2026-10-03): the **left stick

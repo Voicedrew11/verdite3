@@ -158,7 +158,7 @@ DISPLAY, R1 four times went GRAPHICS, WORLD, GAMEPLAY and back to DISPLAY, then
 Circle gave `left, nothing changed`, with `interface.ini` identical and 0 writes.
 
 Off the page, and kept in the Settings window with their variables: the smoothers
-(on whenever pacing is), mouse look and instant look, fog from depth, blend tile
+(on whenever pacing is), mouse look and instant look, the menu pointer, fog from depth, blend tile
 edges (now **on by default**, the user having kept it on), the reload slot (last
 used), the message fade, and the renderer's own switches (shading, perspective,
 sub-pixel, the Z-buffer, the world behind menus, scrolling textures, the AO normals,

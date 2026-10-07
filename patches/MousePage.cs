@@ -14,7 +14,8 @@ namespace Kf3;
 /// a player who switched it on and saw no change needs that sentence before a
 /// sensitivity. And the **buttons** are named as pad buttons rather than as
 /// actions, because the game's own control configuration decides what each does.
-/// MenuMouse is Verdite2's and has no equivalent here.
+/// The menu pointer (<see cref="MenuMouse"/>) comes first and is not under mouse
+/// look: it needs no captured pointer.
 ///
 /// See "Mouse look" in docs/INPUT.md.
 /// </summary>
@@ -22,6 +23,12 @@ public static class MousePage
 {
     public static void Draw()
     {
+        Check("Point at the menus", MenuMouse.OnKey, ref MenuMouse.Enabled,
+              "Point at an item in the game's menus and the game's own cursor goes to it: left click " +
+              "chooses, right click backs out, the wheel scrolls a long list. A click clear of the " +
+              "menu backs out too. The menus give the pointer back, so this needs no mouse look.");
+        ImGui.Spacing();
+
         bool was = Mouse.Enabled;
         Check("Mouse look", Mouse.OnKey, ref Mouse.Enabled,
               "Turns and looks with the mouse, through the same per-frame velocities the sticks " +

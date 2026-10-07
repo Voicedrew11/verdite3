@@ -38,7 +38,9 @@ verified, on), the creatures, objects and their clip times carried between ticks
 to the tick (`KF3_TEXSCROLL`); the title's Continue and the in-game Save with a full card
 (`KF3_FULLCARD`) and the last save reloaded on death (`KF3_AUTORELOAD`,
 Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and mouse controls (`KF3_KEYS`,
-`KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye); the
+`KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye) and the menus pointed at and
+clicked with the mouse (`KF3_MENUMOUSE`, Verdite2's `MenuMouse`; measured, not
+judged); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
 near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by default since 2026-10-06; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world
