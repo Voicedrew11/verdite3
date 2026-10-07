@@ -28,7 +28,7 @@ public static class GpuWorld
         }
     }
     static int _scene, _hud, _preview, _arm;
-    static bool _attached, _frame, _surfaceProbe;
+    static bool _attached, _frame, _surfaceProbe, _reset;
     static long _reportAt;
     public static long Frames, Submissions, Retained, OrderVertices;
     static readonly Dictionary<string, long> Reasons = new();
@@ -57,12 +57,12 @@ public static class GpuWorld
         // The slope term's ceiling, in game pixels; KF3_GPU_DEPTH_CAP=0 leaves it unbounded.
         RetainedScene.DepthCapPixels = float.TryParse(Environment.GetEnvironmentVariable("KF3_GPU_DEPTH_CAP"),
             System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cap) && cap >= 0f ? cap : 1f;
-        Event.AddListener<OverlayLoadedEvent>(_ =>
-        {
-            _frame = false; RetainedScene.MainSerial = 0;
-            RetainedScene.MainView = RetainedScene.DepthStageProbe = false;
-            RetainedScene.ClearMeshes(); RetainedMap.Invalidate();
-        });
+        // An area module lands in the CD pump of the frame swap's VSync, after the walk
+        // has handed this frame's halves and models to the retained world and before
+        // the swap's DrawOTag draws them: dropping the frame there drew the world with
+        // nothing, a black frame at every crossing. The reset waits for the next
+        // frame's table clear (Begin), and this frame draws what it was built with.
+        Event.AddListener<OverlayLoadedEvent>(_ => _reset = true);
         HookAttach.OnOverlayLoad("GPU scene lifetime", () =>
         {
             SymbolRegistry.Build();
@@ -96,6 +96,12 @@ public static class GpuWorld
     public static void Begin(CpuContext c, IMemory m)
     {
         _frame = false;
+        if (_reset)
+        {
+            _reset = false; RetainedScene.MainSerial = 0;
+            RetainedScene.MainView = RetainedScene.DepthStageProbe = false;
+            RetainedScene.ClearMeshes(); RetainedMap.Invalidate();
+        }
         if (Mode == 0 || _scene == 0 || NativeScene.Verifying || m is not PSMemory mem) return;
         // Which faces are water, before the map's chunks are checked.
         WaterRects.Read(mem);
