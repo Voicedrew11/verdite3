@@ -10,8 +10,9 @@ namespace Kf3;
 ///     KF3_SMOOTH=1         on whenever pacing is (judged 2026-10-02); 0 to compare
 ///     KF3_SMOOTH_PROBE=1   a line a second: frames drawn, distinct cameras drawn, ticks, snaps
 ///
-/// Interpolates, never extrapolates; a jump larger than <see cref="SnapUnits"/> or
-/// <see cref="SnapAngle"/> in one tick snaps, and an area change re-primes. See
+/// Interpolates, never extrapolates; an angle step larger than <see cref="SnapAngle"/>
+/// in one tick snaps, and a placement (a position step past <see cref="SnapUnits"/>, an
+/// area crossing's among them) keeps the pair's lag and speed across it. See
 /// "2. The camera carried" in docs/SMOOTHING.md.
 /// </summary>
 public static class ViewSmoothing
@@ -39,7 +40,7 @@ public static class ViewSmoothing
 
     static bool _probe;
     static double _probeAt = -1.0;
-    static long _frames, _moved, _samples, _snaps;
+    static long _frames, _moved, _samples, _snaps, _placements;
 
     public static void Configure(string? mode, string? probe)
     {
@@ -51,7 +52,10 @@ public static class ViewSmoothing
     {
         // Hooked in every state; Active decides per frame, so the Testing tab can switch it.
         Stage15.OnHanded = OnHanded;
-        Event.AddListener<OverlayLoadedEvent>(_ => _primed = false);
+        // Not an area module: a crossing loads one after the placement that moved
+        // the player, which OnHanded has already carried the pair across; clearing
+        // it there held the view for a tick mid-stride. Any other executable re-primes.
+        Event.AddListener<OverlayLoadedEvent>(e => { if (!e.Name.StartsWith("fdat", StringComparison.Ordinal)) _primed = false; });
         Console.WriteLine($"[KF3] view smoothing: {(Enabled ? "on" : "off")}");
     }
 
@@ -82,18 +86,32 @@ public static class ViewSmoothing
         else if (tick != _tick && FramePacing.IterationTicked)
         {
             _tick = tick;
+            var last = _cur;
+            int stepX = _cur.X - _prev.X, stepY = _cur.Y - _prev.Y, stepZ = _cur.Z - _prev.Z;
             _prev = _cur;
             _cur = handed;
             _samples++;
             ticked = true;
-            if (Jump(_prev, _cur)) { _prev = _cur; _snaps++; snapped = true; }
+            if (Placed(last, handed))
+            {
+                // A placement landed in this tick (a crossing, a warp): the pair
+                // straddles two places. Put prev the last tick's step behind cur, so
+                // the view keeps its tick of lag and its speed instead of holding
+                // still for a tick (Verdite2's FrameSmoothing).
+                _prev = _prev with { X = handed.X - stepX, Y = handed.Y - stepY, Z = handed.Z - stepZ };
+                _placements++;
+            }
+            if (Turned(_prev, _cur)) { _prev = _prev with { Pitch = _cur.Pitch, Yaw = _cur.Yaw, Roll = _cur.Roll }; _snaps++; snapped = true; }
         }
         else if (handed != _cur)
         {
-            // Moved without a tick of the world (a stage outside pacing): no pair to carry.
-            _prev = _cur = handed;
-            _snaps++;
-            snapped = true;
+            // Moved without a tick of the world (a placement, a stage outside pacing):
+            // shift the whole pair by the move, so the view carries straight through it.
+            _prev = new Camera(_prev.X + (handed.X - _cur.X), _prev.Y + (handed.Y - _cur.Y), _prev.Z + (handed.Z - _cur.Z),
+                Add12(_prev.Pitch, Wrap(handed.Pitch - _cur.Pitch)), Add12(_prev.Yaw, Wrap(handed.Yaw - _cur.Yaw)),
+                Add12(_prev.Roll, Wrap(handed.Roll - _cur.Roll)));
+            _cur = handed;
+            _placements++;
         }
 
         double frac = FramePacing.TickFraction;
@@ -165,9 +183,11 @@ public static class ViewSmoothing
 
     static short Add12(short a, int d) => (uint)a < 0x1000u ? (short)((a + d) & 0xFFF) : (short)(a + d);
 
-    static bool Jump(in Camera a, in Camera b) =>
+    static bool Placed(in Camera a, in Camera b) =>
         Math.Abs((long)b.X - a.X) > SnapUnits || Math.Abs((long)b.Y - a.Y) > SnapUnits ||
-        Math.Abs((long)b.Z - a.Z) > SnapUnits ||
+        Math.Abs((long)b.Z - a.Z) > SnapUnits;
+
+    static bool Turned(in Camera a, in Camera b) =>
         Math.Abs(Wrap(b.Pitch - a.Pitch)) > SnapAngle || Math.Abs(Wrap(b.Yaw - a.Yaw)) > SnapAngle ||
         Math.Abs(Wrap(b.Roll - a.Roll)) > SnapAngle;
 
@@ -200,11 +220,11 @@ public static class ViewSmoothing
         double dt = now - _probeAt;
         if (dt < 1.0) return;
         Console.WriteLine($"[KF3] view smoothing: {_frames / dt:0.0} frame(s)/s, {_moved / dt:0.0} with a new camera, " +
-                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {Stage15.NeedleCarried / dt:0.0} needle(s) and {Stage15.GaugeCarried / dt:0.0} gauge(s) carried/s; " +
+                          $"{_samples / dt:0.0} tick sample(s)/s, {_snaps} snap(s), {_placements} placement(s), {Stage15.NeedleCarried / dt:0.0} needle(s) and {Stage15.GaugeCarried / dt:0.0} gauge(s) carried/s; " +
                           $"drawn [{view.X},{view.Y},{view.Z}] yaw {view.Yaw}, handed [{_cur.X},{_cur.Y},{_cur.Z}] yaw {_cur.Yaw}; " +
                           $"mouse led {_ledFrames / dt:0.0} frame(s)/s, |applied - asked| {(_ledTicks > 0 ? _ledMiss / _ledTicks : 0):0.00} a tick");
         _probeAt = now;
-        _frames = _moved = _samples = _snaps = 0;
+        _frames = _moved = _samples = _snaps = _placements = 0;
         _ledFrames = _ledTicks = 0; _ledMiss = 0;
         Stage15.NeedleCarried = Stage15.GaugeCarried = 0;
     }

@@ -123,7 +123,13 @@ The first visible unit; the user judges it.
 - Angles wrap at 12 bits (interpolate the short way round); a jump larger than
   a step (a warp, a load, an area change, a cutscene cut) snaps instead of
   sweeping, and the pair re-primes on an area change (Verdite2: walking between
-  areas stuttered while its smoothers re-primed).
+  areas stuttered while its smoothers re-primed). **Changed 2026-10-06**: a
+  position jump (a placement: a crossing, a warp) no longer snaps. On a tick,
+  `prev` is put the last tick's step behind `cur`; off a tick the whole pair
+  shifts by the move. Only an angle step past `0x300` snaps, and an area
+  module's load no longer re-primes: the snap and the re-prime held the view
+  still for a tick mid-stride at every crossing ("Crossing between areas" in
+  `DEVELOPMENT.md`).
 - The null-camera callers keep drawing from the last camera, so a menu or a
   loop's own frames need nothing here (`LoopPacing` is later).
 - **The billboard clock** at `0x80182964` (and the nine 0x18-byte records after
