@@ -41,6 +41,11 @@ internal static class GlShaders
         uniform sampler2D uSurface;
         uniform sampler2D uMatTable;
         uniform float uAoMatOn;
+        // 0099. The picture before the frame's see-through 2D primitives (GlDisplayRt.PreHud):
+        // under one (a mark above 511) the passes shade this, and what the primitive
+        // changed is added back after.
+        uniform sampler2D uPreHud;
+        uniform float uPreHudOn;
         out vec4 oColor;
 
         // What the reflection pass computed at uv from: the surface there (its
@@ -99,6 +104,19 @@ internal static class GlShaders
         void main() {
             vec2 t = (uOrigin + vUv * uSize) / uTexSize;
             vec3 c = texture(uVram, t).rgb;
+            vec3 hud = vec3(0.0);
+            // How much of the picture under a see-through box shows: the occlusion is
+            // laid on that share of it, as the reflection pass lays its own.
+            float share = 1.0;
+            if (uPreHudOn > 0.5) {
+                float sa = texture(uSurface, t).a;
+                if (sa > 511.5) {
+                    vec3 under = texture(uPreHud, t).rgb;
+                    hud = c - under;
+                    c = under;
+                    share = (int(sa + 0.5) >> 9) == 1 ? 0.5 : 1.0;
+                }
+            }
             // The occlusion texture is rendered at exactly this framebuffer's
             // size, so it is indexed by the present's own uv and needs no
             // geometry of its own.
@@ -108,13 +126,13 @@ internal static class GlShaders
                     int m = int(texture(uSurface, t).a + 0.5) & 511;
                     if (m > 0 && m < 256) ao = mix(ao, 1.0, texelFetch(uMatTable, ivec2(m, 2), 0).g);
                 }
-                c *= ao;
+                c *= mix(1.0, ao, share);
             }
             if (uSsrOn > 0.5) {
                 vec4 r = ssrAt(vUv);
                 c = c * (1.0 - r.a) + r.rgb;
             }
-            oColor = vec4(c, 1.0);
+            oColor = vec4(c + hud, 1.0);
         }
         """;
 
@@ -622,14 +640,12 @@ internal static class GlShaders
                 if ((vTex & 0x80000000u) != 0u) {
                     vec4 t = veilTexel(ivec2(floor(vUv)));
                     if (t.rgb == vec3(0.0) && t.a < 0.5) discard;
+                    // 0099. Text added or subtracted is see-through too: the surface stays
+                    // under it, and the present murks and reflects the picture as it
+                    // was before the text and puts the text's change back on top
+                    // (GlDisplayRt.PreHud). Marked as a cover, the letters over
+                    // murky water were the raw water's colour against the murk.
                     see = t.a >= 0.5;
-                    // Add/subtract text uses STP ink too. It covers water effects;
-                    // black STP texels remain holes in both modes.
-                    uint blend = (vTex >> 5u) & 3u;
-                    if (see && (blend == 1u || blend == 2u)) {
-                        if (t.rgb == vec3(0.0)) discard;
-                        see = false;
-                    }
                 }
                 if (see != (uVeilPass == 1)) discard;
                 oColor = vec4(0.0);
@@ -968,6 +984,10 @@ internal static class GlShaders
         uniform sampler2D uDepth;
         uniform sampler2D uSurface;
         uniform sampler2D uColor;
+        // 0099. The picture before the frame's see-through 2D primitives (PresentFs's):
+        // the water's own colour under a HUD's text, for the lookups that read it.
+        uniform sampler2D uPreHud;
+        uniform int uPreHudOn;
         // The same rectangle and projection the occlusion pass is given.
         uniform vec2  uOrigin;
         uniform vec2  uSize;
@@ -1073,6 +1093,10 @@ internal static class GlShaders
         // Above 511 a see-through 2D box lies over the surface: 512 for one that
         // shows half of it (blend mode 0), 1024 for any other.
         bool overlayAt(vec2 uv) { float a = texture(uSurface, tc(uv)).a; return a > 511.5 || abs(a - OVERLAY) < 0.5; }
+        vec3 sceneAt(vec2 uv) {
+            if (uPreHudOn != 0 && texture(uSurface, tc(uv)).a > 511.5) return texture(uPreHud, tc(uv)).rgb;
+            return texture(uColor, tc(uv)).rgb;
+        }
         int surfId(float a) { return int(a + 0.5) & 511; }
         float veilShare(float a) { return (int(a + 0.5) >> 9) == 1 ? 0.5 : 1.0; }
         vec3 viewAt(vec2 uv, float z) { return vec3((uv - uCentre) * uSize * (z / uProjH), z); }
@@ -1116,7 +1140,7 @@ internal static class GlShaders
         // what it reflects and near-grey stone still reads as coloured.
         vec3 metalTint(float metal) {
             if (metal <= 0.0) return vec3(1.0);
-            vec3 sc = texture(uColor, tc(vUv)).rgb;
+            vec3 sc = sceneAt(vUv);
             vec3 hue = sc / max(max(sc.r, max(sc.g, sc.b)), 1e-3);
             hue = max(mix(vec3(luma(hue)), hue, 1.0 + 0.5 * metal), 0.0);
             hue /= max(max(hue.r, max(hue.g, hue.b)), 1e-3);
@@ -1162,9 +1186,9 @@ internal static class GlShaders
             vec2 muv = vec2(vUv.x, 2.0 * uCentre.y - vUv.y);
             if (uRipple > 0.0) {
                 vec2 px = 1.0 / uSize;
-                float l0 = luma(texture(uColor, tc(vUv)).rgb);
-                float lx = luma(texture(uColor, tc(vUv + vec2(px.x, 0.0))).rgb);
-                float ly = luma(texture(uColor, tc(vUv + vec2(0.0, px.y))).rgb);
+                float l0 = luma(sceneAt(vUv));
+                float lx = luma(sceneAt(vUv + vec2(px.x, 0.0)));
+                float ly = luma(sceneAt(vUv + vec2(0.0, px.y)));
                 muv += vec2(lx - l0, ly - l0) * uRipple * px;
             }
             muv = clamp(muv, vec2(0.0), vec2(1.0));
@@ -1203,9 +1227,9 @@ internal static class GlShaders
             vec2 muv = vUv;
             if (uRipple > 0.0) {
                 vec2 px = 1.0 / uSize;
-                float l0 = luma(texture(uColor, tc(vUv)).rgb);
-                float lx = luma(texture(uColor, tc(vUv + vec2(px.x, 0.0))).rgb);
-                float ly = luma(texture(uColor, tc(vUv + vec2(0.0, px.y))).rgb);
+                float l0 = luma(sceneAt(vUv));
+                float lx = luma(sceneAt(vUv + vec2(px.x, 0.0)));
+                float ly = luma(sceneAt(vUv + vec2(0.0, px.y)));
                 muv += vec2(lx - l0, ly - l0) * uRipple * px;
             }
             muv = clamp(muv, vec2(0.0), vec2(1.0));

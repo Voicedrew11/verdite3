@@ -317,6 +317,10 @@ public sealed partial class GlCore : IGpuBackend
         if (uPresentSsrDepth >= 0) _gl.Uniform1(uPresentSsrDepth, SsrDepthUnit);
         int uPresentSurface = _gl.GetUniformLocation(_progPresent, "uSurface");
         if (uPresentSurface >= 0) _gl.Uniform1(uPresentSurface, 3);
+        int uPresentPre = _gl.GetUniformLocation(_progPresent, "uPreHud");
+        if (uPresentPre >= 0) _gl.Uniform1(uPresentPre, PreHudUnit);
+        _uPresentPreOn = _gl.GetUniformLocation(_progPresent, "uPreHudOn");
+        if (_uPresentPreOn >= 0) _gl.Uniform1(_uPresentPreOn, 0f);
         if (_uPresentSsrOn >= 0) _gl.Uniform1(_uPresentSsrOn, 0f);
         _uPresentAoMatOn = _gl.GetUniformLocation(_progPresent, "uAoMatOn");
         if (_uPresentAoMatOn >= 0)
@@ -452,6 +456,10 @@ public sealed partial class GlCore : IGpuBackend
                 if (uColorMip >= 0) _gl.Uniform1(uColorMip, ColorMipUnit);
                 int uPlanarMip = _gl.GetUniformLocation(_progSsr, "uPlanarMip");
                 if (uPlanarMip >= 0) _gl.Uniform1(uPlanarMip, PlanarMipUnit);
+                int uPreSsr = _gl.GetUniformLocation(_progSsr, "uPreHud");
+                if (uPreSsr >= 0) _gl.Uniform1(uPreSsr, PreHudUnit);
+                _uSsrPreOn = _gl.GetUniformLocation(_progSsr, "uPreHudOn");
+                if (_uSsrPreOn >= 0) _gl.Uniform1(_uSsrPreOn, 0);
                 _uSsrColorMipH = _gl.GetUniformLocation(_progSsr, "uColorMipH");
                 _uSsrPlanarMipH = _gl.GetUniformLocation(_progSsr, "uPlanarMipH");
                 if (_uSsrPlanarOn >= 0) _gl.Uniform1(_uSsrPlanarOn, 0);
@@ -1068,6 +1076,8 @@ public sealed partial class GlCore : IGpuBackend
             {
                 SurfaceMaterial.Veils++;
                 _kTarget.Geo.Frame(_frame, GteDepth.Generation);
+                // 0099.
+                if (!_kTarget.Geo.PreHud) CopyPreHud(_kTarget);
                 uint tex = VeilTex(f);
                 _kTarget.Geo.Add(VeilVert(a.X, a.Y, a.U, a.V, veil, tex), VeilVert(b.X, b.Y, b.U, b.V, veil, tex),
                                  VeilVert(c.X, c.Y, c.U, c.V, veil, tex));
@@ -1183,6 +1193,41 @@ public sealed partial class GlCore : IGpuBackend
     bool CoversTarget(float x0, float y0, float x1, float y1) =>
         _kTarget != null && x1 - x0 >= _kTarget.W * 0.9f && y1 - y0 >= _kTarget.H * 0.9f;
 
+    /// <summary>0099. The target's picture as it is before the frame's first see-through 2D
+    /// primitive is drawn into it (<see cref="GlDisplayRt.PreHud"/>): what the batch
+    /// holds goes in first, then one copy. Text added or subtracted over water, and a
+    /// see-through box, change the picture by an amount that depends on what is under
+    /// them, so the present murks and reflects this and adds back the difference.</summary>
+    unsafe void CopyPreHud(GlDisplayRt rt)
+    {
+        Flush(FlushReason.Copy);
+        if (rt.PreHud == 0 || rt.PreHudW != rt.TexW || rt.PreHudH != rt.TexH)
+        {
+            if (rt.PreHud == 0) rt.PreHud = _gl.GenTexture();
+            if (rt.PreHudFbo == 0) rt.PreHudFbo = _gl.GenFramebuffer();
+            _gl.BindTexture(TextureTarget.Texture2D, rt.PreHud);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)rt.TexW, (uint)rt.TexH, 0,
+                           PixelFormat.Rgba, PixelType.UnsignedByte, null);
+            _gl.BindTexture(TextureTarget.Texture2D, 0);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, rt.PreHudFbo);
+            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+                                     TextureTarget.Texture2D, rt.PreHud, 0);
+            rt.PreHudW = rt.TexW; rt.PreHudH = rt.TexH;
+        }
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, rt.Fbo);
+        _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, rt.PreHudFbo);
+        _gl.BlitFramebuffer(0, 0, rt.TexW, rt.TexH, 0, 0, rt.TexW, rt.TexH,
+            ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        rt.Geo.PreHud = true;
+        SurfaceMaterial.PreHudCopies++;
+    }
+
     /// <summary>The zMode a primitive with no recovered depth takes: 5 under the
     /// retained world (0096), 3 (stamp the far plane) while the occlusion pass is on
     /// and the primitive is opaque, 0 -- which is what everything did before this
@@ -1198,21 +1243,28 @@ public sealed partial class GlCore : IGpuBackend
         // is the mask (see DrawTri): opaque stamps the far plane, semi-transparent
         // leaves the depth under it alone.
         Begin(f, 6, FarMask(f));
+        // 0067. A sprite is 2D: the HUD's, as far as the reflection pass is concerned.
+        bool hud = GteDepth.Reflections && _kTarget is { IsPlanar: false } && AoGeometry.Active && !RetainedScene.UnderWorld
+                   && !CoversTarget(r.X, r.Y, r.X + r.W, r.Y + r.H);
+        // 0099. Before its vertices join the batch.
+        if (hud && f.SemiTrans && !f.UseImage)
+        {
+            _kTarget!.Geo.Frame(_frame, GteDepth.Generation);
+            if (!_kTarget.Geo.PreHud) CopyPreHud(_kTarget);
+        }
         var a = new HleVertex { X = r.X, Y = r.Y, R = r.R, G = r.G, B = r.B, U = r.U, V = r.V };
         var b = new HleVertex { X = r.X + r.W, Y = r.Y, R = r.R, G = r.G, B = r.B, U = (short)(r.U + r.W), V = r.V };
         var c = new HleVertex { X = r.X, Y = r.Y + r.H, R = r.R, G = r.G, B = r.B, U = r.U, V = (short)(r.V + r.H) };
         var d = new HleVertex { X = r.X + r.W, Y = r.Y + r.H, R = r.R, G = r.G, B = r.B, U = (short)(r.U + r.W), V = (short)(r.V + r.H) };
         _verts[_count++] = V(a, f, false); _verts[_count++] = V(b, f, false); _verts[_count++] = V(c, f, false);
         _verts[_count++] = V(b, f, false); _verts[_count++] = V(d, f, false); _verts[_count++] = V(c, f, false);
-        // 0067. A sprite is 2D: the HUD's, as far as the reflection pass is concerned.
-        if (GteDepth.Reflections && _kTarget is { IsPlanar: false } && AoGeometry.Active && !RetainedScene.UnderWorld
-            && !CoversTarget(r.X, r.Y, r.X + r.W, r.Y + r.H))
+        if (hud)
         {
             float m = SurfaceMaterial.Overlay;
             if (f.SemiTrans && !f.UseImage) { m = VeilOf(f); SurfaceMaterial.Veils += 2; }
             else SurfaceMaterial.Overlays += 2;
             if (f.SemiTrans && f.Textured) SurfaceMaterial.TexturedVeils += 2;
-            _kTarget.Geo.Frame(_frame, GteDepth.Generation);
+            _kTarget!.Geo.Frame(_frame, GteDepth.Generation);
             uint tex = m == SurfaceMaterial.Overlay ? 0u : VeilTex(f);
             _kTarget.Geo.Add(VeilVert(a.X, a.Y, a.U, a.V, m, tex), VeilVert(b.X, b.Y, b.U, b.V, m, tex),
                              VeilVert(c.X, c.Y, c.U, c.V, m, tex));
@@ -2580,6 +2632,7 @@ public sealed partial class GlCore : IGpuBackend
         // The reflection pass runs coarser, but the present upsamples it by the
         // surface under each pixel, so with it on the buffer is at the render scale.
         int gScale = Math.Max(aoOn ? AoScale : 1, ssrOn ? Math.Max(1, src!.CreatedScale) : 1);
+        _preHudOn = false;
         if (aoOn)
         {
             var aoProfile = Diagnostics.Profiler.Begin(Diagnostics.Profiler.Ao);
@@ -2600,6 +2653,7 @@ public sealed partial class GlCore : IGpuBackend
             if (!aoOn) surfaces = DrawSurfaces(src!, gScale);
             // A surface buffer that was not drawn this present holds another frame's.
             ssrOn = surfaces && src!.Surface != 0;
+            _preHudOn = ssrOn && src!.PreHud != 0 && src.Geo.PreHud;
             if (ssrOn)
             {
                 DrawRetained(src!);
@@ -2669,6 +2723,15 @@ public sealed partial class GlCore : IGpuBackend
                 _gl.BindTexture(TextureTarget.Texture2D, src.Surface);
             }
         }
+        if (!rgb24 && _uPresentPreOn >= 0)
+        {
+            _gl.Uniform1(_uPresentPreOn, _preHudOn ? 1f : 0f);
+            if (_preHudOn)
+            {
+                _gl.ActiveTexture(TextureUnit.Texture0 + PreHudUnit);
+                _gl.BindTexture(TextureTarget.Texture2D, src!.PreHud);
+            }
+        }
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, src?.Tex ?? _vram.Texture);
         if (rgb24)
@@ -2689,6 +2752,13 @@ public sealed partial class GlCore : IGpuBackend
             _gl.Uniform2(_uPresentTexSize, (float)VramShadow.Width, VramShadow.Height);
         }
         _gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+        if (_preHudOn)
+        {
+            // The next frame copies into it.
+            _gl.ActiveTexture(TextureUnit.Texture0 + PreHudUnit);
+            _gl.BindTexture(TextureTarget.Texture2D, 0);
+            _gl.ActiveTexture(TextureUnit.Texture0);
+        }
         if (ssrOn && !rgb24)
         {
             // The next frame draws into this depth; leave it bound nowhere.
@@ -3202,6 +3272,12 @@ public sealed partial class GlCore : IGpuBackend
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _ssrFbo);
         _gl.Viewport(0, 0, (uint)w, (uint)h);
         _gl.UseProgram(_progSsr);
+        if (_uSsrPreOn >= 0) _gl.Uniform1(_uSsrPreOn, _preHudOn ? 1 : 0);
+        if (_preHudOn)
+        {
+            _gl.ActiveTexture(TextureUnit.Texture0 + PreHudUnit);
+            _gl.BindTexture(TextureTarget.Texture2D, src.PreHud);
+        }
         if (_uSsrColorMipH >= 0) _gl.Uniform1(_uSsrColorMipH, colorMipH);
         if (_uSsrPlanarMipH >= 0) _gl.Uniform1(_uSsrPlanarMipH, planarMipH);
         _gl.ActiveTexture(TextureUnit.Texture2);
@@ -3268,6 +3344,13 @@ public sealed partial class GlCore : IGpuBackend
     }
 
     const int ColorMipUnit = 7, PlanarMipUnit = 8, SsrDepthUnit = 4;
+
+    /// <summary>0099. The picture before the HUD's see-through primitives
+    /// (<see cref="GlDisplayRt.PreHud"/>), for the reflection pass and the present.</summary>
+    const int PreHudUnit = 13;
+    int _uPresentPreOn = -1, _uSsrPreOn = -1;
+    // The presented target's copy is this frame's, and the surface buffer beside it.
+    bool _preHudOn;
 
     /// <summary>A target's colour, shrunk to half size and mipped, bound on
     /// <paramref name="unit"/>; its level-0 height in texels.</summary>

@@ -1814,6 +1814,30 @@ Four files in the directory have no entry below:
   and the blended faces are drawn through the same instance uniforms and take it too.
   **An instance with no `FadeOut` is the program before.** **No recompile.**
   Measured in Verdite3's `WIDESCREEN.md` ("Render distance", "The models").
+- `0099-hud-over-surface.patch` — the reflection and occlusion passes composite at
+  present over the finished picture, HUD included. Text a game draws added or
+  subtracted (Verdite3's bottom message box: each glyph subtracted, then added,
+  which on the console is a lighten) was marked a cover in the surface buffer, so
+  the passes skipped its pixels: over murky water the letters were the raw water's
+  colour inside the murk, only their edges readable. Marked as a veil instead it
+  would have been murked with the water, text and all. Now `GlCore` copies a target's
+  picture once a frame, just before the first see-through 2D primitive is batched
+  (`CopyPreHud`, into `GlDisplayRt.PreHud`; `AoGeometry.PreHud` says the list's
+  frame has it), and add/subtract texels keep the surface under them as any other
+  see-through texel does (`NormalFs`). Where the surface buffer carries a veil's
+  mark, the present takes the copy as the picture under the HUD, lays the occlusion
+  (at the veil's share) and the reflection pass's colour on it, and adds back what
+  the HUD changed (`c + r.rgb - r.a * under`, exact for every blend mode: the
+  change a see-through primitive makes depends on what is under it, and the copy is
+  what was). The reflection pass reads the copy for the water's own colour where a
+  veil lies (`sceneAt`: the ripple bend, the metal tint). Opaque texels are covers
+  as before. A primitive drawn after the copy and under a veil is kept as HUD. Only
+  with reflections on; a frame with no veil copies nothing. Measured in Verdite3
+  (2026-10-07, area 5's pool, murk, waves and planar on, scale 6): the message's
+  letters stand 261 (sum of RGB) over the murked water against 270 over the plain
+  water, where before they stood 30, and with only the subtracted pass drawn they
+  were 106 *brighter* than the murk around them; 342 → 336 fps uncapped, the copy.
+  **No recompile.** See "The HUD over the water" in Verdite3's `WATER.md`.
 
 ## Retained contract additions under verification (2026-10-04)
 
