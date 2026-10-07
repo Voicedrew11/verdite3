@@ -540,13 +540,91 @@ windows at 165.0 fps and a worst frame of 6.7-9.1 ms. The scene probe (with
 
 **What it costs**: an arrival draws its map through the game's packets for the
 settle, 25-69 updates (0.15-0.4 s at 165 fps): no ambient occlusion, murk or
-swell there, and no map past the game's own radius. Not yet judged by eye, and a
-real door crossing (through the loading screen, `func_8003DAEC`) is not measured:
-the warps skip it. At boot the first build is slower than the same build later
+swell there, and no map past the game's own radius. Not yet judged by eye. A
+walked crossing is measured since, below ("Crossing between areas"). At boot the first build is slower than the same build later
 (19.6 against 9.7 ms in `fdat17`), the thread pool's first use. Left: the upload
 is still the whole buffer (`BufferData`), which a fixed slot per chunk and
 `BufferSubData` would make the changed chunks' alone, a change to the runtime's
 `ChunkStart`/`ChunkCount` layout.
+
+### Crossing between areas
+
+Reported from play (2026-10-06): crossing between `fdat`s stutters and shows "a few
+frames of black". Verdite2 had the same thing and fixed it ("What the crossing frame
+actually is" in its `PATCHES_AND_MODS.md`), and here it came with the retained
+renderer. Two defects, measured and fixed, and they are not Verdite2's.
+
+**The instrument.** `KF3_CROSSPROBE=1` (`patches/CrossProbe.cs`) reads back every
+presented picture (`PresentSnap`, fork `0069`) and reduces it to numbers: luminance
+over the middle two thirds of the rows and the centre, a fingerprint (`.` new
+pixels, `=` the last present's, `2` the one before's), the frame time, the display
+buffer, the retained map's `Ready`, the main view's draws and triangles, the packets
+the table drew, the tick and the camera. The 400 ms before an `fdat` load and the
+3 s after are printed when the window closes. Reading back every present stalls
+the GPU, so run it at `scale 2`. The repro is the door `0xE0` in `fdat17` at
+(102400, 149504), object slot 79, to area 26 (`fdat80`): poke the player block to
+(108544, -12800, 152576) with base yaw (`0x801B2612`) 1024, then hold Up for 3 s;
+it walks west into the door mid-stride. The way back is `fdat80`'s slot 0 at
+(110592, 8192), walking east from (104448, 11264) at yaw 3072. Both crossings are
+seamless: no tint and no loading screen.
+
+**A counter's row is one frame late for the picture.** The frame swap
+(`func_80035700`) runs `DrawSync`, `VSync`, `PutDispEnv`, `PutDrawEnv`, `DrawOTag`:
+a present happens inside the `VSync`, before that frame's table is drawn. A row's
+draws, triangles and packets were drawn into the buffer the *next* row presents.
+
+**1. The load cancelled a frame whose map it had already taken.** The CD read that
+finishes the area module completes in the present of the swap's `VSync`, so the
+module's `OverlayLoadedEvent` lands after the walk has handed the frame's halves and
+models to the retained world (`Submit` returned `Drawing`, and the game skipped
+their packets), and before the swap's `DrawOTag` draws them. `GpuWorld`'s listener
+set `MainView` off and `MainSerial` to 0 right there, so that frame drew the world
+with nothing: 0 main draws and 32 packets (the HUD) against 435 packets in the same
+frame with `KF3_GPU_WORLD=0`. Luminance 3, centre 0, one present at every crossing.
+The reset now waits for the next frame's table clear (`GpuWorld.Begin`), and the
+frame in flight draws what it was built with.
+
+**2. The next area's map is in RAM before its module, over a built map.** With only
+the first fix the same frame drew 1346 retained triangles instead of about 37,000
+and no map packets (luminance 9, centre 2). The new map lands in the frame before
+the module, the player is placed in its coordinates on that tick, and 99 of 100
+chunks go stale. `RetainedMap.Update` waited out the settle, but `Ready` was still
+true from the old area, so `Submit` claimed the new walk's halves and the main view
+drew the *old* map's chunks at their places. A rebuild of more than 8 chunks over a
+built map now clears `Ready`, and the halves are the game's packets until the new
+map is built; `KF3_MAPPROBE=1` prints `99 chunk(s) changed over a built map` at each
+crossing. Before this, "never an old map" held only for an area's first build.
+
+**3. The view held still for a tick mid-stride.** That was the stutter. Across the
+walked crossing the camera stood at x = 99924 from -0.3 to +63.9 ms, one whole
+15 Hz tick, with the player walking at 18-30 units a present on either side.
+`ViewSmoothing` snapped on a position step past 1536 units (`prev = cur`), and the
+area module's load event cleared the pair again. Now it does what Verdite2's
+`FrameSmoothing` does: a placement on a tick puts `prev` the last tick's step
+behind `cur`, a placement off a tick shifts the whole pair by the move, and only an
+angle step past `0x300` snaps. An area module's load no longer re-primes; another
+executable's still does. "2. The camera carried" in `SMOOTHING.md`.
+
+**Measured after**, the user's `interface.ini` (165 fps, retained GPU, AO, planar,
+murk, waves, render distance 16): placed on the door twice, walked through it once
+in each direction:
+
+| | before | after |
+|---|---|---|
+| presents under luminance 4 in the 3 s after the load | 1 every crossing | 0 of 4 crossings |
+| darkest present after the load | 3 (centre 0) | 44 placed, 59-60 walked |
+| camera held still at the crossing | 64 ms (one tick) | none: 0 snaps, 1 placement |
+| worst frame at the crossing, scale 6 (`KF3_PROFILE_SPIKE=8`) | | 9.3 ms, the new map's upload |
+
+With `KF3_GPU_WORLD=0` the crossing reads as it did (0 dark presents). Scene-driver
+warps to areas 16 and 9 build once each, as before; their dark presents (26 and 23)
+are the empty view a warp leaves the player hanging over: packets read 473 and 23.
+
+**Still open, to judge in play**: the settle above, about 0.3 s after each crossing
+(47-49 updates) in which the map is the game's packets, so the ambient occlusion,
+murk, swell and the map past the game's radius drop out and come back.
+`ModelSmoothing` still re-primes at an area load, so creatures step at the tick for
+one interval after a crossing.
 
 ## Retained scene verification (2026-10-04)
 
