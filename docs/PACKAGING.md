@@ -179,7 +179,8 @@ bash scripts/prerelease.sh      # builds HEAD as GitHub has it; replaces `previe
 The script starts `release.yml` by hand with `preview=true`; its `preview` job
 zips each package with the `PREVIEW_PASSWORD` repository secret (AES-256, so 7-Zip
 or WinRAR opens them and Windows Explorer does not) and deletes and recreates the
-`preview` prerelease, with no notes, at that commit. The assets are always
+`preview` prerelease at that commit, with fixed notes: the password is had on the
+Verdite Project Discord, and back up the saves (where they are) first. The assets are always
 `Verdite3-preview-linux-x86_64.zip`, `Verdite3-preview-win-x64.zip` and
 `Verdite3-preview-win-x64-setup.zip`, so
 `…/releases/download/preview/<name>` never changes; the files inside, and the

@@ -175,6 +175,11 @@ jobs:
 
       - name: Replace the preview prerelease
         run: |
+          cat > notes.md <<'NOTES'
+          **Preview builds are password protected.** Join the [Verdite Project Discord](https://discord.gg/R4EKCs8RWH) for access.
+
+          **Always back up your saves before installing a preview build!** They are `carda.sav` and `cardb.sav`, in `%LOCALAPPDATA%\Verdite3` on Windows and `~/.local/share/verdite3` on Linux.
+          NOTES
           gh release delete preview --cleanup-tag --yes 2>/dev/null || true
           gh release create preview out/*.zip --target "$GITHUB_SHA" --prerelease \
-            --title "Verdite3 preview (${GITHUB_SHA::9})" --notes ""
+            --title "Verdite3 preview (${GITHUB_SHA::9})" --notes-file notes.md
