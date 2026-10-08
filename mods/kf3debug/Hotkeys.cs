@@ -32,7 +32,7 @@ namespace Kf3.Mods.Debug;
 /// RecompOne's stock one, and Left Shift is too (only the right one is bound), so
 /// those are the flight keys. The toggles stay on F2..F8, which no layout touches.
 /// V, which no layout touches either, is film mode: the cinematic camera, enemies
-/// that ignore you and noclip, together.
+/// that ignore you and noclip, together. The pad's mute key does the same.
 ///
 /// </summary>
 internal static class Hotkeys
@@ -124,9 +124,7 @@ internal static class Hotkeys
         if (Pressed(TogglePanel))
             DebugPanel.Instance.IsOpen = !DebugPanel.Instance.IsOpen;
 
-        // F3, or the pad's spare button -- the DualSense's mute key -- so a
-        // player on a controller never has to reach for the keyboard to fly.
-        if (Pressed(ToggleNoclip) || PadPressed(PadMute))
+        if (Pressed(ToggleNoclip))
         {
             Noclip.Enabled = !Noclip.Enabled;
             Notify("Noclip", Noclip.Enabled);
@@ -145,7 +143,8 @@ internal static class Hotkeys
 
         // Film mode: all three on, or all three off when they already are. No
         // toast either way -- it is for filming, and one would land in the shot.
-        if (Pressed(FilmMode))
+        // V, or the pad's spare button -- the DualSense's mute key -- does the same.
+        if (Pressed(FilmMode) || PadPressed(PadMute))
         {
             bool on = !(Noclip.Cinematic && Cheats.Peaceful && Noclip.Enabled);
             Noclip.Cinematic = on;

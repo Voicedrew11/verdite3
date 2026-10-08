@@ -90,10 +90,9 @@ internal sealed class DebugPanel : IPanel
             ImGui.SetTooltip("Fly through walls, with the body coming along. Forward goes where "
                            + "the camera is looking, pitch included. Your own walk keys or the "
                            + "left stick move; Page Up and Page Down -- or the pad's R2 and L2 -- "
-                           + "go up and down; Left Shift or R3 is fast. F3 toggles it, as does a "
-                           + "DualSense's mute key. Collision is not disabled -- the position is "
-                           + "written after the game's own movement, so enemies and items keep "
-                           + "theirs.");
+                           + "go up and down; Left Shift or R3 is fast. F3 toggles it. Collision "
+                           + "is not disabled -- the position is written after the game's own "
+                           + "movement, so enemies and items keep theirs.");
 
         if (Noclip.Enabled)
         {
@@ -739,7 +738,7 @@ internal sealed class DebugPanel : IPanel
         ImGui.TextDisabled("On a pad");
         if (ImGui.BeginTable("##padkeys", 2, ImGuiTableFlags.SizingStretchProp))
         {
-            Row("Mute / Share", "toggle noclip");
+            Row("Mute / Share", "film mode (as V)");
             Row("Left stick", "fly forward and strafe");
             Row("R2 / L2", "fly up / down");
             Row("R3", "fly fast (hold)");
