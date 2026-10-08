@@ -241,6 +241,18 @@ public static class PortSettings
 
     // ---- Gameplay: the Gameplay tab ----
 
+    /// <summary>2D is the twin sticks, the left one walking and strafing; 3D is tank
+    /// controls, the left stick walking and turning as the D-pad does (Analog.Tank).</summary>
+    public static readonly PortSetting Controls = new()
+    {
+        Key = Analog.ControlsKey, Envs = ["KF3_TANK"], Label = "Controls",
+        Tip = "2D: the left stick walks and strafes, the right stick turns and looks.\n" +
+              "3D: tank controls. The left stick walks forward and back and turns; L1 and R1 strafe.",
+        Page = Gameplay, MenuLabel = "CONTROLS", Steps = [0, 1], MenuValue = Named([0, 1], "2D", "3D"),
+        Names = ["2D", "3D (tank)"], Default = 0, Live = () => Analog.Tank ? 1 : 0, Apply = v => Analog.Tank = v != 0,
+        Ui = Ui.Combo,
+    };
+
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
         tip: "Puts you back at your last save instead of the menus.");
@@ -368,7 +380,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion,
         RenderDistanceRow, Water,
-        AutoReloadOn, Gyro, RumbleRow,
+        Controls, AutoReloadOn, Gyro, RumbleRow,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -377,7 +389,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
+        Controls, AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
         ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 

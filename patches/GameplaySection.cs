@@ -65,6 +65,9 @@ public sealed class GameplaySection : ISettingsSection
 
     public void Draw()
     {
+        // 2D or 3D controls (Analog.Tank): the left stick strafes, or turns.
+        PortSettings.Draw(PortSettings.Controls);
+
         // Dimmed rather than hidden while mouse look is off, as Verdite2's
         // AutoReloadPage dims its slot.
         PortSettings.Draw(PortSettings.InstantMouseLook);

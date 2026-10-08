@@ -391,6 +391,42 @@ hack overriding the bytes `Analog` reads, not committed; no pad was attached):
   go through the runtime's D-pad binding);
 - the feel: sensitivities, the ramp, the deadzones, at 60 and 144 fps.
 
+### 2D and 3D controls
+
+The port setting `kf3.controls` (Settings ▸ Gameplay ▸ Controls, or CONTROLS on the
+in-game PORT SETTINGS page; `KF3_TANK` in `docs/ENV_VARS.md`) chooses the layout.
+2D is the default and is the twin sticks above: the left stick walks and strafes,
+the right stick turns and looks.
+
+3D is tank controls on the stick. `ReplaceMove` drops the left stick's sideways
+deflection, so the stick no longer strafes, and `BeforeLook` adds it to the turn
+instead: full deflection turns at the game's own rate (`0x801B2668`, 32 walking, 40
+standing) times the turn sensitivity (`kf3.analog.turn`, 1.25), and
+`kf3.analog.invertturn` flips it. The right stick's look ramp does not apply to
+that turn. Forward and back keep the move curve, read on their own deadzone (below).
+
+L1 and R1 still strafe, the right stick still turns and looks, and the D-pad and
+keyboard are unchanged: the keyboard's arrows already turn, and A and D strafe in
+both layouts. Built 2026-10-08; not measured on a pad and not judged by eye. No
+stick could be driven in a run, and the synthetic-stick hack above was not used.
+
+**The first 3D build read the left stick through the twin sticks' radial deadzone**
+(0.15), so past it both axes counted in full. The user found 3D "super weird" in
+play. On reading the code: a thumb 10° off forward reads about 0.17 sideways, a
+turn of about 9 units a tick (some 11° a second), so the player could not walk
+straight; and a sideways push slightly off level crept forward or back at about 17%
+of the walk speed. 3D now reads each axis on its own deadzone, 0.3 (`TankDeadzone`,
+a cross rather than a circle), rescaled past it, and squares the turn
+(`TankTurnCurve`), so a small push corrects finely and a full one still turns at
+the full rate; the walk keeps the move curve (1.0). The turn still starts and stops
+on the tick, unlike the D-pad's ramp over about four ticks; whether 3D wants that
+ramp is left until this has been felt.
+
+Not yet judged by eye: the turn rate's feel at full deflection, the 0.3 deadzone and
+the squared turn; whether the left stick's leak into the D-pad's turn bits is fully
+owned on a real pad, since 3D's sideways turn is taken from it; the feel at 60 and
+144 fps.
+
 ## Turning a picked-up item
 
 `patches/ItemTurn.cs` (2026-10-07): while the game holds an item up in the middle

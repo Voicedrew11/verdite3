@@ -45,7 +45,7 @@ store that touches the dictionary only on the host thread.
 | file | what |
 |---|---|
 | `patches/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
-| `patches/PortSettings.cs` | the list (39 settings), the game page's thirteen rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), seven of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
+| `patches/PortSettings.cs` | the list (40 settings), the game page's fourteen rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), seven of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
 | `patches/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
 | `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
 | `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
@@ -152,7 +152,8 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
-| GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
+| GAMEPLAY | CONTROLS | 2D, 3D | `kf3.controls`: 2D the twin sticks, 3D tank controls, the left stick walking and turning (`docs/INPUT.md`, "2D and 3D controls") |
+| | RELOAD ON DEATH | ON, OFF | |
 | | GYRO | ON, OFF | `kf3.itemturn.gyro` and `kf3.gyroaim.on`: the pad's gyroscope turns a picked-up item and aims a drawn bow (`docs/INPUT.md`) |
 | | RUMBLE | OFF, ON, HD | `kf3.rumble.on` and `kf3.rumble.hd`: the pad rumbles as a bow is drawn and loosed, ON on two motors, HD on a Switch Pro Controller, a single Joy-Con or a DualSense over USB (`docs/INPUT.md`, "Rumble"); OFF keeps the HD choice |
 
