@@ -1892,6 +1892,24 @@ Four files in the directory have no entry below:
   main view and the mirror. False, the default, is the draw as it was. **No
   recompile.** See "Billboards sheared from below" in Verdite3's
   `docs/GPU_RENDERER.md`.
+- `0104-pad-rumble.patch` — the runtime rumbled pad 1 only for the game's own
+  `PadSetAct`, so a port had no way to rumble for an effect of its own, and a Switch
+  pad's HD rumble (two actuators, each playing a band at a chosen frequency) was out
+  of reach: SDL 2.32's `GameControllerRumble` gives it two fixed bands, and its
+  Switch driver takes no raw rumble through `GameControllerSendEffect`.
+  `Controller.Rumble` is the port's request, a `RumbleWave` record (a low and a
+  high band, hertz and amplitude 0..1) or null; `InputManager.PollRumble` sends a new
+  record at once and a standing one again every 30 ms, and stops the motors once
+  when it goes null, so nothing is sent while no port asks and the game's own rumble
+  is left alone. `Controller.WantHdRumble` asks for HD: on a Switch Pro Controller
+  or a single Joy-Con (`GameControllerGetType`) the pad's HID path
+  (`GameControllerPathS`) is opened beside SDL's handle (`HidOpenPath`) and output
+  report `0x10` written to it, both bands encoded as the reverse-engineered rumble
+  table has them; `Controller.HdRumble` says it took. A pad with no HID path, one
+  that will not open, or a refused write falls back to the two motors. Under one
+  lock, as `Poll` runs on more than one thread; a rescan writes the neutral report
+  and closes the handle. Output only — **no recompile**. Verdite3's `Rumble` (a
+  drawn bow) is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
 
 ## Retained contract additions under verification (2026-10-04)
 
