@@ -224,10 +224,21 @@ public static class Stage15
         Camera? real = null;
         if (!Verifier.Replaying)
         {
-            bool handedNow = c.A0 != 0u && c.A1 != 0u;
+            // A rotation handed without a position is the item pickup (func_8005DB30)
+            // steering the view itself, levelling it as the item flies in. It is a
+            // handed camera like the main loop's, the block's eye with that
+            // rotation, so the smoother carries it between the loop's passes;
+            // otherwise the override, the last world frame's, held the old pitch.
+            bool steered = c.A0 == 0u && c.A1 != 0u;
+            bool handedNow = c.A1 != 0u;
             if (handedNow)
             {
-                Handed = Camera.Read(mem, c.A0, c.A1);
+                Handed = steered ? Camera.Read(mem) with
+                {
+                    Pitch = (short)mem.ReadU16(c.A1),
+                    Yaw = (short)mem.ReadU16(c.A1 + 2u),
+                    Roll = (short)mem.ReadU16(c.A1 + 4u),
+                } : Camera.Read(mem, c.A0, c.A1);
                 if (Handed is { } handed) OnHanded?.Invoke(handed);
             }
             if (ViewOverride is { } view)

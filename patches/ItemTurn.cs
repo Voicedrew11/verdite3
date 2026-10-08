@@ -423,6 +423,10 @@ public static class ItemTurn
     public static bool Test(CpuContext c, IMemory m)
     {
         if (_test < 0 || !_testClock.IsRunning || _testClock.Elapsed.TotalSeconds < 10.0) return true;
+        // Only on an iteration the world ticks, as the examine handler inside stage 4
+        // is: this pre-hook runs ahead of pacing's gate, and a pickup entered on a
+        // skipped iteration would run its whole loop with no tick for the smoothers.
+        if (!FramePacing.IterationTicked) return true;
         if (m is not PSMemory mem) return true;
         int id = _test;
         _test = -1;

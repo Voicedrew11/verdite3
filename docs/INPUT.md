@@ -560,6 +560,77 @@ in that area, so its model is loaded) and `KF3_AUTOPAD=17:Cross:300`:
 - the feel: the stick's rate, the 1.5 s before the spin comes back, the ease on
   letting go.
 
+## The item held up at the eye
+
+The pickup `func_8005DB30` did not always hold the item in the middle of the
+screen. It has two causes, one the game's and one the port's, and both are
+fixed (2026-10-08).
+
+**The game aims at the eye standing still.** After the item's model is resident,
+the pickup reads the view pitch `0x801B2608`, snaps it to level (1..2047, looking
+down, to 0; 2048..4094, looking up, to `0xFFF`), and asks
+**`func_8005BE28(a0, a1, a2, level pitch, yaw, sp+0x14, sp+0x18, &out)`** for the
+item's target: the offset `(a0, a1 + sp+0x14, a2 + sp+0x18)` turned by
+`func_800168A8` through the negated pitch and the yaw, plus the player's
+position, with **`0x640` taken off y**. The hold's call (return `0x8005DE74`) passes
+`(0, 500, 1500)` and two s16 from the item's type record (`+0xC`, `+0xE`); the
+fly-out's when the item is taken (`0x8005E110`) passes `(-500, 500, 0)`. The fly-in
+then eases the record from where it was (`sp+0x40`) to the target (`sp+0x30`) through
+`func_8005BEE0`, and the pitch from the player's to the level one through
+`func_80017170`, written to `0x801B2608`, by `t` `0..0x1000` in steps of `0x200`. Every
+stage-15 call in the pickup hands that rotation with a null position, so the
+camera keeps its eye, which stage 10 made **player y + bob `0x801B2650` + dip
+`0x801B2654` - `0x640`**. Picked up mid-stride or on landing, the item is centred
+on the eye without its bob and stays off by that much for the whole hold. Both
+paths reach this: a fresh record (`a0 = 0`, placed first at the player's feet
+`+0x400` along the yaw and `0x400` up) and a record already in the world (the
+examine handler `func_8005E2D0` and the area modules' callers), which keeps its
+own position until the fly-in.
+
+**`patches/ItemEye.cs`** (`KF3_ITEMEYE`, on) post-hooks `func_8005BE28` and, on
+those two return addresses only, moves the target by the camera block's eye
+(`0x801AEC4C`) less the eye the routine assumed. Nothing else calls the routine.
+
+**The port held the old pitch.** Under frame pacing the view smoother leaves its
+last world camera in `Stage15.ViewOverride`, and stage 15 stored it over whatever
+it was handed. The pickup hands a rotation alone, so `OnHanded` never ran, and the
+override, with the pitch of the moment before, was drawn for the whole pickup:
+the levelling was never seen and the item, placed for a level view, sat high or
+low. The pickup's five stage-15 calls are the only ones in the game and the 28
+area modules that hand `a0 = 0` with `a1 ≠ 0` (a survey of every call site), so
+stage 15 now takes exactly that shape as a handed camera, the block's eye with the
+rotation handed, and gives it to the smoother like the main loop's. The levelling
+is then carried between the loop's passes like any turn of the view, and the
+pickup's first frame continues from the smoothed camera rather than cutting to the
+tick's. (Skipping the override instead drew the levelling at the world's 15 Hz.)
+
+### Measured
+
+2026-10-08, slot 1 in `fdat17`, `KF3_ITEMTURN_TEST=0x6B`, `KF3_ITEMEYE_PROBE=1`,
+which prints the target and, twice a second during the hold, the item's position
+in the camera's frame (the block's view matrix times the item less the eye; x
+across, y down, z ahead):
+
+| run | at pickup | item from the eye | pitch held |
+|---|---|---|---|
+| walking, `KF3_ITEMEYE=0` | bob 60 | (1, 138, 1001) | level |
+| walking | bob 60 | (0, 200, 999) | level |
+| looking down, walking, without the stage-15 change | pitch 625, bob 60 | (0, -704, 736) | 625 |
+| looking down, walking | pitch 561, bob 60 | (0, 200, 999) | level |
+
+200 below the eye at 1000 ahead is the game's own standing presentation; the
+target moved by `(0, 60, 0)` for the hold and the fly-out alike. Smoothing off
+(`KF3_SMOOTH=0`) gives the same as the last row. The fly-in, at 120 fps, drew 72
+frames over 9 passes with **64 distinct pitches** (`KF3_SMOOTH_PROBE`: 15 tick
+samples a second, no placements, no snaps); drawn straight from the game it was 9.
+
+The test pickup had to wait for an iteration the world ticks: its pre-hook on
+stage 4 runs ahead of pacing's gate, and a pickup entered on a skipped iteration
+leaves `FramePacing.IterationTicked` false for its whole loop, so every pass read
+to the smoother as a placement. The examine handler is inside stage 4 and only
+runs on ticked iterations. **Not judged by eye**: that the item looks centred,
+the levelling's feel, and a pickup on landing (the dip, not driven).
+
 ## Gyro aim with a drawn bow
 
 `patches/GyroAim.cs` (switch `KF3_GYROAIM`, off by default): while a bow is in

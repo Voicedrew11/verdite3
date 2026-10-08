@@ -204,6 +204,11 @@ too). `KF3_STAGE15` and `KF3_CAMERABLOCK` are on; `=0` is the recompiled routine
   rebuilt from the camera the frame would have used, so the world's stages never
   read the drawn one. Shell verb `view [x y z pitch yaw roll | off]`, checked:
   the block reads the given camera while it is set and the handed one after `off`.
+  **A rotation handed alone** (`a0 = 0`, `a1 ≠ 0`) is handed too, as the block's
+  eye with that rotation: only the item pickup does that, steering the view level
+  as the item flies in. Before, `OnHanded` never ran for it and the override, the
+  last world frame's, held the old pitch over the whole pickup (2026-10-08; "The
+  item held up at the eye" in `docs/INPUT.md`).
 - **The compass needle** (`Stage15`, `KF3_STAGE15_NEEDLE=0` to compare): the HUD
   block steps the needle's spring (speed at `gp + 0xD8`, `0x8009C2EC`; yaw in the
   records at `0x80081C3A` and `0x80081C5E`) every call, so under pacing it swung at

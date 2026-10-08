@@ -284,6 +284,8 @@ Kf3.AnalogProbe.Install();
 // walk (ModelWalk.Carry). See "Turning a picked-up item" in docs/INPUT.md.
 Kf3.ItemTurn.Configure();
 Kf3.ItemTurn.Install();
+Kf3.ItemEye.Configure(Environment.GetEnvironmentVariable("KF3_ITEMEYE"));
+Kf3.ItemEye.Install();
 
 // Aiming a drawn bow with the gyroscope (KF3_GYROAIM, off): spent through the look
 // routine beside the right stick. See "Gyro aim with a drawn bow" in docs/INPUT.md.
