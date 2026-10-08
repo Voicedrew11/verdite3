@@ -648,6 +648,18 @@ On 2026-10-08, on this machine (Linux, PipeWire, a DualSense on USB), with
 the probe stepped through test: drawing, full draw, rest each cycle. No rumble has
 been felt.
 
+The same day, with the game run and nothing felt, `pactl list sink-inputs` showed
+the haptics stream on the DualSense's Direct sink **muted**, under
+`application.name = "dotnet"`, the name of the game's own OpenAL stream, which was
+muted too. WirePlumber restores mute per application name, so the haptics shared
+the game sound's saved mute. The pad itself was fine: a four-channel wave played
+with `pw-play` into channels 3 and 4 was felt. The stream now opens as
+`KingsField3 haptics` (stream name `Haptics`) and has its own saved state; under
+Fedora's `sdl2-compat` that takes `SDL_APP_NAME`, not SDL2's audio hint (runtime 0105).
+A player who had muted the game's sound in a mixer would have muted the haptics too.
+With it, `KF3_RUMBLE_TEST=1` on a cold start, no replug: the waves were felt, but
+weak or odd.
+
 ### Not yet judged by eye
 
 - the feel of each wave on a two-motor pad: whether the nock, the creak, the strain
@@ -657,9 +669,9 @@ been felt.
 - whether HD opens on Linux, Windows and macOS beside SDL, and what a single Joy-Con
   does with it;
 - a Joy-Con pair, which takes two-motor rumble: whether it is audible enough;
-- whether a DualSense's actuators respond over USB and feel right, and whether
-  channels 3 and 4 are the left and right actuators (the community's report, not
-  yet checked on the pad);
+- why a DualSense's waves feel weak or odd over USB (felt on 2026-10-08), and
+  whether channels 3 and 4 are the left and right actuators (the community's
+  report, not yet checked);
 - the DualSense's device names on Windows and macOS, which the opening matches on
   "DualSense" or "Wireless Controller" and has not been seen there.
 
