@@ -71,7 +71,7 @@ dotnet bin/Release/net10.0/KingsField3.dll disc/KingsField3.cue
 
 The assembly is `KingsField3`, the environment-variable prefix is `KF3_`, and the
 MCP project is `KingsField3Mcp`. `tools/RecompOne` is a **subtree** of the fork
-`Voicedrew11/verdite-recompone`, pinned at `6dc8ba2`; `tools/verdite-core` is a
+`Voicedrew11/verdite-recompone`, pinned at `6ef711f`; `tools/verdite-core` is a
 subtree of the shared, game-agnostic `Voicedrew11/verdite-core`. `setup_tools.sh`
 moves them (`--pull-fork`/`--push-fork`, `--pull-core`/`--push-core`). Their sources
 are tracked here, so a fresh clone already has them and nothing needs fetching.

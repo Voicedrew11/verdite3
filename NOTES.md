@@ -55,7 +55,7 @@ copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); the HUD at the screen edges, Verdite2's, moved by its
 records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
-of the shared fork `Voicedrew11/verdite-recompone` at `6dc8ba2` (this repo's
+of the shared fork `Voicedrew11/verdite-recompone` at `6ef711f` (this repo's
 retained-scene work through `0103` and the `0045` amendment pushed, merged with the
 fork's `0090`-`0093`; Verdite2 pinned `f02f484`), with
 retained-runtime checkpoints on the fork's `checkpoint/retained-depth-probes`,
