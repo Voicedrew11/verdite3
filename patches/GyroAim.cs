@@ -15,10 +15,11 @@ namespace Kf3;
 ///
 /// **A bow** is weapon id 27 (LARGE BOW) or 28 (ELCHRIS BOW), read off the name
 /// table at <c>0x8007F620</c>, in the equipped-weapon byte <c>0x801B25AF</c>.
-/// **Drawn** is the arm's swing clock <c>s16 0x801B25A4</c> running (it is -1
-/// between swings and set going by an attack press), or the attack button held:
-/// the action mask at <c>0x80081870</c> against the pad word <c>0x801B265C</c>, so
-/// whatever the layout binds to attack, a mouse button included, draws.
+/// **Drawn** is <c>func_8002D2A0</c>'s bow branch with the clip byte
+/// <c>u8 0x801B25AE</c> at 0 and the swing clock <c>s16 0x801B25A4</c> running:
+/// from the press that nocks the arrow, through the draw, to the release, which
+/// sets the clip byte to 1 (the loose). The game holds full draw while attack is
+/// held, so the aim lasts as long as the hold. See Rumble for the whole branch.
 ///
 /// The rate is integrated every vblank while the gate holds, and the look routine's
 /// tick spends the sum through <see cref="Analog.BeforeLook"/> beside the right
@@ -30,7 +31,8 @@ public static class GyroAim
 {
     const uint WeaponSlot = 0x801B25AF;     // u8, the equipped weapon id, 0xFF none
     const uint SwingClock = 0x801B25A4;     // s16, the arm's swing clock, -1 idle
-    const uint AttackMask = 0x80081870;     // u16, entry 4 of the action mask table
+    const uint ClipByte = 0x801B25AE;       // u8, for a bow: 0 drawn, 1 loosed
+    const uint AttackMask = 0x80081870;     // u16, entry 4 of the action mask table (the probe)
     const uint Pad = 0x801B265C;            // u16, the pad word stage 4 tests, active high
 
     const int LargeBow = 27, ElchrisBow = 28;
@@ -90,7 +92,7 @@ public static class GyroAim
     {
         int weapon = m.ReadU8(WeaponSlot);
         if (weapon is not (LargeBow or ElchrisBow)) return false;
-        return (short)m.ReadU16(SwingClock) != -1 || (m.ReadU16(Pad) & m.ReadU16(AttackMask)) != 0;
+        return m.ReadU8(ClipByte) == 0 && (short)m.ReadU16(SwingClock) >= 0;
     }
 
     static void Integrate()
@@ -144,7 +146,7 @@ public static class GyroAim
         var m = MouseLook.Memory;
         if (m == null) return;
         Console.WriteLine($"[KF3] gyro aim: {(Enabled ? "on" : "off")}, pad gyro {(Controller.Gyro ? "on" : "off")}, " +
-                          $"weapon {m.ReadU8(WeaponSlot)}, clock {(short)m.ReadU16(SwingClock)}, " +
+                          $"weapon {m.ReadU8(WeaponSlot)}, clock {(short)m.ReadU16(SwingClock)}, clip {m.ReadU8(ClipByte)}, " +
                           $"attack {((m.ReadU16(Pad) & m.ReadU16(AttackMask)) != 0 ? "held" : "up")}, " +
                           $"vblanks drawn {_gated}, ticks spent {_ticks}, turn {_spentTurn:0} pitch {_spentPitch:0}");
         _gated = _ticks = 0;

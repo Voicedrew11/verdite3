@@ -58,6 +58,10 @@ public static class MouseLook
     /// <summary>The guest memory, for readers outside a hook (the view's lead).</summary>
     internal static IMemory? Memory { get; private set; }
 
+    /// <summary>When the look routine last ran (Environment.TickCount64): the world
+    /// is ticking, not stopped under a menu. GyroAim and Rumble read it.</summary>
+    internal static long TickMs { get; private set; }
+
     public static void Install() => HookAttach.OnOverlayLoad("mouse look", Attach);
 
     static bool Attach()
@@ -80,6 +84,7 @@ public static class MouseLook
     static void Replace(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
     {
         Memory = m;
+        TickMs = Environment.TickCount64;
         var (turn, pitch) = Mouse.TakeLook();
         bool mouse = Mouse.Enabled && Mouse.Captured;
         if (!mouse) _fracTurn = _fracPitch = 0f;

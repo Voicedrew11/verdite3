@@ -290,6 +290,11 @@ Kf3.ItemTurn.Install();
 Kf3.GyroAim.Configure();
 Kf3.GyroAim.Install();
 
+// Rumble as a bow is drawn and loosed: two motors, or HD rumble on a Switch pad
+// (KF3_RUMBLE, KF3_RUMBLE_HD, both on; runtime 0104). See "Rumble" in docs/INPUT.md.
+Kf3.Rumble.Configure();
+Kf3.Rumble.Install();
+
 // The Input pane, the port's in place of the runtime's: Keyboard (the layout and
 // the bindings), Gamepad (the sticks and the bindings), Mouse. See "The Input pane
 // is the port's" in docs/INPUT.md.

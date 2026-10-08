@@ -282,6 +282,13 @@ public static class PortSettings
     public static readonly PortSetting GyroAimOn = Switch(GyroAim.OnKey, "KF3_GYROAIM", "Gyro aims a drawn bow",
         null, null, () => GyroAim.Enabled, GyroAim.SetEnabled, false,
         tip: "While a bow is drawn, turn and tip the pad to aim. Needs a pad with a gyroscope, such as a DualShock 4, DualSense or Switch Pro.");
+    public static readonly PortSetting RumbleOn = Switch(Rumble.OnKey, "KF3_RUMBLE", "Rumble",
+        null, null, () => Rumble.Enabled, Rumble.SetEnabled, true,
+        tip: "The pad rumbles as you draw a bow and let the arrow fly.");
+    public static readonly PortSetting RumbleHd = Switch(Rumble.HdKey, "KF3_RUMBLE_HD", "HD rumble",
+        null, null, () => Rumble.Hd, Rumble.SetHd, true,
+        tip: "On a Switch Pro Controller or a single Joy-Con, rumble with HD rumble's finer texture; on a DualSense plugged in by USB, with its haptics. Other pads use their two motors.",
+        usable: () => Rumble.Enabled);
     public static readonly PortSetting MenuPointer = Switch(Kf3.MenuMouse.OnKey, "KF3_MENUMOUSE", "Point at the menus",
         null, null, () => Kf3.MenuMouse.Enabled, v => Kf3.MenuMouse.Enabled = v, true, ui: Ui.None);
 
@@ -349,13 +356,19 @@ public static class PortSettings
         },
         (v, _) => v >= 1 ? [1, 1] : [0, 0]);
 
+    /// <summary>OFF, ON (two motors) or HD; OFF leaves the kept HD choice.</summary>
+    public static readonly PortSetting RumbleRow = Combine("row.rumble", Gameplay, "RUMBLE", [RumbleOn, RumbleHd],
+        [0, 1, 2], v => v == 0 ? "OFF" : v == 1 ? "ON" : "HD",
+        get => get(RumbleOn) == 0 ? 0 : get(RumbleHd) == 0 ? 1 : 2,
+        (v, _) => v <= 0 ? [0, Unchanged] : v >= 2 ? [1, 1] : [1, 0]);
+
     /// <summary>The game's page, in order.</summary>
     public static readonly PortSetting[] Menu =
     [
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion,
         RenderDistanceRow, Water,
-        AutoReloadOn, Gyro,
+        AutoReloadOn, Gyro, RumbleRow,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -365,7 +378,7 @@ public static class PortSettings
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
-        ItemTurnOn, ItemTurnGyro, GyroAimOn,
+        ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 
     /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>

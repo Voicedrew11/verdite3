@@ -208,6 +208,7 @@ disagreed, the field is given as the code and the status screen show it.
 | `0x801B2590` | u32 ptr | current spell record (`0x801B77EC + id*0x18`), set at a cast |
 | `0x801B2594` | u32 ptr | current weapon record (`0x801D37A4 + id*0x44`), set on equip |
 | `0x801B259C` | u32 | the first-person arm's swing blender slot |
+| `0x801B25A0` | u32 | the bow's nocked arrow projectile, set by `func_80053C84` at the nock, cleared when the arrow count is 0 |
 | `0x801B25A4` | s16 | arm swing/cast clock, -1 idle, stepped during a swing |
 | `0x801B25A6` | s16 | arm swing window |
 | `0x801B25A8` | s16 | arm swing window |
@@ -215,7 +216,7 @@ disagreed, the field is given as the code and the status screen show it.
 | `0x801B25AB` | u8 | charging spell id |
 | `0x801B25AC` | u8 | committed spell id |
 | `0x801B25AD` | u8 | committed spell id (second slot) |
-| `0x801B25AE` | u8 | arm clip byte / cast phase |
+| `0x801B25AE` | u8 | arm clip byte / cast phase; for a bow 0 drawn, 1 loosed |
 | `0x801B25AF` | u8 | equipped weapon id and current arm-effect id (0xFF none); 27 and 28 are the bows, LARGE BOW and ELCHRIS BOW (names at `0x8007F620`) |
 | `0x801B25B2` | u8 | queued-cast counter |
 | `0x801B25B3` | u8 | cast-ready latch |
@@ -507,6 +508,20 @@ record's `+0x16` cost, points `0x801B2590` at the record and, on the release
 pass, subtracts the cost; `func_8002DEEC(id)` is the id-driven alternate and
 `func_8002FE1C` is the pad dispatcher. The charge gauge is `0x801B2502`
 (0..5000) with the cooldown `0x801B2506`.
+
+**The bow** is `func_8002D2A0`'s branch for weapons 27 and 28 (LARGE BOW, ELCHRIS
+BOW); weapon ids below 27 take the other weapons' path. The clip byte `u8 0x801B25AE`
+picks the phase: 0 drawn, 1 loosed. A press (`func_8002C040`, called from
+`func_8002FE1C` with the clock at -1) sets the clip byte to 0 and the clock to 0.
+The next tick with the clock at 0 nocks: the arrow id is `0x93` (ARROWS) for 27 and
+`0x94` (LIGHT ARROWS) for 28, its count at `0x800C85E8 + id` goes down, and
+`func_80053C84` spawns the projectile, kept at `0x801B25A0` (cleared if the count
+is 0). Each tick of the draw adds the weapon record's `+0x1C` to the clock, clamped
+at `0x0FFF` (full draw). While the attack mask (`u16 0x80081870`) is set in the pad
+word `0x801B265C` the clock holds. Released, the clip byte becomes 1 and the clock 0
+(the loose), then the clock steps `+0x190` a tick until 4095 or more, when it is set
+to -1 and the charge `0x801B2502` cleared. So the bow does not take the sword
+swing's `0x180` a tick to `0x0F80`.
 
 The magic menu's book is records 0..30, named by item ids 150..180 in the name
 table (FIRE BALL, FIRE WALL, ...); six of them (153, 160, 164, 168, 172, 174)
@@ -926,7 +941,7 @@ the autostart position, turning and walking (`KF3_AUTOPAD=12:Left:3000,20:Up:600
 | 4 | `func_80034BF4` | 0 | | the cull grid: writes the 25x25 grid at `0x1F800120` (`func_8002D3A8`'s job) |
 | 5 | `func_80035630` | clears both tables | | flip the buffers, `ClearOTagR` both tables, reset the primitive buffer (`func_8002E064`) |
 | 6 | `func_80043858` | 0 | | sound slots (`func_800353AC`, instruction for instruction) |
-| 7 | `func_8003DF50` | 0 here | | the first-person arm: `0x801B25A4` is the swing clock (-1 idle, 0..0xFFF stepped 0x180 a tick by `func_8002D2A0` during a Square swing), its clip byte is `u8[0x801B25AE]`, and its blender call's slot is `0x801B259C`; it returns before drawing while the clock is -1, lit from the player's own tile's light record (`func_80032400`) |
+| 7 | `func_8003DF50` | 0 here | | the first-person arm: `0x801B25A4` is the swing clock (-1 idle, 0..0xFFF stepped 0x180 a tick by `func_8002D2A0` during a Square swing; for a bow, see "The bow" above), its clip byte is `u8[0x801B25AE]`, and its blender call's slot is `0x801B259C`; it returns before drawing while the clock is -1, lit from the player's own tile's light record (`func_80032400`) |
 | 8 | `func_80016A98` | 0 | | wrapped angle difference (`func_80015374`, identical) |
 | | (inline) | | | the HUD block: the HUD model table at `0x800819B4..0x80081C44` from the player block |
 | 9 | `func_8003C35C` | 16 (`POLY_GT4`/`GT3`, blended) | 7-11 | the HUD's 3D models, the records at `0x80081C20` (`func_80031D5C`) |

@@ -474,13 +474,13 @@ CUSTOM.
 **A bow** is weapon id 27 (LARGE BOW) or 28 (ELCHRIS BOW), read off the name table
 at `0x8007F620` (stride `0x18`), in the equipped-weapon byte `0x801B25AF`.
 
-**The gate** is "drawn": the arm's swing clock `s16 0x801B25A4` is not -1 (an
-attack press sets it going), or the attack action's mask (`u16 0x80081870`, entry
-4 of the action mask table) is set in the pad word `0x801B265C`. The mask is read
-rather than a button, so whatever the layout binds to attack, a mouse button
-included, draws. Whether the game holds a bow's draw while attack is held, or
-fires on the press and runs the clock about 0.7 s regardless, is **not known**:
-nobody has watched it.
+**The gate** is "drawn", read off the bow branch of `func_8002D2A0`: the clip byte
+`u8 0x801B25AE` is 0 and the swing clock `s16 0x801B25A4` is 0 or more. That is
+from the nock (the press sets the clock to 0) through the draw to the release,
+which sets the clip byte to 1 and the clock back to 0. The game holds a bow's draw:
+while attack is held the clock climbs to `0x0FFF` (full draw) and stays there, so
+the gate lasts the whole hold. The gate reads the game's state rather than a
+button, so whatever the layout binds to attack, a mouse button included, draws.
 
 **The rate and its spending.** The rate is integrated on every `VSyncEvent` with
 the stopwatch's step, clamped to 0.1 s. A rate under 0.05 rad/s is a hand at rest
@@ -515,8 +515,81 @@ Builds. Nothing run on a pad.
 - the signs on a real pad: a left turn of the pad turns the view left, and the far
   edge tipped up looks up;
 - whether one to one feels right, and the drift past the 0.05 rad/s rest;
-- the gate's timing against the bow's actual draw: whether the swing clock or the
-  attack mask is the right edge, since the game's hold is not known.
+- the gate's feel: whether aiming from the nock on, through the full draw, is the
+  right span, now that the gate follows the game's clip byte and clock (read from
+  the code, not yet watched on a pad).
+
+## Rumble
+
+`patches/Rumble.cs` (switch `KF3_RUMBLE`, on by default): the pad rumbles as a bow
+is drawn and loosed. Settings ▸ Gameplay: **Rumble** (`kf3.rumble.on`, on), with
+**HD rumble** (`kf3.rumble.hd`, on) indented under it and dimmed while rumble is
+off. The game's own PORT SETTINGS page GAMEPLAY has one row for both, **RUMBLE**
+(`row.rumble`, `docs/SETTINGS.md`): OFF, ON (two motors) or HD. OFF leaves the kept
+HD choice as it was.
+
+**The waves**, for a bow in hand (the branch read in the gyro-aim section):
+
+- a **nock** click as the arrow is nocked, 45 ms, at 120 and 400 Hz;
+- a **creak** while it is drawn: a low grained rumble, its pitch and strength
+  rising with the tension (the clock over `0x0FFF`);
+- at **full draw** a steady strain with a 7 Hz tremble in it;
+- a **twang** on the loose, decaying over about a 50 ms time constant and dying
+  within 200 ms, scaled by the tension at the release.
+
+The waves stop when the look routine has not run for 150 ms, so a menu or a cutscene
+silences a held draw. `KF3_RUMBLE_PROBE=1` prints a line a second: on or off, HD
+state, the phase, the tension, and the waves asked.
+
+`KF3_RUMBLE_TEST=1` turns the probe on and plays the bow without a bow: from 3 s
+after start-up, the waves three times over on a 3.5 s cycle (nock; a 1.5 s draw; 1 s
+at full draw; the loose; a rest). It is for a pad on the desk, not for play.
+
+**Three paths.** A two-motor pad takes the amplitudes, the low band on the large
+motor.
+
+- A **Switch Pro Controller** or a single **Joy-Con** gets HD rumble through runtime
+  0104 (`tools/RecompOne/docs/RECOMPONE_PATCHES.md`, entry 0104): the pad's HID
+  path is opened beside SDL and the raw output report `0x10` is written to it, both
+  bands in the reverse-engineered table's encoding. If the path will not open or the
+  write is refused, the pad falls back to two motors.
+- A **DualSense** plugged in by **USB** gets haptics through runtime 0105 (entry
+  0105): the pad's USB sound card is opened through SDL audio at 48 kHz, four
+  channels, and the two bands are played as sines into channels 3 and 4, taken as
+  the left and right actuators, 40 ms ahead. The motors are stopped once on opening,
+  because SDL's DualSense driver turns audio haptics off whenever non-zero rumble is
+  sent. On Linux the pad's sink must be a four-channel profile; a stereo one is
+  refused and the pad keeps two-motor rumble rather than being downmixed.
+- A **DualSense over Bluetooth** has no sound card, so it takes two-motor rumble, as
+  do a Joy-Con pair and the other pads. `KF3_RUMBLE_HD=0` gives a Switch pad and a
+  DualSense two-motor rumble too.
+
+### Measured
+
+Builds. The HD encoder's silence is `00 01 40 40` (the table's neutral), and its
+amplitude codes rise from 0 to 100 with the wave. The boot check reads 39 settings
+on four pages.
+
+On 2026-10-08, on this machine (Linux, PipeWire, a DualSense on USB), with
+`KF3_RUMBLE_TEST=1`: the log read `[Input] haptics: "DualSense wireless controller
+(PS5) Direct DualSense Wireless Controller", 48000 Hz, 4 channels (pipewire)`, and
+the probe stepped through test: drawing, full draw, rest each cycle. No rumble has
+been felt.
+
+### Not yet judged by eye
+
+- the feel of each wave on a two-motor pad: whether the nock, the creak, the strain
+  and the twang read as a bow;
+- the same on a Switch Pro Controller through HD rumble, and whether the HD texture
+  is finer than the two motors;
+- whether HD opens on Linux, Windows and macOS beside SDL, and what a single Joy-Con
+  does with it;
+- a Joy-Con pair, which takes two-motor rumble: whether it is audible enough;
+- whether a DualSense's actuators respond over USB and feel right, and whether
+  channels 3 and 4 are the left and right actuators (the community's report, not
+  yet checked on the pad);
+- the DualSense's device names on Windows and macOS, which the opening matches on
+  "DualSense" or "Wireless Controller" and has not been seen there.
 
 ## The Input pane is the port's
 

@@ -121,6 +121,10 @@ kept.
 | `KF3_ITEMTURN_TEST` | an item id (`0x6B` in `fdat02`): hold it up from the player's tick 10 s after the first area load, the right stick taken as full right and half down for the hold's second second; turns the probe on; dismiss with `KF3_AUTOPAD` (e.g. `17:Cross:300`) | none |
 | `KF3_GYROAIM` | `1`: the pad's gyroscope aims a drawn bow (weapon 27 or 28, the attack drawn), one to one, through the look (`docs/INPUT.md`, "Gyro aim with a drawn bow"); switches the sensor on | off |
 | `KF3_GYROAIM_PROBE` | `1`: a line a second: on/off, the pad's gyro, the weapon, the swing clock, attack held or up, vblanks gated in, ticks spent, units turned and pitched | off |
+| `KF3_RUMBLE` | `0`: no rumble; the pad rumbles as a bow is nocked, drawn and loosed (`docs/INPUT.md`, "Rumble") | on |
+| `KF3_RUMBLE_HD` | `0`: a Switch Pro Controller, a single Joy-Con and a DualSense over USB take two-motor rumble, not HD rumble (runtime 0104 for the Switch pads, 0105 for the DualSense) | on |
+| `KF3_RUMBLE_PROBE` | `1`: a line a second: on/off, HD state, the phase, the tension, waves asked | off |
+| `KF3_RUMBLE_TEST` | `1`: turns the probe on, and from 3 s after start-up plays the bow's waves three times over without a bow (nock, 1.5 s draw, 1 s full draw, loose, rest; 3.5 s cycle) | off |
 
 The runtime still reads seven switches under Verdite2's prefix (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,

@@ -87,5 +87,11 @@ public sealed class GameplaySection : ISettingsSection
 
         // Aiming a drawn bow with the gyroscope (GyroAim).
         PortSettings.Draw(PortSettings.GyroAimOn);
+
+        // Rumble (Rumble), HD dimmed under it while it is off.
+        PortSettings.Draw(PortSettings.RumbleOn);
+        ImGui.Indent();
+        PortSettings.Draw(PortSettings.RumbleHd);
+        ImGui.Unindent();
     }
 }

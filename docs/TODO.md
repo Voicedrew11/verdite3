@@ -73,9 +73,16 @@ recompiled and running, following Verdite2's method but applied to this disc.
   directions, the gyroscope on a real pad, the feel, and putting an item back
   (not reached by a run).
 - **Gyro aim with a drawn bow** (`KF3_GYROAIM`, `docs/INPUT.md`): built, builds
-  only, nothing run on a pad; **to judge on a real pad**: the signs, the feel
-  one to one, and the draw gate's timing (the swing clock or the attack mask against
-  the game's actual draw, which is not yet watched).
+  only, nothing run on a pad; the gate is now read from the code (the clip byte
+  0 and the clock 0 or more, nock to loose, the game holding full draw while attack
+  is held); **to judge on a real pad**: the signs, the feel one to one, and whether
+  the span the gate covers feels right.
+- **Rumble as a bow is drawn and loosed** (`KF3_RUMBLE`, `KF3_RUMBLE_HD`, runtime
+  `0104` for a Switch pad, `0105` for a DualSense over USB, `docs/INPUT.md`): HD
+  built for both; the DualSense's sound card opens on this machine (Linux, PipeWire,
+  48 kHz, four channels) and the probe runs through the test; **to feel on a
+  two-motor pad, on a Switch Pro Controller and on a DualSense**, and to check that
+  HD opens on Windows and macOS beside SDL.
 - ~~The world runs at the drawn rate.~~ It ran at 30, twice the game's 15 (the
   vblank delivered twice); frame pacing holds it to 15 at any rate, off until
   judged. See "Frame pacing" in `docs/DEVELOPMENT.md`.

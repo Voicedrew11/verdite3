@@ -44,6 +44,9 @@ judged); a picked-up item turned by the mouse, the right stick and the pad's
 gyroscope while the game holds it up (`KF3_ITEMTURN`, `KF3_ITEMTURN_GYRO`, runtime
 `0102`; measured with a synthetic stick, not judged); the pad's gyroscope aiming a
 drawn bow, one to one (`KF3_GYROAIM`, off; built, nothing run on a pad); the
+pad rumbling as a bow is nocked, drawn and loosed (`KF3_RUMBLE`, `KF3_RUMBLE_HD`, on,
+HD through runtime `0104` on a Switch pad and `0105` on a DualSense over USB, whose
+sound card opens here; built, nothing felt on a pad); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
 near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by default since 2026-10-06; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world
