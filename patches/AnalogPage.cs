@@ -69,8 +69,7 @@ public static class AnalogPage
             ImGui.Spacing();
             Note("Which way \"+\" points is the game's convention, not the port's — flip an axis " +
                  "here if it runs backwards.");
-            Check("Invert look Y", Analog.InvertPitchKey, ref Analog.InvertPitch);
-            ImGui.SameLine();
+            // Look Y is Gameplay's "Inverted camera" (PortSettings.InvertedCamera).
             Check("Invert turn", Analog.InvertTurnKey, ref Analog.InvertTurn);
             Check("Invert strafe", Analog.InvertStrafeKey, ref Analog.InvertStrafe);
             ImGui.SameLine();

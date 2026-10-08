@@ -253,6 +253,13 @@ public static class PortSettings
         Ui = Ui.Combo,
     };
 
+    /// <summary>The right stick's look up and down reversed, as a plane's flight stick:
+    /// push up to look down. The same key as the Input tab's old "Invert look Y"
+    /// (Analog.InvertPitch), which a picked-up item's turning follows too.</summary>
+    public static readonly PortSetting InvertedCamera = Switch(Analog.InvertPitchKey, "KF3_ANALOG_INVERTY", "Inverted camera",
+        Gameplay, "INVERTED CAMERA", () => Analog.InvertPitch, v => Analog.InvertPitch = v, false,
+        tip: "Reverses the right stick's up and down, like a plane's flight stick: push up to look down, pull back to look up.");
+
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
         tip: "Puts you back at your last save instead of the menus.");
@@ -380,7 +387,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion,
         RenderDistanceRow, Water,
-        Controls, AutoReloadOn, Gyro, RumbleRow,
+        Controls, InvertedCamera, AutoReloadOn, Gyro, RumbleRow,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -389,7 +396,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        Controls, AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
+        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
         ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 

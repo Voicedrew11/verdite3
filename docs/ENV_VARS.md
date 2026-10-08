@@ -114,7 +114,7 @@ kept.
 | `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
 | `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look ramp: on, the peak multiplier and the seconds to reach it | 1 / 2.2 / 0.5 |
 | `KF3_ANALOG_INSTANTSTOP` | `0`: let a released look axis coast on the game's decay (movement is never stopped) | on |
-| `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis | off |
+| `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis; `KF3_ANALOG_INVERTY` is Settings ▸ Gameplay ▸ Inverted camera, kept as `kf3.analog.invertpitch`, and the variable wins | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 | `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |
 | `KF3_ITEMTURN_GYRO` | `1`: the pad's gyroscope turns it too, and the runtime switches the sensor on | off |

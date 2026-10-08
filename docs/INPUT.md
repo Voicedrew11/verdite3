@@ -427,6 +427,17 @@ the squared turn; whether the left stick's leak into the D-pad's turn bits is fu
 owned on a real pad, since 3D's sideways turn is taken from it; the feel at 60 and
 144 fps.
 
+### Inverted camera
+
+The port setting `kf3.analog.invertpitch` (Settings ▸ Gameplay ▸ Inverted camera, or
+INVERTED CAMERA on the in-game PORT SETTINGS page; `KF3_ANALOG_INVERTY`) reverses the
+right stick's up and down, as a plane's flight stick: push up to look down. It is
+`Analog.InvertPitch`, which `BeforeLook` and `ItemTurn` already read; it was Input ▸
+Analog's "Invert look Y" checkbox, which is gone so the key has one control. The
+mouse keeps its own `KF3_MOUSE_INVERTY`. Added 2026-10-08; which way the stick looks
+with it off is still the unjudged pitch direction above, so "inverted" is inverted
+from that.
+
 ## Turning a picked-up item
 
 `patches/ItemTurn.cs` (2026-10-07): while the game holds an item up in the middle

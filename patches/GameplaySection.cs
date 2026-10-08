@@ -68,6 +68,9 @@ public sealed class GameplaySection : ISettingsSection
         // 2D or 3D controls (Analog.Tank): the left stick strafes, or turns.
         PortSettings.Draw(PortSettings.Controls);
 
+        // The right stick's up and down reversed (Analog.InvertPitch).
+        PortSettings.Draw(PortSettings.InvertedCamera);
+
         // Dimmed rather than hidden while mouse look is off, as Verdite2's
         // AutoReloadPage dims its slot.
         PortSettings.Draw(PortSettings.InstantMouseLook);
