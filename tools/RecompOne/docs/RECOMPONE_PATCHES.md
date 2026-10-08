@@ -1936,7 +1936,16 @@ Four files in the directory have no entry below:
   game's sound is OpenAL's and untouched. Verdite3 measured, 2026-10-08, PipeWire:
   `"DualSense wireless controller (PS5) Direct DualSense Wireless Controller",
   48000 Hz, 4 channels`; whether channels 3 and 4 are the actuators is from the
-  community's reports, not felt yet. Output only — **no recompile**. Verdite3's
+  community's reports, not felt yet. The same day the stream was muted: WirePlumber
+  restores mute per application name, and both streams took the process's name,
+  `dotnet`, so a saved mute for the game's sound silenced the haptics too (the pad
+  itself felt a `pw-play` wave into channels 3 and 4). The stream now names itself
+  `<assembly> haptics`, so it has its own saved state: SDL2 takes
+  `SDL_AUDIO_DEVICE_APP_NAME`, but Fedora's `sdl2-compat` (2.32.72, loaded from
+  `/usr/lib64` ahead of the package's bundled SDL2) runs SDL3 3.4.16, which ignores it
+  and names the stream from `SDL_APP_NAME`; that one is set only around
+  `OpenAudioDevice` and reset after, since it names the whole program. Stream name
+  `Haptics`. With it, haptics were felt on a cold start, no replug. Output only — **no recompile**. Verdite3's
   `Rumble` is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
 
 ## Package bumps

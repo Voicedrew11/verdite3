@@ -1,3 +1,4 @@
+using System.Reflection;
 using Silk.NET.SDL;
 using RecompOne.Runtime.Hardware;
 
@@ -11,6 +12,9 @@ namespace RecompOne.Runtime.Host;
 /// place of SDL's two-motor rumble whenever <see cref="Controller.WantHdRumble"/>
 /// holds and pad 1 is a DualSense whose sound card is there (over Bluetooth it is
 /// not).
+///
+/// The stream is opened under its own application name, <c>&lt;assembly&gt; haptics</c>,
+/// so a mixer's or WirePlumber's saved mute for the game's sound does not apply to it.
 ///
 /// SDL's DualSense driver turns the audio haptics off (its <c>0x02</c> enable bit)
 /// whenever it is asked for non-zero rumble, and a zero-rumble report leaves the bit
@@ -79,7 +83,15 @@ internal static unsafe class PadHaptics
         want.Format = AudioF32;
         want.Channels = Channels;
         want.Samples = 512;
+        // Its own name: under the process's (dotnet) the game's sound and its saved mute
+        // are shared. SDL2 reads the first hint; SDL3 under sdl2-compat reads the second,
+        // which names the whole program, so it is put back once the stream is open.
+        var app = $"{Assembly.GetEntryAssembly()?.GetName().Name ?? "Game"} haptics";
+        sdl.SetHint("SDL_AUDIO_DEVICE_APP_NAME", app);
+        sdl.SetHint("SDL_APP_NAME", app);
+        sdl.SetHint("SDL_AUDIO_DEVICE_STREAM_NAME", "Haptics");
         _dev = sdl.OpenAudioDevice(name, 0, &want, &got, AllowChannelsChange);
+        sdl.ResetHint("SDL_APP_NAME");
         if (_dev == 0)
         {
             Console.WriteLine($"[Input] haptics: could not open \"{name}\" ({sdl.GetErrorS()}); two-motor rumble instead");
@@ -95,7 +107,7 @@ internal static unsafe class PadHaptics
 
         _phaseLow = _phaseHigh = 0;
         _low = _high = 0f;
-        sdl.GameControllerRumble(pad, 0, 0, 0);     // leave SDL's "audio haptics off" bit clear
+        sdl.GameControllerRumble(pad, 0, 0, 0);     // SDL sends nothing for zero: a no-op on a fresh pad
         sdl.PauseAudioDevice(_dev, 0);
         Console.WriteLine($"[Input] haptics: \"{name}\", {got.Freq} Hz, 4 channels ({sdl.GetCurrentAudioDriverS()})");
         return true;
