@@ -1963,6 +1963,79 @@ Four files in the directory have no entry below:
   `OpenAudioDevice` and reset after, since it names the whole program. Stream name
   `Haptics`. With it, haptics were felt on a cold start, no replug. Output only — **no recompile**. Verdite3's
   `Rumble` is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
+- `0106-durable-player-files.patch` — `File.WriteAllBytes`/`WriteAllText` empty a
+  file before writing it, so a crash, a power cut or a full disk in between left
+  a memory card with no saves, or a `settings.json`/`interface.ini` with no
+  settings. `IO/DurableFile.cs` writes `<path>.tmp` and renames it over the file
+  (one step: a reader sees the old file or the new), optionally forced to disk
+  first. `MemoryCard.Flush` writes the card so, forced to disk, after copying the
+  card as the session found it to `<path>.bak` once, before the session's first
+  write; a write that fails is logged and shown once (`Runtime.ShowNotice`), never
+  thrown into the emulated BIOS call that saves. Loading, a card that is not
+  128 KB or has no `MC` header is kept as `<path>.damaged-<time>` and the `.bak`
+  restored if it is good; with no good backup it loads as before (the game sees
+  an unformatted card and offers the format). `ConfigManager` writes both files
+  durably (not forced: they are written on every settings change), logs a failed
+  write, and keeps an unreadable `settings.json` or `interface.ini` as
+  `.damaged-<time>` before the defaults are written over it (an unreadable
+  `interface.ini` threw out of `Load` before). Measured 2026-10-08 in Verdite3 by a
+  test program against the built runtime: a fresh card, the backup on a session's
+  first save, a card cut to 5000 bytes restored from it with the damaged copy
+  kept, a 100-byte card with no backup left as it was, and a write into a
+  read-only folder logged with the card on disk intact. **No recompile.**
+- `0107-crash-reports.patch` — a crash printed the exception to stderr and closed
+  the window, and a player who starts the game from a launcher has no stderr.
+  `Diagnostics/CrashReport.cs` writes `crashes/<time>-<kind>.log`: the exception,
+  the CPU registers, the last 64 indirect calls (a ring `Dispatcher.Call` writes),
+  the overlays, the hooks turned off (`0108`), the port's own sections
+  (`AddSection`: its version, its place, its switches) and the console's last 300
+  lines, with the 2 MB of game RAM beside it as `.ram.bin`; the newest 20 are
+  kept and a session writes at most 12. `Install` (from `Runtime.Initialize`)
+  reports an exception on any other thread and an unobserved task's, and starts
+  `Diagnostics/Watchdog.cs`: no `PresentFrame` for `HangSeconds` (15) writes a hang
+  report, whose stack is the game thread's own, taken by the game thread when it
+  next passes `Dispatcher.Call` or a memory access off the RAM fast path (a game
+  spinning on a hardware flag reads one) after the watchdog asks; it stays quiet
+  under a debugger, while `Paused`, and before the first frame.
+  `Runtime.HoldAfterCrash(report)` keeps the window up with `CrashPopup` (the
+  report's path, its folder, Quit) until the player closes it; `Run`'s loop does
+  so after `RunGame` catches a crash, and a port that calls its `Entry.Run` itself
+  calls it from its own catch. English strings `crash.*`. Measured 2026-10-08 in
+  Verdite3 with its `KF3_FAULT`: a crash report with the managed stack through the
+  recompiled functions, and a hang report whose stack is the spinning hook's, under
+  the function that called it. **No recompile.**
+- `0108-hook-fault-containment.patch` — every port patch and every mod is a set of
+  `HookManager` hooks, and an exception out of one went into the recompiled caller
+  and ended the session, for C# that only stands in for a routine the game still
+  has. `Invoke` runs each pre, replacement and post in its own `try`: a hook whose
+  own code threw has its whole mod taken off every function for the session (not
+  one hook, so none is left half-working; and refused if it hooks again), a fault
+  report written (`0107`), the player told once, and the call goes on — a pre as
+  if it had let the routine run, a post as if it had returned, a replacement by
+  running the game's routine unless it had already called it (counted through a
+  wrapper made once per function, since the detour hands over the same
+  trampoline). Whose code threw is the first frame from the throw that is either
+  the game's (namespace `Recompiled`, or a detour's typeless copy of it: the game's
+  crash, marked so no hook further out claims it) or anything not the runtime or
+  a library (the hook's); a hook that called the runtime directly is the hook's.
+  `HardResetSignal`, a guest thread's `ThreadGone` (now `internal`),
+  out-of-memory and the like pass through untouched. `NotAHookFault(e)` marks an
+  exception as the game's. What a hook wrote before it threw stays written. Also:
+  `ModLoader` skips a mod whose `mod.json` cannot be read and loads no mods when
+  the folder cannot be read (both threw out of `LoadAll`, before the game's first
+  instruction), and unhooks a mod whose `OnLoad` threw; `Runtime.CanHardReset`,
+  false in a port whose `Program.cs` calls `Entry.Run` with no boot loop, makes
+  the menu's Hard Reset a notice instead of a `HardResetSignal` that ended the
+  process (its hunk is in `0107`'s file, which holds all of `Runtime.cs`). Measured 2026-10-08 in Verdite3 with `KF3_FAULT=hook`: the fault report,
+  the hook off, the game running on. **No recompile.**
+- `0109-mixer-thread-guard.patch` — the SPU mixer thread runs the SPU's whole
+  emulation (`Spu.Mix`) as well as OpenAL, with nothing catching, and an exception
+  on a thread nobody catches ends the process without a word. `MixerLoop` reports
+  the first failure (a fault report, `0107`) and goes on; 30 failures in a row (a
+  second and a half) stop the sound with a notice and leave the game running.
+  `Shutdown` no longer calls OpenAL for a source and buffers that were never made
+  when no device opened, and waits a second at most for the mixer. Not measured:
+  nothing makes the mixer throw on purpose. **No recompile.**
 
 ## Package bumps
 

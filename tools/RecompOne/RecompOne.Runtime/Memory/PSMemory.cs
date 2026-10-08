@@ -151,6 +151,7 @@ public sealed class PSMemory : IMemory
 
     private void TrackRead(uint phys, int size)
     {
+        Diagnostics.Watchdog.Probe();
         if (RamLogger.TrackReads && phys < MemoryMap.RamWindow)
             Runtime.RamLog.RecordRead(phys & _ramMask, size);
     }
