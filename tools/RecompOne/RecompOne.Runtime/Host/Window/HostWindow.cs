@@ -116,7 +116,7 @@ public static class HostWindow
 
     /// <summary>
     /// GLFW leaves the Wayland app id and the X11 class empty, so a compositor has
-    /// nothing to match a desktop entry against. Silk 2.22 has no name for the
+    /// nothing to match a desktop entry against. Silk 2.23 has no name for the
     /// Wayland hint, which is GLFW 3.4's <c>GLFW_WAYLAND_APP_ID</c> (0x00026001).
     /// </summary>
     private static void HintAppId(string id)
@@ -1009,7 +1009,7 @@ public static class HostWindow
         }
     }
 
-    // GLFW 3.4's glfwGetPlatform, which Silk 2.22 does not bind.
+    // GLFW 3.4's glfwGetPlatform, which Silk 2.23 does not bind.
     private const int GlfwPlatformWayland = 0x00060003;
 
     private static unsafe bool IsWayland()

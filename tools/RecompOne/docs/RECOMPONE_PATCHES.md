@@ -822,7 +822,7 @@ Four files in the directory have no entry below:
   the binary — KWin had nothing to match a desktop entry against and could not have
   shown an icon whatever the port did, the shipped AppImage's own included.
   `HostWindow.AppId` (`Runtime.AppId`, set before `Initialize`) is hinted at window
-  creation as `GLFW_WAYLAND_APP_ID` — the raw `0x00026001`, because Silk 2.22 has
+  creation as `GLFW_WAYLAND_APP_ID` — the raw `0x00026001`, because Silk 2.23 has
   no name for a GLFW 3.4 hint — and as the X11 class and instance name beside it.
   Measured after: `xdg_toplevel#45.set_app_id("verdite2")` on the wire. What wants
   both is each game's `patches/CardIcon.cs` and Verdite Core's `WindowIcon` and
@@ -846,7 +846,7 @@ Four files in the directory have no entry below:
   surface waits in `eglSwapBuffers` until the window is shown again, and the game
   presents from inside its own `VSync`, so **minimising the window stopped the
   whole game**. Silk's VSync is now always false and `ApplySwapInterval` owns the
-  interval: 1 with VSync on, except on Wayland (`glfwGetPlatform`, which Silk 2.22
+  interval: 1 with VSync on, except on Wayland (`glfwGetPlatform`, which Silk 2.23
   does not bind), where the swap stays at 0 — the compositor never tears — and
   `FrameClock.WaitRefresh` holds one present per monitor refresh on the CPU
   (`Profiler.VSyncWait`). `FrameClock.VSync` now means "the swap blocks". **No
@@ -1930,6 +1930,26 @@ Four files in the directory have no entry below:
   48000 Hz, 4 channels`; whether channels 3 and 4 are the actuators is from the
   community's reports, not felt yet. Output only — **no recompile**. Verdite3's
   `Rumble` is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
+
+## Package bumps
+
+Not patches, so not numbered: a dependency moved, recorded here so the reason
+travels with the fork.
+
+- **Silk.NET and Silk.NET.OpenGL.Extensions.ImGui 2.22.0 → 2.23.0** (2026-10-08;
+  Silk.NET.SDL was already 2.23.0). 2.22's `ImGuiController.TranslateInputKeyToImGuiKey`
+  ends its switch in `_ => throw new NotImplementedException()`, so any key Silk
+  reports that ImGui has no name for — `Key.Unknown` among them, which GLFW on
+  Wayland can raise around Alt+Tab — threw from the key callback and **took the
+  whole game down** (Verdite2 issue #48, on its AppImage under Wayland). 2.23 returns
+  `ImGuiKey.None` there, which Dear ImGui's `AddKeyEvent` drops; that arm and its doc
+  comment are the file's entire diff. Nothing the fork leans on moved: the private
+  `WindowResized` `0080` reaches by reflection keeps its signature, the integer
+  `DisplayFramebufferScale` `0018` corrects is still integer, `glfwGetPlatform` and a
+  `GLFW_WAYLAND_APP_ID` name are still unbound, the native GLFW is still
+  `Ultz.Native.GLFW` 3.4.0, and `IView.FocusChanged`, `ShouldSwapAutomatically`,
+  `IMonitor.Bounds` and the lazy `VSync` in `DoRender` are unchanged. Verdite3 built
+  clean and ran with no exception. **No recompile.**
 
 ## Retained contract additions under verification (2026-10-04)
 
