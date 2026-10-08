@@ -130,7 +130,11 @@ was, and coming back from the page leaves the cursor on it. Inside:
 
 At the question, Cross chooses and Circle goes back to the page with the changes
 still staged. The page last shown is kept for the next open. A step the session
-refuses (`set by KF3_X`, `not usable`, `at the end`) makes no sound and is logged.
+refuses (`set by KF3_X`, `not usable`) makes no sound and is logged. **The values go
+round** (2026-10-08): Right from the last value is the first and Left from the first
+is the last (`PortSetting.Next`); a value off the steps with none on that side goes
+round to the far end. `at the end` is left only for a row of one value, which none
+is, so the refusals measured below as `at the end` now step round instead.
 
 **What is on it** (cut to what a player chooses, on the user's word, 2026-10-06;
 grouped by subject, a page short of six rows being fine, on the user's word,

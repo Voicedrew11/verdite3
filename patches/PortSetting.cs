@@ -99,15 +99,19 @@ public sealed class PortSetting
         return -1;
     }
 
-    /// <summary>Left (-1) or Right (+1) from <paramref name="value"/>. A switch flips
-    /// either way. A value off the steps goes to the nearest one on that side.</summary>
+    /// <summary>Left (-1) or Right (+1) from <paramref name="value"/>, round the ends:
+    /// Right from the last step is the first, Left from the first the last. A switch
+    /// flips either way. A value off the steps goes to the nearest one on that side,
+    /// or round to the far end when there is none.</summary>
     public double Next(double value, int dir)
     {
+        int n = Steps.Length;
         int i = StepIndex(value);
-        if (Steps.Length == 2 && i >= 0) return Steps[1 - i];
-        if (i >= 0) return Steps[Math.Clamp(i + Math.Sign(dir), 0, Steps.Length - 1)];
+        if (n == 2 && i >= 0) return Steps[1 - i];
+        if (i >= 0) return Steps[((i + Math.Sign(dir)) % n + n) % n];
         var side = dir > 0 ? Steps.Where(s => s > value) : Steps.Where(s => s < value);
-        return side.Any() ? (dir > 0 ? side.Min() : side.Max()) : value;
+        if (side.Any()) return dir > 0 ? side.Min() : side.Max();
+        return n == 0 ? value : dir > 0 ? Steps.Min() : Steps.Max();
     }
 
     public string Encode(double value) => Stored switch
