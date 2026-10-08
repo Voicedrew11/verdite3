@@ -11,8 +11,8 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      rc:
-        description: 'Publish the build as the rolling "rc" prerelease (scripts/prerelease.sh)'
+      preview:
+        description: 'Publish the build as the rolling "preview" prerelease (scripts/prerelease.sh)'
         type: boolean
         default: false
 
@@ -135,22 +135,22 @@ jobs:
             Note that the US *King's Field* (`SLUS-00158`) is a different game,
             Verdite2's, and will be refused.
 
-  # The release candidate: one prerelease under the tag `rc`, replaced whole on
-  # every run, so there is never more than one and its download links never
-  # change. Each package is zipped with the RC_PASSWORD secret (AES-256), under a
-  # name without the commit; the files inside carry it, and so does the title. A
-  # prerelease is never GitHub's "latest", so the launcher's update check, which
-  # reads only that, never announces it; the tag is no version (scripts/version.sh
-  # reads vMAJOR.MINOR.PATCH alone) and starts no workflow. rc-cleanup.yml
-  # deletes it when a release is published.
-  rc:
+  # The preview: one prerelease under the tag `preview`, a build handed to
+  # testers, replaced whole on every run, so there is never more than one and its
+  # download links never change. Each package is zipped with the PREVIEW_PASSWORD
+  # secret (AES-256), under a name without the commit; the files inside carry it,
+  # and so does the title. A prerelease is never GitHub's "latest", so the
+  # launcher's update check, which reads only that, never announces it; the tag is
+  # no version (scripts/version.sh reads vMAJOR.MINOR.PATCH alone) and starts no
+  # workflow. preview-cleanup.yml deletes it when a release is published.
+  preview:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.rc
+    if: github.event_name == 'workflow_dispatch' && inputs.preview
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RC_PASSWORD: ${{ secrets.RC_PASSWORD }}
+      PREVIEW_PASSWORD: ${{ secrets.PREVIEW_PASSWORD }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -159,22 +159,22 @@ jobs:
 
       - name: Zip each package with the password
         run: |
-          test -n "$RC_PASSWORD" || { echo "the RC_PASSWORD secret is not set"; exit 1; }
+          test -n "$PREVIEW_PASSWORD" || { echo "the PREVIEW_PASSWORD secret is not set"; exit 1; }
           command -v 7z >/dev/null || { sudo apt-get update && sudo apt-get install -y p7zip-full; }
           sha="${GITHUB_SHA::9}"
           mkdir -p out stage/linux stage/setup stage/win
-          cp dist/*.AppImage "stage/linux/Verdite3-rc-$sha-x86_64.AppImage"
+          cp dist/*.AppImage "stage/linux/Verdite3-preview-$sha-x86_64.AppImage"
           chmod +x stage/linux/*.AppImage
-          cp dist/*setup.exe "stage/setup/Verdite3-rc-$sha-win-x64-setup.exe"
+          cp dist/*setup.exe "stage/setup/Verdite3-preview-$sha-win-x64-setup.exe"
           unzip -q dist/*-win-x64.zip -d stage/win
-          (cd stage/linux && 7z a -tzip -mem=AES256 "-p$RC_PASSWORD" ../../out/Verdite3-rc-linux-x86_64.zip . >/dev/null)
-          (cd stage/setup && 7z a -tzip -mem=AES256 "-p$RC_PASSWORD" ../../out/Verdite3-rc-win-x64-setup.zip . >/dev/null)
-          (cd stage/win && 7z a -tzip -mem=AES256 "-p$RC_PASSWORD" ../../out/Verdite3-rc-win-x64.zip . >/dev/null)
-          for f in out/*.zip; do 7z t "-p$RC_PASSWORD" "$f" >/dev/null; done
+          (cd stage/linux && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite3-preview-linux-x86_64.zip . >/dev/null)
+          (cd stage/setup && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite3-preview-win-x64-setup.zip . >/dev/null)
+          (cd stage/win && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite3-preview-win-x64.zip . >/dev/null)
+          for f in out/*.zip; do 7z t "-p$PREVIEW_PASSWORD" "$f" >/dev/null; done
           ls -la out
 
-      - name: Replace the rc prerelease
+      - name: Replace the preview prerelease
         run: |
-          gh release delete rc --cleanup-tag --yes 2>/dev/null || true
-          gh release create rc out/*.zip --target "$GITHUB_SHA" --prerelease \
-            --title "Verdite3 rc (${GITHUB_SHA::9})" --notes ""
+          gh release delete preview --cleanup-tag --yes 2>/dev/null || true
+          gh release create preview out/*.zip --target "$GITHUB_SHA" --prerelease \
+            --title "Verdite3 preview (${GITHUB_SHA::9})" --notes ""

@@ -164,38 +164,42 @@ bash scripts/release.sh 0.2.0
 git push origin HEAD && git push origin v0.2.0      # pushing the tag publishes the draft
 ```
 
-### Release candidates
+### Previews
 
-A release candidate is a commit, not a version: the tag goes on the commit the
-candidate proved, so the release is exactly what was tested. There is one
-candidate at a time, the **rolling `rc` prerelease**, replaced whole each time:
+A preview is a build handed to testers: a commit, not a version, and no promise
+of which release it becomes. When one proves a release, the tag goes on that
+commit, so the release is exactly what was tested. There is one preview at a
+time, the **rolling `preview` prerelease**, replaced whole each time:
 
 ```bash
 git push origin main
-bash scripts/prerelease.sh      # builds HEAD as GitHub has it; replaces `rc`
+bash scripts/prerelease.sh      # builds HEAD as GitHub has it; replaces `preview`
 ```
 
-The script starts `release.yml` by hand with `rc=true`; its `rc` job zips each
-package with the `RC_PASSWORD` repository secret (AES-256, so 7-Zip or WinRAR
-opens them and Windows Explorer does not) and deletes and recreates the `rc`
-prerelease, with no notes, at that commit. The assets are always
-`Verdite3-rc-linux-x86_64.zip`, `Verdite3-rc-win-x64.zip` and
-`Verdite3-rc-win-x64-setup.zip`, so
-`…/releases/download/rc/<name>` never changes; the files inside, and the title,
-carry the commit. The build calls itself the last release's number and the commit
-(`0.1.0+<sha>`).
+The script starts `release.yml` by hand with `preview=true`; its `preview` job
+zips each package with the `PREVIEW_PASSWORD` repository secret (AES-256, so 7-Zip
+or WinRAR opens them and Windows Explorer does not) and deletes and recreates the
+`preview` prerelease, with no notes, at that commit. The assets are always
+`Verdite3-preview-linux-x86_64.zip`, `Verdite3-preview-win-x64.zip` and
+`Verdite3-preview-win-x64-setup.zip`, so
+`…/releases/download/preview/<name>` never changes; the files inside, and the
+title, carry the commit. The build calls itself the last release's number and the
+commit (`0.1.0+<sha>`).
 
 - **It is never GitHub's "Latest".** A prerelease cannot be: the badge, and
   `releases/latest`, which the update check reads, name only a published full
-  release, so no player is told about a candidate. With no full release yet, the
+  release, so no player is told about a preview. With no full release yet, the
   repository's sidebar shows the newest prerelease, marked *Pre-release*.
-- **`rc` is no version.** `version.sh` reads `vMAJOR.MINOR.PATCH` tags only, and
-  `release.yml` starts on `v*` alone, so the tag moving starts nothing.
-- **It goes when the release does.** `rc-cleanup.yml` deletes the prerelease and
-  its tag when a full release is *published* (not when its draft is opened), so a
-  candidate stays up until the release it became is live.
+- **`preview` is no version.** `version.sh` reads `vMAJOR.MINOR.PATCH` tags only,
+  and `release.yml` starts on `v*` alone, so the tag moving starts nothing. A clone
+  that fetched it keeps a stale copy when it moves; `git tag -d preview` drops it.
+- **It goes when the release does.** `preview-cleanup.yml` deletes the prerelease
+  and its tag when a full release is *published* (not when its draft is opened),
+  so a preview stays up until the release is live.
 - The password is the secret, never the repository, which is public:
-  `gh secret set RC_PASSWORD` changes it.
+  `gh secret set PREVIEW_PASSWORD` changes it.
+- Called `rc` until 2026-10-08; renamed because it is handed out for any fix worth
+  testing, not only a commit meant to ship.
 
 `packaging/shared/verdite3.png` and `.ico` are, for now, Verdite2's orb copied;
 replace them at the same sizes (`packaging/shared/README.md`).

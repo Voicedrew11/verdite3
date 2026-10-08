@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Publish the current branch's HEAD as the release candidate: the rolling `rc`
+# Publish the current branch's HEAD as the preview: the rolling `preview`
 # prerelease on GitHub, replacing the last one, each package zipped with the
-# RC_PASSWORD secret. Release.yml's rc job does the work; this starts it on the
-# branch as GitHub has it, so HEAD must be pushed. See "Release candidates" in
+# PREVIEW_PASSWORD secret. Release.yml's preview job does the work; this starts it
+# on the branch as GitHub has it, so HEAD must be pushed. See "Previews" in
 # docs/PACKAGING.md.
 #
 #   bash scripts/prerelease.sh            # start it and wait for it
@@ -19,15 +19,15 @@ branch="$(git rev-parse --abbrev-ref HEAD)"
 git fetch -q origin "$branch"
 [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$branch")" ] \
     || { echo "HEAD is not origin/$branch; push it first (the workflow builds what GitHub has)"; exit 1; }
-gh secret list | grep -q '^RC_PASSWORD\b' \
-    || { echo "the RC_PASSWORD secret is not set: gh secret set RC_PASSWORD"; exit 1; }
+gh secret list | grep -q '^PREVIEW_PASSWORD\b' \
+    || { echo "the PREVIEW_PASSWORD secret is not set: gh secret set PREVIEW_PASSWORD"; exit 1; }
 
 sha="$(git rev-parse HEAD)"
 start="$(date -u -d "-30 sec" +%Y-%m-%dT%H:%M:%SZ)"  # a little early, for clock skew
-gh workflow run release.yml --ref "$branch" -f rc=true
-echo "==> release candidate ${sha::9} started"
+gh workflow run release.yml --ref "$branch" -f preview=true
+echo "==> preview ${sha::9} started"
 # The run appears a moment after it is asked for; find it by its commit, and
-# started no earlier than this, since a commit can have been a candidate before.
+# started no earlier than this, since a commit can have been a preview before.
 for _ in $(seq 20); do
     run="$(gh run list --workflow release.yml --event workflow_dispatch --commit "$sha" --limit 5 \
         --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"$start\")][0].databaseId // empty")"
@@ -38,4 +38,4 @@ done
 echo "    $(gh run view "$run" --json url --jq .url)"
 [ "$WAIT" = 1 ] || exit 0
 gh run watch "$run" --exit-status --interval 30 >/dev/null
-echo "==> published: $(gh release view rc --json url --jq .url)"
+echo "==> published: $(gh release view preview --json url --jq .url)"
