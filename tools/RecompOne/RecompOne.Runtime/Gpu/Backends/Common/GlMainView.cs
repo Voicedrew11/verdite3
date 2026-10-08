@@ -1389,7 +1389,7 @@ public sealed partial class GlCore
             _gl.CullFace(TriangleFace.Back);
         }
         foreach (int range in (ReadOnlySpan<int>)[1, 4])
-            if (RetainedScene.StaticCount[range] > 0) RetainedScene.MainNormalTriangles += DrawStaticChunks(range) / 3;
+            if (_worldStaticCount[range] > 0) RetainedScene.MainNormalTriangles += DrawStaticChunks(range) / 3;
         _gl.Disable(EnableCap.CullFace);
         if (_uwnZSlice >= 0) _gl.Uniform2(_uwnZSlice, 0f, 0f);
     }

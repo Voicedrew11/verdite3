@@ -1626,6 +1626,22 @@ Four files in the directory have no entry below:
   (`RetainedScene.DepthStageProbe`, `RetainedScene.SurfaceCheck`). The sixteenth
   diff in the patch file; the fields are under "Retained contract additions under
   verification" below.
+  Since amended (2026-10-08): NVIDIA's driver (615.78) faulted inside
+  `libnvidia-eglcore` with geometry normals, planar reflections or murky water on,
+  each of which runs `RenderSurfaces` (murk and planar through
+  `GteDepth.Reflections`). The game thread rebuilds the map (`RetainedScene.SetStatic`
+  from Verdite3's `RetainedMap`) whenever its chunks change, and only a main draw,
+  which the game thread waits on, uploads it into `_worldVbo`; the normal pass draws
+  from that buffer at a present, on the main thread, by `RetainedScene`'s chunk table,
+  which by then could be the new map's. A larger map's ranges ran past the old buffer's
+  end; Mesa reads zeros there, NVIDIA does not bound the fetch. `UploadStatic` now
+  keeps the table it uploaded with (`_worldChunkStart`, `_worldChunkCount`,
+  `_worldStaticCount`, `_worldVerts`) and `DrawStaticChunks` draws by it, clamped to
+  the buffer's length. The mip entries, attribute 9 of the same VAO, were sized to the
+  new map only by `UpdateWorldMips`, after the shadows (`RenderShadow`, which calls
+  `UploadStatic` and draws through `WorldVs`) had drawn it; `UploadStatic` now gives
+  them zeros as long as the map until then. Static reasoning from the trace; not
+  reproduced on NVIDIA here. Not in the patch file.
 
 - `0086-retained-model-mask.patch` — the retained models (`0085`) are drawn at slot 1,
   ahead of every packet the walk sends after them, and `0051`'s tolerance (1 unit
