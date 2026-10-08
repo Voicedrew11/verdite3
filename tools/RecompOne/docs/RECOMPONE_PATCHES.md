@@ -337,6 +337,14 @@ Four files in the directory have no entry below:
   with `DockBuilder` to dock a panel of its own beside the picture: the remaster
   editor opens at the right edge that way. The third diff in the patch file. See
   "Modes" in `docs/REMASTER.md`.
+  Since amended: `OutputView.Covered`, whether ImGui's hovered window is another
+  window than the Output panel, asked inside its `Begin`. A click is tested
+  against the rectangle as well as `Hovered`, since just after a release ImGui
+  can still hold the locked pointer's virtual position, and the rectangle alone
+  also holds under a floating panel in front of the picture: a click on that
+  panel captured the pointer. `Hovered` false cannot exclude it, being false
+  too while another item is active. The fourth diff in the patch file. See
+  "Capture behaves as a desktop game's" in `docs/INPUT.md`.
 
 - `0030-expose-host-pump.patch` — the shipped launcher has to build the game
   before there is a game to run, and that blocks for seconds; a window that stops
