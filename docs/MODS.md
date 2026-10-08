@@ -29,7 +29,7 @@ is untouched.
 | `Items.cs` | the inventory (give, remove, set a count, give all) and the equipment slots, through the game's own add, remove and equip routines |
 | `Magic.cs` | the spell book: learn, forget, learn all, and the selected spell (new; Verdite2's mod has no magic editor) |
 | `Warp.cs` | four position bookmarks, persisted, and a warp to any of the 28 areas |
-| `Hotkeys.cs` | F2 panel, F3 noclip, F4 invincibility, F5/F6 bookmark 1, F7 snap to floor, F8 return to the noclip start; Page Up/Page Down and Left Shift fly (Space is attack in the port's layout); the pad's spare button toggles noclip |
+| `Hotkeys.cs` | F2 panel, F3 noclip, F4 invincibility, F5/F6 bookmark 1, F7 snap to floor, F8 return to the noclip start; V film mode (the cinematic camera, enemies ignoring you and noclip, all on, or all off when they already are; no toast); Page Up/Page Down and Left Shift fly (Space is attack in the port's layout); the pad's spare button toggles noclip |
 | `DebugPanel.cs` | the dockable panel (Debug ▸ KF3 Debug): Cheats, Attributes, Items, Magic, Warp, State, Keys |
 
 ### The hooks

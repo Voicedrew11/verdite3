@@ -729,6 +729,7 @@ internal sealed class DebugPanel : IPanel
             Row("F5 / F6", "save / go to bookmark 1");
             Row("F7", "snap to floor");
             Row("F8", "back to where noclip was switched on");
+            Row("V", "film mode: cinematic camera, enemies ignore you and noclip, together (no toast)");
             Row("Page Up / Page Down", "fly up / down");
             Row("Left Shift", "fly fast (hold)");
             ImGui.EndTable();
@@ -749,7 +750,7 @@ internal sealed class DebugPanel : IPanel
         ImGui.TextWrapped("F1 and F11 are the host's own (top bar, fullscreen) and are left alone. "
                         + "The shipped keyboard layout binds W A S D, the arrows, Space (attack), "
                         + "F, Q, Tab, Enter and Right Shift, so the flight keys are Page Up, "
-                        + "Page Down and Left Shift, none of which any layout claims.");
+                        + "Page Down and Left Shift, none of which any layout claims; nor does V.");
 
         static void Row(string key, string what)
         {

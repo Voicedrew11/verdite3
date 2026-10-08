@@ -31,6 +31,8 @@ namespace Kf3.Mods.Debug;
 /// Shift; Page Up and Page Down are free in both the shipped layout and
 /// RecompOne's stock one, and Left Shift is too (only the right one is bound), so
 /// those are the flight keys. The toggles stay on F2..F8, which no layout touches.
+/// V, which no layout touches either, is film mode: the cinematic camera, enemies
+/// that ignore you and noclip, together.
 ///
 /// </summary>
 internal static class Hotkeys
@@ -44,6 +46,7 @@ internal static class Hotkeys
     internal static Key LoadBookmark  = Key.F6;
     internal static Key SnapToFloor   = Key.F7;
     internal static Key ReturnToEntry = Key.F8;
+    internal static Key FilmMode      = Key.V;
     internal static Key FlyUp         = Key.PageUp;
     internal static Key FlyDown       = Key.PageDown;
     internal static Key FlyFastKey    = Key.ShiftLeft;
@@ -139,6 +142,16 @@ internal static class Hotkeys
         if (Pressed(LoadBookmark)) Warp.Restore(0);
         if (Pressed(SnapToFloor)) Noclip.SnapToFloor();
         if (Pressed(ReturnToEntry)) Noclip.ReturnToEntry();
+
+        // Film mode: all three on, or all three off when they already are. No
+        // toast either way -- it is for filming, and one would land in the shot.
+        if (Pressed(FilmMode))
+        {
+            bool on = !(Noclip.Cinematic && Cheats.Peaceful && Noclip.Enabled);
+            Noclip.Cinematic = on;
+            Cheats.Peaceful = on;
+            Noclip.Enabled = on;
+        }
     }
 
     /// <summary>
