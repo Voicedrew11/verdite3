@@ -98,9 +98,24 @@ public static class GpuWorld
     public static void PreviewOut(CpuContext c, IMemory m) => _preview--;
     public static void ArmIn(CpuContext c, IMemory m) => _arm++;
     public static void ArmOut(CpuContext c, IMemory m) => _arm--;
+    // A mesh whose bytes change is built again and appended, and the copy it
+    // replaces stays in the store until the area changes; a mesh changing every
+    // tick would grow the store for as long as the player stayed. Past these the
+    // store is emptied as an area change empties it, and rebuilt from what is
+    // drawn -- a frame's work. fdat17 held 14838 corners and 763 pose texels
+    // after two minutes (2026-10-08), with no mesh rebuilt.
+    const int MaxMeshCorners = 1 << 20, MaxPoseTexels = 2 << 20;
+    public static long StoreResets;
     public static void Begin(CpuContext c, IMemory m)
     {
         _frame = false;
+        if (!_reset && (RetainedScene.MeshCornerCount > MaxMeshCorners || RetainedScene.PoseTexels > MaxPoseTexels))
+        {
+            StoreResets++;
+            Console.WriteLine($"[KF3] retained store emptied at {RetainedScene.MeshCornerCount} corners, " +
+                              $"{RetainedScene.PoseTexels} pose texels");
+            _reset = true;
+        }
         if (_reset)
         {
             _reset = false; RetainedScene.MainSerial = 0;

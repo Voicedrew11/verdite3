@@ -270,10 +270,9 @@ fps`, `texture scroll: carry`, and perspective, sub-pixel and the Z-buffer `on`.
   `0x1C` (template `0x8007E5AC`) are not mapped to buttons yet, and the hint font
   (`func_80026570`) is lower case only, no digits.
 - **The Settings window and variables**: lock a variable-set setting there too, or not.
-- **An atomic save, in the fork**: `ConfigManager.SaveView` uses
-  `File.WriteAllText`, which empties the file first; a crash or a full disk then
-  loses every setting and the layout. A write to `interface.ini.tmp` and
-  `File.Move(..., overwrite: true)` closes it. A `tools/RecompOne` change: its own
-  commit, pushed to the fork.
+- ~~**An atomic save, in the fork**~~: done 2026-10-08, runtime `0106`.
+  `interface.ini` and `settings.json` are written to `.tmp` and renamed over, a
+  failed write is logged instead of thrown, and an unreadable one is kept as
+  `.damaged-<time>` before the defaults replace it.
 - **Verdite Core**: the list's machinery is game-agnostic; it moves there when
   Verdite2 takes it up.

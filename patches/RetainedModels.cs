@@ -21,6 +21,10 @@ public static class RetainedModels
         string? reason = GpuWorld.Domain is "hud" or "preview" ? "packet-owned-presentation"
             : !perspective ? "orthographic-policy-pending" : null;
         if (reason != null) { GpuWorld.Fallback(routine, caller, reason); MoPose.Materialize(m); return false; }
+        // Capture implies a begun frame, so this is not expected; a frame that has
+        // left the ring is the packets' to draw, not a null to place a model with.
+        if (RetainedScene.Find(RetainedScene.Serial) is not { } frame)
+        { GpuWorld.Fallback(routine, caller, "no-retained-frame"); MoPose.Materialize(m); return false; }
         uint table = m.ReadU32(Pad + 0x10), header = table + 12 + (sub & 0xFFFF) * 28;
         var mesh = RetainedAssets.Get(m, table, header, sky ? RetainedAssets.Family.Sky : RetainedAssets.Family.Lit, out reason!);
         if (mesh == null) { GpuWorld.Fallback(routine, caller, reason!); MoPose.Materialize(m); return false; }
@@ -53,7 +57,7 @@ public static class RetainedModels
             FadeOut = sky || arm ? 0 : RenderDistance.ModelFadeOut,
         };
         ReadMatrix(ref instance);
-        Place(ref instance, RetainedScene.Find(RetainedScene.Serial)!.View);
+        Place(ref instance, frame.View);
         ReadLight(ref instance);
         if (ClipProbe && !sky && !arm && !instance.Tile) CountClips(mesh, instance, bias, caller == 0x800419ECu);
         if (sky)

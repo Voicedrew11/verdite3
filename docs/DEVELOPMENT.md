@@ -60,6 +60,45 @@ recompiled functions carry their MIPS address in their name.
 The intro movie looks like a hang in one: the main thread sits in
 `LibCdStream.StGetNext` under `func_80013EBC` while the movie plays.
 
+## When it crashes (2026-10-08)
+
+A crash, a hook's fault or a hang writes a report to `crashes/` beside the cards,
+`<time>-<kind>.log` with the 2 MB of game RAM beside it as `<time>-<kind>.ram.bin`
+(runtime `0107`; the newest 20 are kept). The report has the exception and its
+managed stack (recompiled functions carry their MIPS address), the player's state
+(the beacon's `Snapshot`), every `kf3.*` setting and set `KF3_*` variable
+(`patches/CrashReports.cs`), the CPU registers, the last 64 indirect calls, the
+overlays, the hooks turned off and the console's last 300 lines. **This is what to
+ask a tester for**: the `.log`, and the `.ram.bin` for a crash that needs the
+state read (`peek` it as the shell's `dump` is read).
+
+- **A crash** (an exception out of the game's code) keeps the window up with the
+  report's path, a button to its folder and Quit (`Runtime.HoldAfterCrash`, from
+  `Program.cs`'s catch round `Entry.Run`).
+- **A fault** (a patch's or mod's own code threw) turns that patch's hooks off for
+  the session and runs the game's routine in its place, with a notice and a report
+  (runtime `0108`). A patch that faults is off until a restart: the Testing tab
+  still shows its switch as it was.
+- **A hang** (no frame for 15 s, `KF3_HANG`) writes a report with the game
+  thread's own stack, taken when it next makes an indirect call or reads a
+  hardware register; a loop that does neither has only its registers, its last
+  calls and its RAM. Holding the window (dragging it on Windows) for that long
+  writes one too; the report says so. Nothing is written under a debugger.
+
+`KF3_FAULT=hook|crash|hang[:seconds]` makes each on purpose, that many seconds (20)
+after the first area: measured 2026-10-08 from `KF3_AUTOSTART=1` in `fdat17`. `hook`:
+the report, `kf3.faultinject` off, the game ran on for the rest of the 75 s.
+`crash`: the report with the stack through `func_80014BD4` and `func_80014B48`
+to `game_entry`, and the crash window held for 35 s with no hang report.
+`hang` (the hook spinning on `I_STAT`): the hang report 6 s later
+(`KF3_HANG=6`), its stack the hook under `func_800341E8`'s detour, the last calls
+`80016AB8` 64 times. A clean 120 s run wrote nothing.
+
+The cards are written whole or not at all, with the card as the session found it
+kept as `carda.sav.bak`; a damaged card is kept aside and the backup restored
+(runtime `0106`). Hard Reset (F1, System) shows a notice here: `Program.cs` calls
+`Entry.Run` with no loop to boot it again, and the reset ended the process.
+
 The runtime's own diagnostics are still read under Verdite2's names (`KF2_CDTRACE`,
 `KF2_GLDEBUG`, `KF2_GTE_FAST`, `KF2_GTE_LIGHTCACHE`, `KF2_RAM_PROBE`, `KF2_SWAP`,
 `KF2_VRAMCHECK`): the fork reads them by name. See `docs/TODO.md`.

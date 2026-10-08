@@ -200,7 +200,9 @@ public static class RetainedMap
                         var face = mesh.Faces[f];
                         // The bulk assembler deliberately ignores GT4; near uses a
                         // different subdivision policy and stays an explicit route.
-                        if ((face.Command & 0xFD) == 0x3C) continue;
+                        // A face the assembler ignores (RetainedAssets.Build's default)
+                        // has no corners, and its Corner is -1.
+                        if (face.Corners == 0 || (face.Command & 0xFD) == 0x3C) continue;
                         // Water (WaterRects) is flagged for the murk, the ripples, the
                         // surface buffer and the plane finder; its free corners swell.
                         bool water = WaterRects.IsWater(face.Semi, (uint)store[face.Corner].Texpage, store[face.Corner].Rect);

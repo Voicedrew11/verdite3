@@ -147,6 +147,23 @@ recompiled and running, following Verdite2's method but applied to this disc.
 - 47 duplicate entry points from the recompiler's escape scan in `game` (see
   "The function maps" in `docs/RECOMPILATION.md`).
 
+- **Robustness, what is left** (2026-10-08; "When it crashes" in `DEVELOPMENT.md`):
+  - A soak runner: `KF3_SHELL` warps through the areas with random input for hours
+    and fails on a report in `crashes/`, a stalled beacon or a climbing working set.
+    First the `warp` crash under a held `view` (`docs/WATER.md`, "Open").
+  - Hard Reset in this port: a loop round `Entry.Run` in `Program.cs` that calls the
+    runtime's reset and boots again, once the patches' static state is known to
+    survive a second boot. Until then the menu item explains (runtime `0108`).
+  - A patch turned off for a fault still shows its switch on in Settings ▸ Testing.
+  - The mixer's guard (runtime `0109`) has not run: nothing makes it throw on purpose.
+  - Read, not changed: the C# routines copy the game's loops, counts and pointers
+    from RAM included (`PolyAssembler` `MapBody`/`LitBody`, `PolyAssemblerHud`,
+    `NearPath`'s four bodies, `NearPathDivide`, `ModelWalk`'s page-table byte at
+    `Pad+0x124`, `MoPose`'s copy), so a corrupt count or pointer hangs or throws
+    there as it would in the MIPS. Clamping would make them differ from the game;
+    a throw now turns the patch off and runs the MIPS, which then fails as the
+    game would. Audited by reading, 2026-10-08.
+
 ## Open questions
 
 - Where `GAME.EXE` names `0x801E8308` as the module destination: no

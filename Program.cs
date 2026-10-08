@@ -8,6 +8,13 @@ using Recompiled;
 Verdite.Core.Game.Configure(tag: "KF3");
 Verdite.Core.Kept.BoolsAsInts = true;
 
+// What a crash, a hook's fault or a hang leaves in crashes/: the runtime's report
+// with this port's version, place and switches in it. KF3_HANG=seconds without a
+// frame before a hang report (15; 0 turns it off); KF3_FAULT=hook|crash|hang[:s]
+// makes one on purpose. See "When it crashes" in docs/DEVELOPMENT.md.
+Kf3.CrashReports.Configure(Environment.GetEnvironmentVariable("KF3_HANG"));
+Kf3.CrashReports.InstallFault(Environment.GetEnvironmentVariable("KF3_FAULT"));
+
 // The runtime's log channels, through an env var:
 //     KF3_LOG=bios,cd,gpu,dma,sdk,spu,mdec,irq   (or KF3_LOG=all)
 var channels = (Environment.GetEnvironmentVariable("KF3_LOG") ?? "")
@@ -406,6 +413,22 @@ DesktopEntry.Comment = "A PC port of King's Field II (SLUS-00255). Requires your
 //     KF3_ICON=0|1|2    a frame of its three (2 by default)
 Kf3.CardIcon.Install(args.Length > 0 ? args[0] : null);
 
+// This file calls Entry.Run itself, with no loop to boot the game again, so the
+// runtime's Hard Reset (F1, System) would end the process: it explains instead.
+RecompOne.Runtime.Runtime.CanHardReset = false;
+
+Thread.CurrentThread.Name ??= "game";
 var memory = new PSMemory();
-Entry.Run(memory, args.Length > 0 ? args[0] : null);
+// The game runs on this thread, so its crash comes out here: a report, and the
+// window kept up with the report's path until the player closes it.
+try
+{
+    Entry.Run(memory, args.Length > 0 ? args[0] : null);
+}
+catch (Exception e)
+{
+    Console.Error.WriteLine($"[KF3] the game has crashed: {e}");
+    RecompOne.Runtime.Runtime.HoldAfterCrash(RecompOne.Runtime.Diagnostics.CrashReport.Write("crash", e));
+    return 1;
+}
 return 0;

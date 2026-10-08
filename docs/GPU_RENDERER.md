@@ -807,3 +807,23 @@ before.
 **Not judged by eye.** For the user, with `KF3_GPU_MODEL_CLIP` on and off: the trees
 looked at from below and from beside (whole, no slab), and models close to the eye
 (creatures, objects, doors), which are the 19%.
+
+## Ignored map faces and the store's growth (2026-10-08)
+
+Two defects found by reading, neither seen in play:
+
+- `RetainedMap.BuildChunk` read `store[face.Corner]` for every face but GT4, and
+  a face `RetainedAssets.Build` ignores (a raw record, the `default:` branch) has
+  no corners and `Corner = -1`: a map mesh holding one would have thrown out of the
+  chunk build and the map never rebuilt. It skips `Corners == 0` now, as
+  `WaterSwell` and `RetainedModels` already did.
+- A mesh whose bytes change is built again and appended to `MeshCorners`, and the
+  copy it replaces stays until the area changes, so a mesh changing every tick
+  would grow the store for as long as the player stayed. `GpuWorld.Begin` empties
+  the store as an area change does past 2^20 corners or 2^21 pose texels
+  (`storeResets` in the shell's `gpu`, with `meshCorners`, `poseTexels` and
+  `meshMutations`). Measured in `fdat17` after two minutes: 14838 corners, 763 pose
+  texels, no mutation and no reset.
+
+`RetainedModels.Submit` also falls back (`no-retained-frame`) where it used to
+dereference a null frame; capture implies a begun frame, so this is not expected.

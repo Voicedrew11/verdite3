@@ -21,6 +21,8 @@ kept.
 | `KF3_ENDINGHOLD` | `0`: leave `END.EXE` to spin after its last movie, which here is a window that is neither redrawn nor closable; a comparison only | on |
 | `KF3_ENDINGEXIT` | `0`: hold the ending's last frame for good, as the console did, instead of returning to the title on a button | on |
 | `KF3_AUTOPAD` | `seconds:button:holdMs,…` from the first area load | none |
+| `KF3_HANG` | seconds without a frame before a hang report is written to `crashes/`; `0` turns the watchdog off ("When it crashes" in `docs/DEVELOPMENT.md`) | 15 |
+| `KF3_FAULT` | `hook`, `crash` or `hang`, optionally `:seconds` after the first area (20): makes that report on purpose, to test the paths; never for play | off |
 | `KF3_FULLCARD` | `0`: the games' own card checks, which on a full card (five saves) leave Continue off at the title and make the in-game Save offer a format instead; a comparison only | on |
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
 | `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |

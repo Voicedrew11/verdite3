@@ -33,7 +33,7 @@ public static class AgentBeacon
 
     // Stage 1 of the main loop: seen within a second means the loop is turning,
     // not a movie, a menu's own loop or a load.
-    const uint FirstStage = 0x800341E8;
+    internal const uint FirstStage = 0x800341E8;
     static long _loopMs = -1;
     static readonly ModInfo _self = new() { Id = "kf3.beacon", Name = "Agent beacon", Version = "1.0" };
 
