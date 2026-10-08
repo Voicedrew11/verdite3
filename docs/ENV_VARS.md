@@ -175,6 +175,14 @@ See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
 - `KF3_GPU_UNDER_PROBE=1`: count, with two occlusion queries per batch (a stall
   each), the samples of packets drawn under the world and those that show; the
   shell's `gpu` command (`underTriangles`, `underSamples`, `underShown`).
+- `KF3_GPU_MODEL_CLIP=0`: place a retained model's corners the GTE cannot project
+  at the divide's saturated ends again, as before runtime `0103`, to compare: a
+  billboard seen from below draws as a sheared slab. On by default (such a face is
+  clipped at the near plane).
+- `KF3_GPU_CLIP_PROBE=1`: count, on the CPU from each submit's GTE, the models'
+  faces kept by depth and those with a corner the GTE cannot project (clipped),
+  billboards apart; the shell's `gpu` command (`clipFaces`, `clipped`,
+  `clipBillboardFaces`, `clipBillboardClipped`).
 
 See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolved.
 

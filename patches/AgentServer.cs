@@ -251,6 +251,9 @@ public static class AgentServer
         "gpu" => "{\"ok\":true,\"cmd\":\"gpu\",\"mode\":" + GpuWorld.Mode + ",\"blocker\":" + Q(GpuWorld.Blocker ?? "none") +
                  ",\"mainDraws\":" + RetainedScene.MainDraws + ",\"mainMissed\":" + RetainedScene.MainMissed +
                  ",\"underTriangles\":" + RetainedScene.UnderTriangles +
+                 ",\"clipFaces\":" + RetainedModels.ClipFaces + ",\"clipped\":" + RetainedModels.Clipped +
+                 ",\"clipBillboardFaces\":" + RetainedModels.ClipBillboardFaces +
+                 ",\"clipBillboardClipped\":" + RetainedModels.ClipBillboardClipped +
                  ",\"underSamples\":" + RetainedScene.UnderSamples + ",\"underShown\":" + RetainedScene.UnderShown +
                  ",\"instances\":" + RetainedScene.InstancesDrawn + ",\"maskOn\":" + (RetainedScene.ModelMask ? "true" : "false") +
                  ",\"maskFrames\":" + RetainedScene.MaskFrames + ",\"maskBatches\":" + RetainedScene.MaskBatches +

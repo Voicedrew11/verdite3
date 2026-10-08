@@ -751,3 +751,59 @@ surfaces in front of the depth, on its 4-pixel grid:
 `behind` was 15 and 16 in fdat17 either way, and `missing` 0 throughout. Not yet
 judged by eye.
 
+
+## Billboards sheared from below (2026-10-07)
+
+Reported with a screenshot: a tall tree, looked up at from close by, drawn as a long
+sheared slab of foliage.
+
+**What it is.** A retained model's face is kept by the lit assembler's tests alone
+(`modelFaceKept`: facing on the screen, mean table depth), and the forced-blend
+assembler `func_80037BEC` the billboards go through keeps them the same way (`NCLIP`,
+then a mean depth above 0 and below `0x2000`). Neither clips: a large flat face whose
+mean depth is in front but which reaches past the eye has corners the GTE's divide
+saturates, and `modelPlace` put them where the packets do, at the ends of its range.
+That is the slab. The packets themselves never showed such a triangle: the GPU refuses
+one reaching more than 1023 pixels across or 511 down, and `GpuRaster` and
+`GpuHleForward` follow it.
+
+The billboard table is not camera-facing: the walk submits it with rotation 0 and the
+view matrix (`0x800419EC`, flags `0x36`/`5`), a world-oriented model like any other,
+drawn through the forced blend.
+
+**First try: the GPU's size limit** (dropping such a triangle, each half of a quad on
+its own). Faithful to the packets, and the user judged the slab gone, but **the trees
+then vanished** at extreme angles, as the packets' would. Measured with the same
+saves and route as below: 2-8,344 halves dropped a run, of 3.5-6.7 million.
+
+**Fix** (runtime `0103`). `RetainedScene.ModelNearClip` (`uModelClip`): a face with a
+corner `modelProjects` refuses (nearer than H/2, or off the divide's range) is kept by
+its plane against the eye and drawn in the ordinary projection, clipped at the GPU's
+near plane (`uNear` = 16, as the map's), as a `Tile` instance (the near path) already
+was. Not the sky, nor the arm. On by default; `KF3_GPU_MODEL_CLIP=0` is the draw as
+before.
+
+### Measured
+
+- `KF3_GPU_CLIP_PROBE=1` (the same test on the CPU, from each submit's GTE),
+  `KF3_AUTOSTART` slots 1-5, holding Left 40 s, then R2 10 s (pitch not read back),
+  counters at about 68 s:
+
+  | save | area | faces kept by depth | clipped | billboard faces | clipped |
+  |---|---|---|---|---|---|
+  | 1 | fdat17 | 9,399,369 | 1,772,300 | 0 | 0 |
+  | 2 | fdat14 | 8,058,818 | 492,574 | 0 | 0 |
+  | 3 | fdat08 | 14,543,296 | 2,440,812 | 2,607 | 0 |
+  | 4 | fdat41 | 5,746,233 | 26,921 | 0 | 0 |
+  | 5 | fdat05 | 6,992,165 | 30,983 | 0 | 0 |
+
+  **Far more faces than the size limit dropped** (up to 19% in fdat17): every face with
+  a corner the GTE saturates, not only those stretched past the GPU's limit, now takes
+  the true projection, so models near the eye are drawn as they stand rather than with
+  that corner pulled in. No shader or GL error in any log.
+- The source probe passes 5,632,542 assertions; the shader probe links the four
+  programs on the Radeon with every case exact.
+
+**Not judged by eye.** For the user, with `KF3_GPU_MODEL_CLIP` on and off: the trees
+looked at from below and from beside (whole, no slab), and models close to the eye
+(creatures, objects, doors), which are the 19%.

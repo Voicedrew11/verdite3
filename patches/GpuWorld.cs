@@ -54,6 +54,11 @@ public static class GpuWorld
         // there (the sky, and the objects func_8003F304 submits) is behind everything.
         RetainedScene.UnderSlots = Environment.GetEnvironmentVariable("KF3_GPU_UNDER") == "0" ? 0 : 8;
         RetainedScene.UnderProbe = Environment.GetEnvironmentVariable("KF3_GPU_UNDER_PROBE") == "1";
+        // A retained model's face reaching past the eye is clipped at the near plane, not
+        // placed at the GTE's saturated ends: a billboard looked at from below drew as a
+        // long sheared slab.
+        RetainedScene.ModelNearClip = Environment.GetEnvironmentVariable("KF3_GPU_MODEL_CLIP") != "0";
+        RetainedModels.ClipProbe = Environment.GetEnvironmentVariable("KF3_GPU_CLIP_PROBE") == "1";
         // The slope term's ceiling, in game pixels; KF3_GPU_DEPTH_CAP=0 leaves it unbounded.
         RetainedScene.DepthCapPixels = float.TryParse(Environment.GetEnvironmentVariable("KF3_GPU_DEPTH_CAP"),
             System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cap) && cap >= 0f ? cap : 1f;

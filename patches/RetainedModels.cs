@@ -7,6 +7,12 @@ namespace Kf3;
 public static class RetainedModels
 {
     const uint Pad = 0x1F800000;
+    /// <summary><c>KF3_GPU_CLIP_PROBE=1</c>: of the models' faces kept by depth, those
+    /// with a corner the GTE cannot project, which runtime 0103 clips at the near plane
+    /// (they were placed at the divide's saturated ends), taken on the submit's own GTE;
+    /// the billboards (the walk's call at <c>0x800419EC</c>) apart.</summary>
+    public static bool ClipProbe;
+    public static long ClipFaces, Clipped, ClipBillboardFaces, ClipBillboardClipped;
     public static bool Submit(PSMemory m, uint sub, int bias, uint flags, bool perspective,
         uint caller, uint routine = 0x8003E34C, bool sky = false)
     {
@@ -49,6 +55,7 @@ public static class RetainedModels
         ReadMatrix(ref instance);
         Place(ref instance, RetainedScene.Find(RetainedScene.Serial)!.View);
         ReadLight(ref instance);
+        if (ClipProbe && !sky && !arm && !instance.Tile) CountClips(mesh, instance, bias, caller == 0x800419ECu);
         if (sky)
         {
             var faces = mesh.Faces.Where(f => f.Corners != 0).Select(f => (f.Corner, f.Corners, bias, f.Semi ? (int)(flags & 3) : -1)).ToArray();
@@ -142,6 +149,44 @@ public static class RetainedModels
         }
         long mac = (long)m.V20 * x + (long)m.V21 * y + (long)m.V22 * z;
         return Math.Clamp((int)(mac >> 12) + m.Vtz, 0, 65535) >> 2;
+    }
+    static void CountClips(RetainedAssets.Mesh mesh, in RetainedScene.ModelInstance m, int bias, bool billboard)
+    {
+        float h = (ushort)Gte.ReadControl(26), cx = (int)Gte.ReadControl(24) / 65536f, cy = (int)Gte.ReadControl(25) / 65536f;
+        foreach (var f in mesh.Faces)
+        {
+            if (f.Corners == 0 || (uint)Key(f, m, bias) >= 8192) continue;
+            var corner = RetainedScene.MeshCorners[f.Corner];
+            int n = f.Corners == 6 ? 4 : 3;
+            bool clipped = false;
+            for (int k = 0; k < n; k++)
+            {
+                int vertex = (int)(k switch { 0 => corner.Dqa, 1 => corner.Dqb, 2 => corner.Curve, _ => corner.Rgbc });
+                clipped |= !Projects(vertex, m, h, cx, cy);
+            }
+            if (billboard) { ClipBillboardFaces++; if (clipped) ClipBillboardClipped++; }
+            else { ClipFaces++; if (clipped) Clipped++; }
+        }
+    }
+    // modelProjects, from the GTE matrix the submit loaded: in front of H/2 and on the
+    // divide's range.
+    static bool Projects(int vertex, in RetainedScene.ModelInstance m, float h, float cx, float cy)
+    {
+        int at = (m.Pose - 1 + vertex * (m.PoseMorph ? 2 : 1)) * 4;
+        var store = RetainedScene.PoseStore;
+        int px = store[at], py = store[at + 1], pz = store[at + 2];
+        if (m.PoseMorph)
+        {
+            px = (short)(px + (short)(store[at + 4] * m.PoseWeight >> 12));
+            py = (short)(py + (short)(store[at + 5] * m.PoseWeight >> 12));
+            pz = (short)(pz + (short)(store[at + 6] * m.PoseWeight >> 12));
+        }
+        float ex = (int)(((long)m.V00 * px + (long)m.V01 * py + (long)m.V02 * pz) >> 12) + m.Vtx;
+        float ey = (int)(((long)m.V10 * px + (long)m.V11 * py + (long)m.V12 * pz) >> 12) + m.Vty;
+        float ez = (int)(((long)m.V20 * px + (long)m.V21 * py + (long)m.V22 * pz) >> 12) + m.Vtz;
+        if (ez <= h * 0.5f || ez > 32767f) return false;
+        float x = cx + h * ex / ez, y = cy + h * ey / ez;
+        return x >= -1024f && x <= 1023f && y >= -1024f && y <= 1023f;
     }
     static void Arm(RetainedAssets.Mesh mesh, in RetainedScene.ModelInstance instance, int bias)
     {
