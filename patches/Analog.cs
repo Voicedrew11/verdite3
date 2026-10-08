@@ -368,14 +368,18 @@ public static class Analog
     // whole steps in; this class owns the stick share and the shared word, so the
     // two devices cannot fight over it. It runs with the sticks switched off too:
     // keyboard and mouse is a scheme of its own.
+    //
+    // The gyro (GyroAim, a drawn bow) is a third way of asking: an amount, as the
+    // mouse's is, spent beside the stick's share so it is smoothed as the stick is.
     public static ushort BeforeLook(IMemory m, ushort pad, float mouseTurn, float mousePitch,
-                                    int yaw, int look, bool mouseActive)
+                                    int yaw, int look, bool mouseActive, float gyroTurn = 0f, float gyroPitch = 0f)
     {
         bool sticks = Enabled && AnalogLook;
+        bool gyro = gyroTurn != 0f || gyroPitch != 0f;
 
         // The accumulator has to be emptied by MouseLook whether or not anything
         // here spends it; this early-out is the sticks-idle fast path.
-        if (!sticks && yaw == 0 && look == 0 && !_mouseTurn && !_mousePitch) return pad;
+        if (!sticks && !gyro && yaw == 0 && look == 0 && !_mouseTurn && !_mousePitch) return pad;
 
         var (x, y) = sticks ? Shape(Controller.RightX, Controller.RightY, LookDeadzone, LookCurve)
                             : (0f, 0f);
@@ -401,7 +405,7 @@ public static class Analog
         bool releaseTurn  = (CameraInstantStop && _ownedTurn)  || _mouseTurn;
         bool releasePitch = (CameraInstantStop && _ownedPitch) || _mousePitch;
 
-        if (x == 0f && y == 0f && !leftActive && yaw == 0 && look == 0 &&
+        if (x == 0f && y == 0f && !leftActive && yaw == 0 && look == 0 && !gyro &&
             !releaseTurn && !releasePitch)
         {
             _accelT = 0f;
@@ -429,23 +433,28 @@ public static class Analog
         // is "down on screen" is in the not-yet-judged list in docs/INPUT.md.
         float stickTurn  = -x * rate * TurnSens * mult * (InvertTurn ? -1f : 1f);
         float stickPitch =  y * PitchVelMax * PitchSens * mult * (InvertPitch ? -1f : 1f);
+        stickTurn += gyroTurn;
+        stickPitch += gyroPitch;
         Mouse.NoteSpent(m, yaw, stickTurn, look, stickPitch);
 
-        if (x != 0f || leftActive || yaw != 0 || releaseTurn)
+        // A gyro step is an amount, so it gets the mouse's ceiling and the mouse's
+        // stop: a hand that has stopped turning the pad has asked for nothing more.
+        if (x != 0f || leftActive || yaw != 0 || gyroTurn != 0f || releaseTurn)
         {
-            int step = Step(stickTurn + yaw, ref _turnCarry, Ceiling(rate * OverspeedCap, yaw));
+            int step = Step(stickTurn + yaw, ref _turnCarry,
+                            Ceiling(rate * OverspeedCap, yaw != 0 || gyroTurn != 0f));
             pad = Drive(m, pad, TurnVel, step, rate >> 2, rate, MaskTurnInc, MaskTurnDec);
             _ownedTurn = step != 0;
-            _mouseTurn = yaw != 0;
+            _mouseTurn = yaw != 0 || gyroTurn != 0f;
         }
 
-        if (y != 0f || look != 0 || releasePitch)
+        if (y != 0f || look != 0 || gyroPitch != 0f || releasePitch)
         {
             int step = Step(stickPitch + look, ref _pitchCarry,
-                            Ceiling(PitchVelMax * OverspeedCap, look));
+                            Ceiling(PitchVelMax * OverspeedCap, look != 0 || gyroPitch != 0f));
             pad = Drive(m, pad, PitchVel, step, PitchAccel, PitchVelMax, MaskPitchInc, MaskPitchDec);
             _ownedPitch = step != 0;
-            _mousePitch = look != 0;
+            _mousePitch = look != 0 || gyroPitch != 0f;
         }
 
         if (x != 0f || y != 0f) { LastLook = (x, y, rate); LookFrames++; }
@@ -455,14 +464,14 @@ public static class Analog
 
     /// <summary>
     /// The per-frame ceiling for an axis: the stick's, or the mouse's larger one
-    /// while the mouse is driving.
+    /// while the mouse (or the gyro, which asks the same way) is driving.
     ///
     /// A stick asks for a *rate*, and four times the game's own is already faster
     /// than any button can turn. A mouse asks for an *amount*, and a flick that
     /// takes a tenth of a second arrives here as three or four very large frames,
     /// so the stick's ceiling would turn every fast turn into a slow one.
     /// </summary>
-    static int Ceiling(int stick, int mouse) => mouse == 0 ? stick : Math.Max(stick, Mouse.StepCap);
+    static int Ceiling(int stick, bool amount) => amount ? Math.Max(stick, Mouse.StepCap) : stick;
 
     // Walking and strafing. The same three-branch shape, twice, off this frame's
     // walk speed; the two velocities are then turned into a heading off the yaw

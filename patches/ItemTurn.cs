@@ -161,11 +161,11 @@ public static class ItemTurn
     }
 
     /// <summary>The pad's gyroscope is switched on only while it would be used: a pad
-    /// streams a larger report once it is (runtime 0102).</summary>
+    /// streams a larger report once it is (runtime 0102). GyroAim reads it too.</summary>
     public static void SetGyro(bool on)
     {
         UseGyro = on;
-        Controller.WantGyro = Enabled && on;
+        GyroAim.WantGyro();
     }
 
     static bool Attach()

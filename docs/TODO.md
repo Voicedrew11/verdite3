@@ -72,6 +72,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
   measured with a synthetic stick on the take path; **to judge by eye**: the
   directions, the gyroscope on a real pad, the feel, and putting an item back
   (not reached by a run).
+- **Gyro aim with a drawn bow** (`KF3_GYROAIM`, `docs/INPUT.md`): built, builds
+  only, nothing run on a pad; **to judge on a real pad**: the signs, the feel
+  one to one, and the draw gate's timing (the swing clock or the attack mask against
+  the game's actual draw, which is not yet watched).
 - ~~The world runs at the drawn rate.~~ It ran at 30, twice the game's 15 (the
   vblank delivered twice); frame pacing holds it to 15 at any rate, off until
   judged. See "Frame pacing" in `docs/DEVELOPMENT.md`.

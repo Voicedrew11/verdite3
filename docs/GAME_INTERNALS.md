@@ -216,7 +216,7 @@ disagreed, the field is given as the code and the status screen show it.
 | `0x801B25AC` | u8 | committed spell id |
 | `0x801B25AD` | u8 | committed spell id (second slot) |
 | `0x801B25AE` | u8 | arm clip byte / cast phase |
-| `0x801B25AF` | u8 | equipped weapon id and current arm-effect id (0xFF none) |
+| `0x801B25AF` | u8 | equipped weapon id and current arm-effect id (0xFF none); 27 and 28 are the bows, LARGE BOW and ELCHRIS BOW (names at `0x8007F620`) |
 | `0x801B25B2` | u8 | queued-cast counter |
 | `0x801B25B3` | u8 | cast-ready latch |
 | `0x801B25B4` | u8 | flag: stage 4 halves the walk and turn rates while nonzero |
@@ -480,7 +480,8 @@ both are saved. `func_8005D898(id)` adds one, `func_8005D7F8(id)` removes one an
 `func_8005D7BC(id)` reports held; `func_8005EA64` is the new-game init. Names are
 24-byte records at `0x8007F620`, id `i` at `+ i*0x18`, in the font encoding of
 the labels (0x00..0x19 = A..Z, 0x7F space, 0xFF terminator). Weapons 0..33 use
-the table at `0x801D37A4` (stride 0x44); armor and accessories 34..94 use
+the table at `0x801D37A4` (stride 0x44; ids 27 and 28 are the LARGE BOW and the
+ELCHRIS BOW, read off the name table at `0x8007F620`); armor and accessories 34..94 use
 `0x801E6078` (stride 0x20: a category byte, a model byte and nine u16 bonuses).
 The seven equipment slots are bytes at `0x801B25D4..25DA` (0xFF empty): helm
 `D4`, armor `D5`, shield `D6`, gauntlets `D7`, boots `D8`, two rings `D9`/`DA`.

@@ -285,6 +285,11 @@ Kf3.AnalogProbe.Install();
 Kf3.ItemTurn.Configure();
 Kf3.ItemTurn.Install();
 
+// Aiming a drawn bow with the gyroscope (KF3_GYROAIM, off): spent through the look
+// routine beside the right stick. See "Gyro aim with a drawn bow" in docs/INPUT.md.
+Kf3.GyroAim.Configure();
+Kf3.GyroAim.Install();
+
 // The Input pane, the port's in place of the runtime's: Keyboard (the layout and
 // the bindings), Gamepad (the sticks and the bindings), Mouse. See "The Input pane
 // is the port's" in docs/INPUT.md.

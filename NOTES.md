@@ -42,7 +42,8 @@ Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); keyboard and m
 clicked with the mouse (`KF3_MENUMOUSE`, Verdite2's `MenuMouse`; measured, not
 judged); a picked-up item turned by the mouse, the right stick and the pad's
 gyroscope while the game holds it up (`KF3_ITEMTURN`, `KF3_ITEMTURN_GYRO`, runtime
-`0102`; measured with a synthetic stick, not judged); the
+`0102`; measured with a synthetic stick, not judged); the pad's gyroscope aiming a
+drawn bow, one to one (`KF3_GYROAIM`, off; built, nothing run on a pad); the
 picture's 24-bit shading, no dither,
 perspective, sub-pixel and a Z-buffer from the assemblers' depth records, with the
 near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by default since 2026-10-06; every routine in Testing ▸ Routines in C#, the near path and the native scene included, is C# by default); the world

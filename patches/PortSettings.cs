@@ -278,6 +278,9 @@ public static class PortSettings
         null, null, () => ItemTurn.UseGyro, ItemTurn.SetGyro, false,
         tip: "Turn and tip the pad and the item turns with it. Needs a pad with a gyroscope, such as a DualShock 4, DualSense or Switch Pro.",
         usable: () => ItemTurn.Enabled);
+    public static readonly PortSetting GyroAimOn = Switch(GyroAim.OnKey, "KF3_GYROAIM", "Gyro aims a drawn bow",
+        null, null, () => GyroAim.Enabled, GyroAim.SetEnabled, false,
+        tip: "While a bow is drawn, turn and tip the pad to aim. Needs a pad with a gyroscope, such as a DualShock 4, DualSense or Switch Pro.");
     public static readonly PortSetting MenuPointer = Switch(Kf3.MenuMouse.OnKey, "KF3_MENUMOUSE", "Point at the menus",
         null, null, () => Kf3.MenuMouse.Enabled, v => Kf3.MenuMouse.Enabled = v, true, ui: Ui.None);
 
@@ -333,13 +336,25 @@ public static class PortSettings
         },
         (v, _) => v >= 2 ? [1, 1, 1] : v >= 1 ? [1, 1, 0] : [0, 0, 0]);
 
+    /// <summary>Both readers of the pad's gyroscope at once: turning a picked-up item
+    /// and aiming a drawn bow. The item's needs item turning on, which it is by default.</summary>
+    public static readonly PortSetting Gyro = Combine("row.gyro", Gameplay, "GYRO", [ItemTurnGyro, GyroAimOn],
+        [0, 1], v => v == 0 ? "OFF" : v == 1 ? "ON" : "CUSTOM",
+        get => (get(ItemTurnGyro), get(GyroAimOn)) switch
+        {
+            (0, 0) => 0,
+            (1, 1) => 1,
+            _ => Custom,
+        },
+        (v, _) => v >= 1 ? [1, 1] : [0, 0]);
+
     /// <summary>The game's page, in order.</summary>
     public static readonly PortSetting[] Menu =
     [
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion,
         RenderDistanceRow, Water,
-        AutoReloadOn,
+        AutoReloadOn, Gyro,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -349,7 +364,7 @@ public static class PortSettings
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
-        ItemTurnOn, ItemTurnGyro,
+        ItemTurnOn, ItemTurnGyro, GyroAimOn,
     ];
 
     /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>

@@ -90,7 +90,8 @@ public static class MouseLook
         // Analog owns the stick share and the shared pad word; with the sticks
         // centred this is the mouse-only path it always was.
         ushort pad = m.ReadU16(Pad);
-        ushort held = Analog.BeforeLook(m, pad, turn, pitch, yaw, look, mouse);
+        var (gyroTurn, gyroPitch) = GyroAim.Take();
+        ushort held = Analog.BeforeLook(m, pad, turn, pitch, yaw, look, mouse, gyroTurn, gyroPitch);
         if (held != pad) m.WriteU16(Pad, held);
         orig(c, m);
         if (held != pad) m.WriteU16(Pad, pad);

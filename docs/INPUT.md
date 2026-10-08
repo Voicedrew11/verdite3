@@ -461,6 +461,63 @@ in that area, so its model is loaded) and `KF3_AUTOPAD=17:Cross:300`:
 - the feel: the stick's rate, the 1.5 s before the spin comes back, the ease on
   letting go.
 
+## Gyro aim with a drawn bow
+
+`patches/GyroAim.cs` (switch `KF3_GYROAIM`, off by default): while a bow is in
+hand and being drawn, **the pad's gyroscope turns and tips the view, one to one**.
+Settings ▸ Gameplay: **Gyro aims a drawn bow** (`kf3.gyroaim.on`, off), drawn under
+the item-turn rows. The game's own PORT SETTINGS page GAMEPLAY has one row for
+both gyroscope readers, **GYRO** (`row.gyro`, `docs/SETTINGS.md`): ON sets this and
+**Gyro turns it too** together, OFF clears both, and one without the other shows
+CUSTOM.
+
+**A bow** is weapon id 27 (LARGE BOW) or 28 (ELCHRIS BOW), read off the name table
+at `0x8007F620` (stride `0x18`), in the equipped-weapon byte `0x801B25AF`.
+
+**The gate** is "drawn": the arm's swing clock `s16 0x801B25A4` is not -1 (an
+attack press sets it going), or the attack action's mask (`u16 0x80081870`, entry
+4 of the action mask table) is set in the pad word `0x801B265C`. The mask is read
+rather than a button, so whatever the layout binds to attack, a mouse button
+included, draws. Whether the game holds a bow's draw while attack is held, or
+fires on the press and runs the clock about 0.7 s regardless, is **not known**:
+nobody has watched it.
+
+**The rate and its spending.** The rate is integrated on every `VSyncEvent` with
+the stopwatch's step, clamped to 0.1 s. A rate under 0.05 rad/s is a hand at rest
+(ItemTurn's `GyroRest`). The integral is in angle units at 4096/2π a radian, one to
+one. `GyroAim.Take()` is called in `patches/MouseLook.cs` just before
+`Analog.BeforeLook`, which adds the sum to the stick's share (`stickTurn`,
+`stickPitch`); so the gyro gets the mouse's per-tick ceiling (`Mouse.StepCap`) and
+stops on the same tick as the mouse. The sum is dropped when the gate fails, while
+`ItemTurn` holds the mouse, or when the look routine has not taken it for 250 ms
+(a menu, a cutscene).
+
+**The signs.** SDL's axes for a pad held in front: +y (the pad turned left) turns
+the view left, which is yaw increasing (Left `0x8008186C` increases yaw). +x (the
+far edge tipped up) lowers pitch, the way a mouse pushed away goes, so
+`Mouse.InvertY` flips it as it flips the mouse.
+
+**The shared request.** Both gyro readers use `Controller.WantGyro`, and each
+writes it: `GyroAim.WantGyro()` sets it to `GyroAim.Enabled || (ItemTurn.Enabled
+&& ItemTurn.UseGyro)`, and `ItemTurn.SetGyro` calls it. So turning either setting
+off no longer switches the sensor off under the other one.
+
+**The probe.** `KF3_GYROAIM_PROBE=1` prints a line a second: on or off, the pad's
+gyro on or off, the weapon id, the swing clock, attack held or up, the vblanks
+gated in, the ticks spent, and the units turned and pitched.
+
+### Measured
+
+Builds. Nothing run on a pad.
+
+### Not yet judged by eye
+
+- the signs on a real pad: a left turn of the pad turns the view left, and the far
+  edge tipped up looks up;
+- whether one to one feels right, and the drift past the 0.05 rad/s rest;
+- the gate's timing against the bow's actual draw: whether the swing clock or the
+  attack mask is the right edge, since the game's hold is not known.
+
 ## The Input pane is the port's
 
 `patches/InputSection.cs` **replaces** the runtime's Input section rather than

@@ -84,5 +84,8 @@ public sealed class GameplaySection : ISettingsSection
         ImGui.Indent();
         PortSettings.Draw(PortSettings.ItemTurnGyro);
         ImGui.Unindent();
+
+        // Aiming a drawn bow with the gyroscope (GyroAim).
+        PortSettings.Draw(PortSettings.GyroAimOn);
     }
 }

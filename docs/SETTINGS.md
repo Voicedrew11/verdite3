@@ -45,7 +45,7 @@ store that touches the dictionary only on the host thread.
 | file | what |
 |---|---|
 | `patches/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
-| `patches/PortSettings.cs` | the list (33 settings), the game page's eleven rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), five of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
+| `patches/PortSettings.cs` | the list (37 settings), the game page's twelve rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), six of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
 | `patches/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
 | `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
 | `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
@@ -149,6 +149,7 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the surface, FULL the reflections too |
 | GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
+| | GYRO | ON, OFF | `kf3.itemturn.gyro` and `kf3.gyroaim.on`: the pad's gyroscope turns a picked-up item and aims a drawn bow (`docs/INPUT.md`) |
 
 Until 2026-10-07 the same rows filled two pages, PICTURE (DISPLAY to TEXTURE
 FILTER) and WORLD (the rest). The page shown is not kept between runs, so the
