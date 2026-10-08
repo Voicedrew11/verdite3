@@ -20,10 +20,11 @@ ROOT="${VERDITE_GAME_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && 
 
 OUT="${OUT:-$ROOT/dist}"
 APPDIR="$OUT/$NAME.AppDir"
-# One source of the number, for everything that names a build: the launcher's
-# csproj reads this same file, so a package can never be named something other
-# than what is inside it.
-VERSION="${VERSION:-$(tr -d '[:space:]' < "$ROOT/VERSION")}"
+# One rule for the number, for everything that names a build: the launcher's
+# csproj resolves it the same way (VERSION, else $VERDITE_VERSION, else the newest
+# version tag), so a package can never be named something other than what is
+# inside it.
+VERSION="${VERSION:-$(VERDITE_GAME_ROOT="$ROOT" bash "$(dirname "${BASH_SOURCE[0]}")/../../scripts/version.sh")}"
 
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"

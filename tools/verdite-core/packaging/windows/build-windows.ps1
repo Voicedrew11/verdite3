@@ -32,11 +32,22 @@ $stage = Join-Path $dist 'win-x64'
 $csproj = Join-Path $root "$name.Launcher\$name.Launcher.csproj"
 $icon = Join-Path $root "packaging\shared\$appId.ico"
 
-# One source of the number, for everything that names a build: the launcher's
-# csproj reads this same file, so the zip and the installer cannot be named
-# something other than what is inside them.
-$version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
-if (-not $version) { throw "VERSION is empty" }
+# One rule for the number, for everything that names a build, as scripts/version.sh
+# gives it and the launcher's csproj resolves it: VERSION, else $env:VERDITE_VERSION,
+# else the newest vMAJOR.MINOR.PATCH tag reachable from HEAD, else 0.0.0. So the
+# zip and the installer cannot be named something other than what is inside them.
+$versionFile = Join-Path $root 'VERSION'
+if (Test-Path $versionFile) { $version = (Get-Content $versionFile -Raw).Trim() }
+elseif ($env:VERDITE_VERSION) { $version = $env:VERDITE_VERSION -replace '^v', '' }
+else {
+    $tag = $null
+    try {
+        $tag = git -C "$root" tag --merged HEAD --list 'v*' --sort=-v:refname 2>$null |
+            Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } | Select-Object -First 1
+    } catch { }
+    $version = if ($tag) { $tag.Substring(1) } else { '0.0.0' }
+}
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "not MAJOR.MINOR.PATCH: $version" }
 
 Write-Host "==> publishing win-x64 ($version)"
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }

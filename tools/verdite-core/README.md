@@ -132,11 +132,12 @@ measurements.
 
 | file | what |
 |---|---|
-| `linux/build-appimage.sh` | `dist/<Name>-<VERSION>-x86_64.AppImage`: the self-contained publish, `AppRun`, the desktop entry and icon, the licences |
-| `windows/build-windows.ps1` | `dist/<Name>-<VERSION>-win-x64.zip` (the stub, `bin/`, `content/`, `licenses/`) and, with `iscc` on PATH, the installer |
+| `linux/build-appimage.sh` | `dist/<Name>-<version>-x86_64.AppImage`: the self-contained publish, `AppRun`, the desktop entry and icon, the licences |
+| `windows/build-windows.ps1` | `dist/<Name>-<version>-win-x64.zip` (the stub, `bin/`, `content/`, `licenses/`) and, with `iscc` on PATH, the installer |
 | `windows/verdite.iss` | the Inno Setup script; every name from the environment the PowerShell script sets |
 | `windows/Stub/` | the few-KB .NET Framework executable at the install root, built under the launcher's name, that starts `bin\<Name>.exe` |
-| `../scripts/release.sh` | bump `VERSION`, commit, tag `v<VERSION>`; never pushes |
+| `../scripts/release.sh` | tag `v<version>` (after bumping and committing `VERSION`, for a game that keeps one); never pushes |
+| `../scripts/version.sh` | print the version by the rule below |
 
 Each finds the game as the checkout it is vendored in (or `VERDITE_GAME_ROOT`) and
 reads the game's `packaging/package.env`:
@@ -148,8 +149,16 @@ INNO_APP_ID=9F1F0C1E-6A3E-4C69-9C2A-9E5F2B8D4A11   # one per game, never reused
 ```
 
 beside `packaging/shared/<app id>.desktop`, `.png` (256×256) and `.ico`, and the
-game's `VERSION`, `LICENSE` and `<Name>.Launcher/`. A game keeps one-line wrappers
+game's `LICENSE` and `<Name>.Launcher/`. A game keeps one-line wrappers
 at `packaging/linux/build-appimage.sh`, `packaging/windows/build-windows.ps1` and
 `scripts/release.sh`, so its commands and CI do not name this path. The CI
 workflows stay in each game (GitHub reads them from there), and their release body
 is the game's.
+
+**The version** is `MAJOR.MINOR.PATCH`, resolved by one rule that
+`scripts/version.sh`, `build-windows.ps1` and `launcher/Launcher.targets` all
+follow: the game's `VERSION` file when it keeps one; else `VERDITE_VERSION`, which
+a release workflow sets from the tag it was pushed for; else the newest
+`vMAJOR.MINOR.PATCH` tag reachable from `HEAD`; else `0.0.0`. Verdite2 keeps a
+`VERSION` file, so a release there is a commit and a tag; Verdite3 keeps none, so
+a release is the tag alone.

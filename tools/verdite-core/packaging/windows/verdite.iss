@@ -9,7 +9,7 @@
 ; %LOCALAPPDATA%\<name> -- so the install directory stays read-only, an
 ; uninstall leaves saves alone, and reinstalling does not force a rebuild.
 
-; The version comes from the game's VERSION, the one place it is written. A
+; The version comes from the script, by the rule scripts/version.sh gives. A
 ; literal fallback here would be a second source of it and would quietly ship an
 ; installer whose name disagreed with its contents, so a missing value is an
 ; error instead; the same for the names.
