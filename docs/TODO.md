@@ -113,8 +113,9 @@ recompiled and running, following Verdite2's method but applied to this disc.
   eye**: the cursor under the real pointer, at 16:9 and in a resized window, and
   the wheel on a long list.
 - **Debug tools** (`mods/kf3debug`): built and measured 2026-10-03
-  (`docs/MODS.md`); **to judge by eye**: the panel, noclip's feel and speed,
-  learned spells in the magic menu, the equipment slot names, and area-warp
+  (`docs/MODS.md`); Enemies ignore you added 2026-10-08. **To judge by eye**: the
+  panel, noclip's feel and speed, the cinematic camera, whether creatures leave you
+  alone with Enemies ignore you on, learned spells in the magic menu, the equipment slot names, and area-warp
   landings. A warp to `fdat08` bounced straight back to `fdat02`; the warp lands
   by the nearest floor tile, not at a real entrance.
 - **`load` for the command channel**: how the in-game Load re-enters the area

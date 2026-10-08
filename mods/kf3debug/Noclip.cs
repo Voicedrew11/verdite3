@@ -253,6 +253,16 @@ internal static class Noclip
     static bool Flying(IMemory m) => Enabled && GameState.IsInGame(m);
 
     /// <summary>
+    /// The death latch, refused while flying. Drowning, the two falls and the
+    /// below-the-floor check func_80028D54 all call it at full HP, and a flight
+    /// through water or under the map walks into one of them. Cheats refuses it
+    /// too when invincibility is on; both refusing is harmless, since the hook
+    /// only ever says "do not run the original".
+    /// </summary>
+    [PreHook("game", Address = 0x80030A6C)]
+    static bool BeforeDeathLatch(CpuContext c, IMemory m) => !Flying(m);
+
+    /// <summary>
     /// The player stage's post-hook: after the game's own walk, its collision,
     /// its floor correction and its angle fold, so whatever the game decided
     /// about the position this frame, this overwrites it. It is also the game

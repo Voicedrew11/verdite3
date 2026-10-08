@@ -82,11 +82,37 @@ namespace Kf3.Mods.Debug;
 /// This is "restore losses", not a standalone infinite-HP-regen feature; there
 /// is no separate HP-regen switch.
 ///
+/// ---- enemies ignoring you: the picker is told one number ----
+///
+/// Stage 5 runs a creature's think, func_8004C01C, one tick in four while it
+/// is awake. It is the KF2 reference's think instruction for instruction:
+///
+///     dx = rec[+0x2C] - playerX          (0x801B25F0)
+///     dz = rec[+0x34] - playerZ          (0x801B25F8)
+///     a0 = func_80016C08(dx, dz)         the horizontal distance
+///          func_8004BF1C(a0)             pick a behaviour for that distance
+///
+/// func_8004BF1C walks the sixteen rule pointers at desc+0x38, scores each
+/// against that distance with func_8004B984, and installs the best through
+/// func_8004B94C. The scorer's distance gates are u16s (rule+0xC, +0x10, +0x12,
+/// +0x14, +0x16, +0x1A) compared as `(int)range < (int)dist`, so **any distance
+/// above 65535 fails every "player is near" rule** and passes every "player is
+/// far" one. The waker func_8004C1F0 hands the picker the same distance when a
+/// creature wakes, and the behaviours ask for a fresh pick through
+/// func_8004C104 -> func_8004C01C, so this one entry sees every pick there is.
+///
+/// So the switch is a pre-hook on func_8004BF1C that overwrites a0, and the
+/// original runs. Waking and sleeping (func_8004C1F0, the state byte rec+0x9)
+/// are not touched, and must not be: the model walk draws a creature on that
+/// byte, so the obvious decoy-player-position version would make enemies
+/// vanish rather than ignore you -- the KF2 reference's finding, and the same
+/// byte here. Creatures still wake, animate, draw, collide and take damage.
+/// What one already mid-swing does, and what a creature with no "far" rule
+/// settles on (the picker keeps the first rule when every score is 0), are
+/// measured in docs/MODS.md, not assumed here.
+///
 /// ---- dropped from the reference ----
 ///
-/// * The reference's "enemies ignore you" (Peaceful) switch hooked KF2's
-///   behaviour picker func_8003A300. No KF3 finding maps that picker, so it is
-///   dropped rather than guessed at.
 /// * The reference's speed hook skipped scaling while Noclip was on. Noclip is a
 ///   sibling file this one must not depend on, so the guard is gone and the
 ///   multiplier simply composes with whatever also writes the two rate words.
@@ -96,6 +122,7 @@ internal static class Cheats
     internal static bool Invincible;
     internal static bool InfiniteMp;
     internal static bool SpeedEnabled;
+    internal static bool Peaceful;
 
     // 1.0 is the game's own speed. The scale clamps to at least 1 unit, because
     // func_8002F5C0 and func_8002F9BC treat a rate of zero or less as "not
@@ -107,6 +134,7 @@ internal static class Cheats
     internal static long BlockedDeaths;
     internal static long RestoredHp;
     internal static long RestoredMp;
+    internal static long IgnoredPicks;
 
     // ---- the three HP routines ----
 
@@ -153,6 +181,31 @@ internal static class Cheats
             c.A0 = 0u;
             BlockedHits++;
         }
+    }
+
+    // ---- enemies ignoring you ----
+
+    // The distance handed to the behaviour picker while this is on. The scorer
+    // compares against u16 range fields, so anything past 65535 fails every
+    // ranged rule; this is twice that, the KF2 reference's value.
+    const uint FarAway = 0x20000;
+
+    /// <summary>
+    /// The behaviour picker, told the player is across the map.
+    ///
+    /// a0 is the horizontal distance to the player and is the picker's only
+    /// input about them, so overwriting it is the whole cheat. The original
+    /// still runs: the creature picks, and keeps picking, whatever it does when
+    /// nobody is near.
+    /// </summary>
+    [PreHook("game", Address = 0x8004BF1C)]
+    static void BeforeBehaviourPick(CpuContext c, IMemory m)
+    {
+        if (!Peaceful) return;
+        if (!GameState.IsInGame(m)) return;
+
+        c.A0 = FarAway;
+        IgnoredPicks++;
     }
 
     // ---- the death latch ----
@@ -276,5 +329,6 @@ internal static class Cheats
         Invincible = false;
         InfiniteMp = false;
         SpeedEnabled = false;
+        Peaceful = false;
     }
 }

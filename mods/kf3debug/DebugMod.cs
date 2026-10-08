@@ -56,6 +56,7 @@ public sealed class DebugMod : IMod
         ReadEnv("KF3_DEBUG_NOCLIP", ref Noclip.Enabled);
         ReadEnv("KF3_DEBUG_GODMODE", ref Cheats.Invincible);
         ReadEnv("KF3_DEBUG_INFINITEMP", ref Cheats.InfiniteMp);
+        ReadEnv("KF3_DEBUG_PEACEFUL", ref Cheats.Peaceful);
         ReadEnv("KF3_DEBUG_HOTKEYS", ref Hotkeys.Enabled);
         ReadEnv("KF3_DEBUG_NOCLIP_SPEED", ref Noclip.Speed);
         ReadEnv("KF3_DEBUG_SPEED", ref Cheats.SpeedMultiplier);
@@ -130,8 +131,9 @@ public sealed class DebugMod : IMod
 
     public void DrawSettings()
     {
-        ImGui.TextWrapped("Noclip flight, invincibility, infinite MP, a speed multiplier, position "
-                        + "bookmarks, area warp and editors for the character's attributes, the "
+        ImGui.TextWrapped("Noclip flight, invincibility, infinite MP, enemies that ignore you, a "
+                        + "speed multiplier, position bookmarks, area warp and editors for the "
+                        + "character's attributes, the "
                         + "inventory and equipment and the spell book, plus a live readout of the "
                         + "player state. Everything is off until you switch it on.");
         ImGui.Separator();

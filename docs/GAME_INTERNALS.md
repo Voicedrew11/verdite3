@@ -375,6 +375,47 @@ horizontal distance from the player.**
   appearing. With the render distance past 16 tiles they would; `RenderDistance`
   fades a creature out at its own `+0xA` (see "Render distance" in `WIDESCREEN.md`).
 
+### The creature AI is a rule table scored on one number
+
+Read 2026-10-08 from `GAME.EXE`; it is Verdite2's think (`func_8003A3FC`,
+`func_8003A300`, `func_80039E40`) under other addresses, and the same one-register
+change makes enemies ignore the player.
+
+- **The think `func_8004C01C`**, run by stage 5 for an awake creature one tick in
+  four: `func_80016C08(rec+0x2C − playerX 0x801B25F0, rec+0x34 − playerZ
+  0x801B25F8)`, the horizontal distance, handed straight to the picker. The
+  behaviours ask for a fresh pick through `func_8004C104` (which sets `u8[+0xF]` to
+  `0xFF`, forcing the reinstall, and calls the think); about thirty call sites.
+- **The picker `func_8004BF1C(dist)`**: returns at once when `u8[+0xF]` is `0xF0` or
+  0; otherwise scores the sixteen rule pointers at definition `+0x38` with
+  `func_8004B984` and installs the best (strictly greater than the running best,
+  which starts at -2, so a table whose rules all score 0 keeps its first) through
+  `func_8004B94C`, unless it is the current rule (`rec+0x60`) and `u8[+0xF]` is not
+  `0xFF`. The waker `func_8004C1F0` calls it too, with the distance it measured, after
+  installing a wake rule (ids `0x15`, `0x06`, `0x1A` looked up by `func_8004C068`).
+- **The scorer `func_8004B984(rule, dist)`** switches on the rule's type byte
+  `u8[+0]` through the jump table at `0x800124D0` (types below `0x85`; higher ones
+  call the per-type function at `[0x8018FAE0]+0x40`). Every distance gate is a `u16`
+  of the rule (`+0xC`, `+0x10`, `+0x12`, `+0x14`, `+0x16`, `+0x1A`) compared
+  `(int)range < (int)dist`, and a passing rule scores `func_800170C0(u8[+2])`
+  (`u8[+3]` when it is the current rule; not read). In `fdat17`'s tables, read
+  rather than watched: type `0x00` passes when the player is **farther** than
+  `+0xC` (the far behaviour), `0x05` when nearer than `+0x12` (20000-30000; read as
+  the approach), `0x04` within `+0x1A` (3300-5800) and inside a cone of the
+  creature's facing `rec+0x42` (read as the melee), and `0x19` in a
+  `+0x14`..`+0x16` band and a cone.
+
+**So a distance above 65535 fails every "near" rule and passes every "far" one.**
+`mods/kf3debug`'s Enemies ignore you pre-hooks the picker and writes `0x20000` into
+`a0`; nothing on the waking path (`u8[+9]`, which the model walk draws on) is
+touched. Measured 2026-10-08 in `fdat17` with the player held 5000 units from
+creature 14 (type 5) for 30 s: switched off, the creature went back and forth
+between its `0x00` and `0x05` rules every 2 s; switched on, it took `0x00` and kept
+it. Every type in that area has a `0x00` rule. Putting the player 3000 units from
+the same creature with a poke hung the game thread (100% CPU, no reply), with the
+switch off; that is the teleport, not the switch, and the routine it spins in was
+not read.
+
 ### Damage and death
 
 `func_8002A6F4(sourcePos, amount, flags)` is the take-damage routine. It returns

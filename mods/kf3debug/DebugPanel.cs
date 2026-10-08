@@ -19,7 +19,7 @@ namespace Kf3.Mods.Debug;
 ///
 /// The tab set is the KF2 reference's plus Magic, which this game has and that one
 /// did not; the tabs themselves are written against what the KF3 feature files
-/// actually expose, which differ from the reference's in places (no Peaceful, no
+/// actually expose, which differ from the reference's in places (no
 /// SavedCount, adjusted attributes instead of POWER, area 0..27 instead of 0..7).
 /// </summary>
 internal sealed class DebugPanel : IPanel
@@ -143,7 +143,13 @@ internal sealed class DebugPanel : IPanel
             {
                 ImGui.Indent();
                 ImGui.SliderFloat("Move smoothing", ref Noclip.MoveSmoothing, 0.05f, 2f, "%.2f s");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Seconds to about two thirds of the speed you asked for, and "
+                                   + "the same again coasting back down.");
                 ImGui.SliderFloat("Look smoothing", ref Noclip.LookSmoothing, 0.05f, 2f, "%.2f s");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("How far the camera trails the stick or the mouse. The turn "
+                                   + "never loses ground -- it arrives late, not short.");
                 ImGui.Unindent();
             }
 
@@ -173,9 +179,12 @@ internal sealed class DebugPanel : IPanel
                            + "cast still pays its cost on the way in and the full-restore paths "
                            + "and regen still work.");
 
-        // The reference's "enemies ignore you" switch hooked KF2's behaviour picker
-        // func_8003A300. No KF3 finding maps that picker, so the switch is dropped
-        // rather than guessed at -- see Cheats.cs.
+        bool calm = Cheats.Peaceful;
+        if (ImGui.Checkbox("Enemies ignore you", ref calm)) Cheats.Peaceful = calm;
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Tells the creature AI's behaviour picker that you are across the "
+                           + "map, so each creature picks what it does with nobody near. They "
+                           + "still appear, animate, block and take damage.");
 
         ImGui.Separator();
 
@@ -194,7 +203,8 @@ internal sealed class DebugPanel : IPanel
 
         ImGui.Separator();
         ImGui.TextDisabled($"hits blocked {Cheats.BlockedHits}, deaths refused {Cheats.BlockedDeaths}, "
-                         + $"HP restores {Cheats.RestoredHp}, MP restores {Cheats.RestoredMp}");
+                         + $"HP restores {Cheats.RestoredHp}, MP restores {Cheats.RestoredMp}, "
+                         + $"AI picks faked {Cheats.IgnoredPicks}");
     }
 
     // ---- attributes ----

@@ -87,7 +87,7 @@ kept.
 | `KF3_MODELWALK` | the model walk `func_80040AE4` (creatures, objects, effects, billboards) in C#: `0` recompiled, `verify` both on every call, compared (RAM, scratchpad, registers, GTE); verified 2026-10-02 | on |
 | `KF3_WIDESCREEN_CULL` | the tile-visibility cone widened to the aspect: `0` leaves the stock 4:3 cone, a number pins the widening factor instead of the aspect's (1 at 4:3) | follows aspect |
 | `KF3_WIDESCREEN_CULL_PROBE` | `1`: every 2 s the factor, the last stock and widened half-angles, tiles lit, tiles added, and the oracle's mismatches (stock classifier against the game's own grid; must be 0); `2` also prints the last grid as ASCII | off |
-| `KF3_DEBUG_NOCLIP`, `KF3_DEBUG_GODMODE`, `KF3_DEBUG_INFINITEMP` | `1`: the debug mod (`mods/kf3debug`, enabled in the Mods panel) starts with noclip, invincibility or infinite MP on; see `docs/MODS.md` | off |
+| `KF3_DEBUG_NOCLIP`, `KF3_DEBUG_GODMODE`, `KF3_DEBUG_INFINITEMP`, `KF3_DEBUG_PEACEFUL` | `1`: the debug mod (`mods/kf3debug`, enabled in the Mods panel) starts with noclip, invincibility, infinite MP or enemies ignoring you on; see `docs/MODS.md` | off |
 | `KF3_DEBUG_NOCLIP_SPEED` | noclip's flight speed, units a second | 7000 |
 | `KF3_DEBUG_SPEED` | the speed multiplier's factor (the switch itself is in the panel) | 2 |
 | `KF3_DEBUG_HOTKEYS` | `0`: the debug mod's F2-F8 and flight keys off | on |
