@@ -2,10 +2,12 @@
 
 Verdite2's water effects, ported to this game's retained renderer (2026-10-06):
 murky water, water waves (a swell of the water's vertices and ripples over its
-texture) and planar reflections. **Built and measured; not judged by eye; all
-three off by default** (Video ▸ World enhancements ▸ *Planar reflections*, *Murky
-water*, *Water waves*; `KF3_PLANAR`, `KF3_MURK`, `KF3_WAVES`). Verdite2 turned them
-on after its user had judged them. Here they wait for the same check.
+texture) and planar reflections. **Built and measured** (Video ▸ World
+enhancements ▸ *Planar reflections*, *Murky water*, *Water waves*; `KF3_PLANAR`,
+`KF3_MURK`, `KF3_WAVES`; the game's page WORLD ▸ WATER). The waves and the
+reflections are on by default (the user's, 2026-10-06). **The murk is off, and in
+neither ENHANCED nor FULL**: judged not good enough to ship yet (the user,
+2026-10-08); its switch and `KF3_MURK=1` still turn it on.
 
 The shared runtime already carries every pass these need, built for Verdite2:
 `WaterMurk` and the reflection pass (`0067`), `PlanarReflections` (`0068`),

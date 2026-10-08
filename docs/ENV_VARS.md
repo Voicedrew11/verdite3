@@ -220,7 +220,8 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
 - `KF3_PLANAR=1`, `KF3_MURK=1`, `KF3_WAVES=1`: the water (`docs/WATER.md`): planar
   reflections from a mirrored camera, murky water, the swell and ripples. Video ▸
   World enhancements, kept as `kf3.planar`, `kf3.murk`, `kf3.waves`; `0` turns one off,
-  on by default (2026-10-06).
+  on by default (2026-10-06), except the murk, off and in neither of the WATER row's
+  levels until it looks good enough to ship (2026-10-08).
   Retained renderer only.
 - `KF3_PLANAR_TOLERANCE=48`, `KF3_PLANAR_RIPPLE=4`, `KF3_PLANAR_BIAS=8`: how far off the
   plane a surface takes the mirror, how far the water's texture bends it, and how far

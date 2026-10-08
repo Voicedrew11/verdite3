@@ -147,7 +147,7 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | | PER-PIXEL LIGHT | ON, OFF | |
 | | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
-| | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the surface, FULL the reflections too |
+| | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
 | GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
 | | GYRO | ON, OFF | `kf3.itemturn.gyro` and `kf3.gyroaim.on`: the pad's gyroscope turns a picked-up item and aims a drawn bow (`docs/INPUT.md`) |
 
@@ -244,7 +244,8 @@ The user's own settings became every player's default: 16:9, pacing on at 144 fp
 with the scrolling textures carried, smooth shading (24-bit, no dither),
 perspective, sub-pixel and the Z-buffer, per-pixel light, AO at medium, mipmaps
 with 16 taps, render distance ENHANCED (16 tiles faded over 3), all three
-water features (FULL), and the sticks' turn and look at 1.25. Each is changed twice, where the feature starts up and in
+water features (FULL; murk taken off again and out of FULL on 2026-10-08, not
+good enough to ship yet), and the sticks' turn and look at 1.25. Each is changed twice, where the feature starts up and in
 its declared `Default`, which the boot check holds equal. A variable still wins,
 and a `0` turns any one off.
 

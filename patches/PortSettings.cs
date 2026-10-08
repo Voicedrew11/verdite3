@@ -230,8 +230,9 @@ public static class PortSettings
 
     public static readonly PortSetting Planar = Switch("kf3.planar", "KF3_PLANAR", "kf3scene.planar",
         null, null, () => PlanarMirror.Enabled, PlanarMirror.SetEnabled, true, localized: true);
+    // Off, and out of the WATER row's levels, until it looks good enough to ship (the user, 2026-10-08).
     public static readonly PortSetting MurkyWater = Switch("kf3.murk", "KF3_MURK", "kf3scene.murk",
-        null, null, () => Murk.Enabled, Murk.SetEnabled, true, localized: true);
+        null, null, () => Murk.Enabled, Murk.SetEnabled, false, localized: true);
     public static readonly PortSetting WaterWaves = Switch("kf3.waves", "KF3_WAVES", "kf3scene.waves",
         null, null, () => Waves.Enabled, Waves.SetEnabled, true, localized: true);
 
@@ -323,18 +324,18 @@ public static class PortSettings
         },
         (v, _) => v >= 1 ? [EnhancedTiles, EnhancedFade] : [0, 0]);
 
-    /// <summary>ENHANCED is the surface (murk and the swell); FULL adds the reflections,
-    /// the one that costs a second view.</summary>
+    /// <summary>ENHANCED is the surface (the swell); FULL adds the reflections, the one
+    /// that costs a second view. Murk is in neither while it is not good enough to ship.</summary>
     public static readonly PortSetting Water = Combine("row.water", World, "WATER", [MurkyWater, WaterWaves, Planar],
         [0, 1, 2], v => v == 0 ? "ORIGINAL" : v == 1 ? "ENHANCED" : v == 2 ? "FULL" : "CUSTOM",
         get => (get(MurkyWater), get(WaterWaves), get(Planar)) switch
         {
             (0, 0, 0) => 0,
-            (1, 1, 0) => 1,
-            (1, 1, 1) => 2,
+            (0, 1, 0) => 1,
+            (0, 1, 1) => 2,
             _ => Custom,
         },
-        (v, _) => v >= 2 ? [1, 1, 1] : v >= 1 ? [1, 1, 0] : [0, 0, 0]);
+        (v, _) => v >= 2 ? [0, 1, 1] : v >= 1 ? [0, 1, 0] : [0, 0, 0]);
 
     /// <summary>Both readers of the pad's gyroscope at once: turning a picked-up item
     /// and aiming a drawn bow. The item's needs item turning on, which it is by default.</summary>
