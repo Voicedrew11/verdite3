@@ -1910,6 +1910,26 @@ Four files in the directory have no entry below:
   lock, as `Poll` runs on more than one thread; a rescan writes the neutral report
   and closes the handle. Output only — **no recompile**. Verdite3's `Rumble` (a
   drawn bow) is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
+- `0105-pad-haptics.patch` — a DualSense has voice-coil actuators, not motors, and
+  SDL only makes them imitate two motors; over USB the pad is also a sound card
+  with four output channels, the last two its left and right actuators, so a wave
+  played there is felt at the frequencies it carries. `Host/PadHaptics.cs`: while
+  `Controller.WantHdRumble` holds and pad 1 is a DualSense (`ControllerTypePS5`),
+  SDL's audio subsystem is started and the first output whose name holds
+  "DualSense" or "Wireless Controller" opened at 48 kHz, float, four channels
+  (`SDL_AUDIO_ALLOW_CHANNELS_CHANGE`, so a stereo profile is refused rather than
+  downmixed); `Controller.Rumble`'s two bands are summed as sines into channels 3
+  and 4 and queued 40 ms ahead, topped up on every `Poll`, with the phases carried
+  and the amplitudes ramped across each block; a null wave clears the queue.
+  SDL's DualSense driver sets its "audio haptics off" bit whenever it is asked for
+  non-zero rumble and a zero report clears it, so the motors are stopped once on
+  opening and not asked for anything after. No such output (Bluetooth), one that
+  will not open or one with other than four channels keeps the two motors. The
+  game's sound is OpenAL's and untouched. Verdite3 measured, 2026-10-08, PipeWire:
+  `"DualSense wireless controller (PS5) Direct DualSense Wireless Controller",
+  48000 Hz, 4 channels`; whether channels 3 and 4 are the actuators is from the
+  community's reports, not felt yet. Output only — **no recompile**. Verdite3's
+  `Rumble` is the only caller; see "Rumble" in Verdite3's `docs/INPUT.md`.
 
 ## Retained contract additions under verification (2026-10-04)
 

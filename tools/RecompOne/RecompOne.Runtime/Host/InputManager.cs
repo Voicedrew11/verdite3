@@ -257,6 +257,7 @@ internal static unsafe class InputManager
     {
         MouseCaptured = false;
         CloseControllers();
+        PadHaptics.Shutdown(_sdl);
         _sdl?.QuitSubSystem(Sdl.InitGamecontroller);
         _sdl?.Dispose();
         _sdl = null;
@@ -527,9 +528,10 @@ internal static unsafe class InputManager
 
     /// <summary>The port's <see cref="Controller.Rumble"/> out to pad 1 (0104): as
     /// HD rumble while <see cref="Controller.WantHdRumble"/> holds and the pad is a
-    /// Switch Pro Controller or a single Joy-Con, otherwise through SDL's two
-    /// motors. Nothing is sent while no port asks, so the game's own rumble
-    /// (<see cref="SetRumble"/>) is left alone.</summary>
+    /// Switch Pro Controller or a single Joy-Con, as haptics on a DualSense over USB
+    /// (<see cref="PadHaptics"/>, 0105), otherwise through SDL's two motors. Nothing
+    /// is sent while no port asks, so the game's own rumble (<see cref="SetRumble"/>)
+    /// is left alone.</summary>
     private static void PollRumble()
     {
         lock (_rumbleLock)
@@ -548,19 +550,28 @@ internal static unsafe class InputManager
             if (!Controller.WantHdRumble)
             {
                 if (_hd != null) CloseHd();
+                PadHaptics.Close(_sdl);
                 _hdTried = false;
             }
             else if (!_hdTried)
             {
                 OpenHd();
             }
-            Controller.HdRumble = _hd != null;
+            Controller.HdRumble = _hd != null || PadHaptics.Open;
 
             var wave = Controller.Rumble;
             if (wave == null || (wave.Low <= 0f && wave.High <= 0f))
             {
                 if (_rumbleSent != null) StopRumble();
                 _rumbleSent = null;
+                return;
+            }
+
+            // The haptics are a stream, topped up on every poll rather than resent.
+            if (PadHaptics.Open)
+            {
+                PadHaptics.Feed(_sdl, wave);
+                _rumbleSent = wave;
                 return;
             }
 
@@ -585,6 +596,7 @@ internal static unsafe class InputManager
     private static void OpenHd()
     {
         _hdTried = true;
+        if (PadHaptics.TryOpen(_sdl!, _pad0)) return;
         var type = _sdl!.GameControllerGetType(_pad0);
         if (type is not (GameControllerType.NintendoSwitchPro or GameControllerType.NintendoSwitchJoyconLeft
                          or GameControllerType.NintendoSwitchJoyconRight))
@@ -610,12 +622,14 @@ internal static unsafe class InputManager
 
     private static void StopRumble()
     {
-        if (_hd != null) WriteHd(null);
+        if (PadHaptics.Open) PadHaptics.Stop(_sdl!);
+        else if (_hd != null) WriteHd(null);
         else _sdl!.GameControllerRumble(_pad0, 0, 0, 0);
     }
 
     private static void ForgetRumble()
     {
+        if (_sdl != null) PadHaptics.Close(_sdl);
         if (_hd != null) CloseHd();
         else if (_rumbleSent != null && _sdl != null && _rumblePad != null)
             _sdl.GameControllerRumble(_rumblePad, 0, 0, 0);

@@ -53,12 +53,14 @@ public static class Controller
     public static RumbleWave? Rumble;
 
     /// <summary>Set by a port that wants HD rumble: the host then writes a Switch
-    /// pad's rumble reports itself, with both bands' frequencies, instead of going
-    /// through SDL's two motors (0104).</summary>
+    /// pad's rumble reports itself, with both bands' frequencies (0104), or plays the
+    /// wave into a DualSense's actuators over USB (0105), instead of going through
+    /// SDL's two motors.</summary>
     public static bool WantHdRumble;
 
     /// <summary>Whether pad 1 is taking HD rumble: a Switch Pro Controller or a
-    /// single Joy-Con, opened for its reports.</summary>
+    /// single Joy-Con opened for its reports, or a DualSense's sound card open for
+    /// its actuators.</summary>
     public static bool HdRumble;
 
     public static ushort State2 = 0xFFFF;
