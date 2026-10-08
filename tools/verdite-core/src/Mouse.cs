@@ -162,6 +162,10 @@ public static class Mouse
     static long _taken;
     static long _checked;
 
+    /// <summary>The ImGui panels open when last looked at, so a new one opening
+    /// while the pointer is captured can be told from one already there.</summary>
+    static int _panels;
+
     static readonly HashSet<string> _fromEnv = new(StringComparer.Ordinal);
 
     public static void Configure(MouseGame game)
@@ -263,7 +267,8 @@ public static class Mouse
         // A click on the picture captures, as in any desktop game. Only on the
         // picture, and not while a popup or one of ImGui's own (a menu bar's
         // dropdown) is open, so a click meant for the port's windows stays
-        // theirs. Focus is not asked: a click is focus, and the flag can lag it.
+        // theirs. A panel floating in front of the picture keeps its clicks too.
+        // Focus is not asked: a click is focus, and the flag can lag it.
         Event.AddListener<MouseEvent>(e =>
         {
             if (e.Action != MouseAction.Button || !e.Pressed) return;
@@ -272,6 +277,7 @@ public static class Mouse
 
             string? refused =
                 PopupManager.AnyOpen || ImGuiPopupOpen ? "a popup is open" :
+                !OutputView.Hovered && OutputView.Covered ? "the click is on a panel" :
                 !OnPicture(e.X, e.Y) ? $"({e.X}, {e.Y}) is not on the picture " +
                                        $"({OutputView.Min.X:0}, {OutputView.Min.Y:0})-({OutputView.Max.X:0}, {OutputView.Max.Y:0})" :
                 null;
@@ -304,10 +310,14 @@ public static class Mouse
     /// <summary>Whether the click at (x, y) landed on the game picture. Either
     /// ImGui saw the pointer over it last frame, or the click's own position is
     /// inside it: just after a release ImGui can still hold the locked pointer's
-    /// virtual position, or an active item from the click that captured.</summary>
+    /// virtual position, or an active item from the click that captured. The
+    /// rectangle fallback holds only when no other ImGui window is under the
+    /// pointer, so a click on a panel floating over the picture stays the
+    /// panel's.</summary>
     static bool OnPicture(int x, int y)
     {
         if (OutputView.Hovered) return true;
+        if (OutputView.Covered) return false;
         if (!OutputView.Valid) return false;
         var (min, max) = (OutputView.Min, OutputView.Max);
         return x >= min.X && y >= min.Y && x < max.X && y < max.Y;
@@ -504,6 +514,7 @@ public static class Mouse
             _swallow = (HostWindow.IsMouseButtonDown(MouseButton.Left) ? 1 : 0) |
                        (HostWindow.IsMouseButtonDown(MouseButton.Right) ? 2 : 0) |
                        (HostWindow.IsMouseButtonDown(MouseButton.Middle) ? 4 : 0);
+            _panels = OpenPanels();
             Event.AddListener(_buttons);
         }
         else Event.RemoveListener(_buttons);
@@ -552,8 +563,11 @@ public static class Mouse
     }
 
     /// <summary>
-    /// The one state change nothing announces: a popup opening while the pointer
-    /// is captured. Throttled to once a millisecond, because its caller is PAD_dr.
+    /// The state changes nothing announces: a popup opening while the pointer is
+    /// captured, or an ImGui panel (a debug tool's, on its hotkey) -- the pointer
+    /// is hidden, and the panel was opened to be clicked. Opening releases; a
+    /// panel left open does not stop a click on the picture capturing again.
+    /// Throttled to once a millisecond, because its caller is PAD_dr.
     /// </summary>
     static void Watch()
     {
@@ -561,7 +575,24 @@ public static class Mouse
         if (now == _checked) return;
         _checked = now;
 
-        if (Captured && PopupManager.AnyOpen) SetCaptured(false);
+        if (Captured && PopupManager.AnyOpen) { SetCaptured(false); return; }
+
+        int panels = OpenPanels();
+        bool opened = panels > _panels;
+        _panels = panels;
+        if (Captured && opened)
+        {
+            Console.WriteLine($"[{Game.Tag}] mouse: released: a panel opened");
+            SetCaptured(false);
+        }
+    }
+
+    static int OpenPanels()
+    {
+        int n = 0;
+        foreach (var panel in PanelManager.Panels)
+            if (panel.IsOpen) n++;
+        return n;
     }
 
     static int Clamp(int index) => index < 0 || index >= PadButtons.Length ? 0 : index;
