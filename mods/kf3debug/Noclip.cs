@@ -166,6 +166,8 @@ internal static class Noclip
         {
             if (value == _cinematic) return;
             _cinematic = value;
+            // Instant mouse look is off while the cinematic camera is on.
+            Kf3.ViewSmoothing.LeadSuppressed = value;
             _lookPrimed = false;
         }
     }
@@ -660,6 +662,7 @@ internal static class Noclip
         _wantReturn = _wantSnap = false;
         _vx = _vy = _vz = 0;
         _cinematic = false;
+        Kf3.ViewSmoothing.LeadSuppressed = false;
         _lookPrimed = false;
     }
 }

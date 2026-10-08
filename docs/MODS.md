@@ -24,7 +24,7 @@ is untouched.
 |---|---|
 | `GameState.cs` | the player block's addresses and typed accessors; stage 4 `func_80030FCC` is the player's tick, and every feature posts on it |
 | `Cheats.cs` | invincibility, infinite MP, enemies that ignore you, a walk/turn speed multiplier |
-| `Noclip.cs` | flight through walls and floors, camera-relative, with the cinematic camera, return-to-start and snap-to-floor |
+| `Noclip.cs` | flight through walls and floors, camera-relative, with the cinematic camera (which holds instant mouse look off while it is on, through `ViewSmoothing.LeadSuppressed`: its look filter and the lead together judder), return-to-start and snap-to-floor |
 | `Attributes.cs` | the character editor: EXP, level (through the game's level-up), HP/MP and their maxima, gold, the six base attributes, the five conditions, and the derived ratings with a lock that holds them across the recompute |
 | `Items.cs` | the inventory (give, remove, set a count, give all) and the equipment slots, through the game's own add, remove and equip routines |
 | `Magic.cs` | the spell book: learn, forget, learn all, and the selected spell (new; Verdite2's mod has no magic editor) |
