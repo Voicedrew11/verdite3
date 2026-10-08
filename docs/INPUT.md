@@ -136,14 +136,23 @@ Since 2026-10-07 there is no capture key by default (`KF3_MOUSE_KEY`, `None`):
 
 - **A click on the picture captures**: `OutputView.Hovered`, or the click's own
   position inside `OutputView`'s rectangle, since just after a release ImGui can
-  still hold the locked pointer's virtual position. Not while a popup is open,
-  `PopupManager`'s or ImGui's own (a menu bar's dropdown), and not while a menu
-  holds the pointer. **Focus is not asked**: a click is focus. The buttons held
-  at that moment stay out of the pad word until they are let go, so the click is
-  not an attack.
+  still hold the locked pointer's virtual position. The rectangle counts only
+  when no other ImGui window is under the pointer (`OutputView.Covered`, fork
+  `0029`), so a click on a panel floating over the picture is the panel's and
+  logs `mouse: click not captured: the click is on a panel`. Not while a
+  popup is open, `PopupManager`'s or ImGui's own (a menu bar's dropdown), and
+  not while a menu holds the pointer. **Focus is not asked**: a click is focus.
+  The buttons held at that moment stay out of the pad word until they are let
+  go, so the click is not an attack.
 - **Losing focus releases** (fork `0101`, `HostWindow.FocusChanged`), and the
   player comes back with a click.
 - **A popup opening releases**, as before.
+- **An ImGui panel opening releases** (2026-10-08): `Mouse.Watch`, on the same
+  PAD_dr listener, counts `PanelManager.Panels` open and lets the pointer go
+  when the count rises, logging `mouse: released: a panel opened`. A debug
+  tool's panel on its hotkey (F2) otherwise opened under a hidden pointer.
+  Only the opening releases: a panel left open does not stop a click on the
+  picture capturing again, so mouse look works beside it.
 - **A menu releases and gives it back.** `MenuWorld`'s hooks on the framework's
   enter `func_80027198` and leave `func_80027310` call `Mouse.Suspend`: the first
   enter releases a captured pointer and holds it free (no click captures, no key
@@ -175,6 +184,20 @@ rectangle and the look routine's end of a suspension, and logs every refusal:
 captured again after the menu: <why>` when the leave could not capture. A
 suspension the look routine ended says so too. The pointer-capture glyph
 (`MouseIndicator`) is gone: a hidden cursor is the state.
+
+**A click on a panel over the picture captured the pointer** (2026-10-08): the
+rectangle fallback held under any floating ImGui window in front of the game,
+so the debug tools' panels could not be clicked without losing the pointer to
+the world. The click now asks `OutputView.Covered` first. To be judged in play:
+a click on a floating panel over the picture leaves the pointer free, a click on
+the picture beside it captures.
+
+The same click inside a game menu was still recaptured, by another road: the
+menu pointer (below) tested the rectangle alone, so a click on a panel over the
+picture was the menu's, confirming the row under it or, clear of the boxes,
+backing out; the last leave then gave the pointer back as it should. The menu
+pointer now asks `OutputView.Covered` too. To be judged in play: in a menu, a
+click on a floating panel neither moves the menu nor captures.
 
 ## The mouse leads the tick
 
@@ -266,7 +289,9 @@ once the pointer has moved, for 2 s, and hands it back when the pad moves it.
 
 The conversion to game pixels is Verdite2's: OutputView's rectangle is
 `GameW + 2 * margin` game pixels wide with column 0 at the margin
-(`Display.WideMargin`).
+(`Display.WideMargin`). A pointer over another ImGui window in front of the
+picture (`OutputView.Covered`) is off it: no hover, and its clicks are the
+panel's.
 
 ### Measured
 
