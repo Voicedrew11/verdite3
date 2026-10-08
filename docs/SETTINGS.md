@@ -152,8 +152,8 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
-| GAMEPLAY | CONTROLS | 2D, 3D | `kf3.controls`: 2D the twin sticks, 3D tank controls, the left stick walking and turning (`docs/INPUT.md`, "2D and 3D controls") |
-| | INVERTED CAMERA | OFF, ON | `kf3.analog.invertpitch`: the right stick's up and down reversed, as a flight stick (`docs/INPUT.md`, "Inverted camera"); Settings ▸ Gameplay, moved off Input ▸ Analog's "Invert look Y" |
+| GAMEPLAY | CONTROLS | 2D, 3D | `kf3.controls`: 2D the twin sticks, 3D one stick as tank controls, the left stick walking and turning and the right stick unused (`docs/INPUT.md`, "2D and 3D controls") |
+| | INVERTED CAMERA | OFF, ON | `kf3.analog.invertpitch`: the right stick's up and down reversed, as a flight stick, dimmed in 3D (`docs/INPUT.md`, "Inverted camera"); Settings ▸ Gameplay, moved off Input ▸ Analog's "Invert look Y" |
 | | RELOAD ON DEATH | ON, OFF | |
 | | GYRO | ON, OFF | `kf3.itemturn.gyro` and `kf3.gyroaim.on`: the pad's gyroscope turns a picked-up item and aims a drawn bow (`docs/INPUT.md`) |
 | | RUMBLE | OFF, ON, HD | `kf3.rumble.on` and `kf3.rumble.hd`: the pad rumbles as a bow is drawn and loosed, ON on two motors, HD on a Switch Pro Controller, a single Joy-Con or a DualSense over USB (`docs/INPUT.md`, "Rumble"); OFF keeps the HD choice |

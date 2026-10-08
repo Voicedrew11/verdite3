@@ -27,20 +27,34 @@ public static class AnalogPage
 
         ImGui.BeginDisabled(!Analog.Enabled);
 
+        // 3D controls (Gameplay ▸ Controls) are one stick: the right stick's rows are
+        // dimmed there, since nothing reads them.
+        bool tank = Analog.Tank;
+        if (tank) Note("3D controls (Settings ▸ Gameplay ▸ Controls): the left stick walks and turns, " +
+                       "and the right stick is not used. Its settings below are for 2D.");
+
+        ImGui.BeginDisabled(tank);
         Check("Right stick turns and looks", Analog.LookKey, ref Analog.AnalogLook);
-        Check("Left stick walks and strafes", Analog.MoveKey, ref Analog.AnalogMove);
+        ImGui.EndDisabled();
+        Check(tank ? "Left stick walks and turns" : "Left stick walks and strafes", Analog.MoveKey, ref Analog.AnalogMove);
 
         ImGui.Spacing();
         Slider("Turn sensitivity", Analog.TurnSensKey, ref Analog.TurnSens, 0.1f, 3f,
                "Past 1.0 the camera is driven faster than any button on the pad can turn it: the " +
-               "game's own per-frame limit only exists in the branches that read a button.");
+               "game's own per-frame limit only exists in the branches that read a button. In 3D " +
+               "it is the left stick's turn.");
+        ImGui.BeginDisabled(tank);
         Slider("Look sensitivity", Analog.PitchSensKey, ref Analog.PitchSens, 0.1f, 3f);
+        ImGui.EndDisabled();
         Slider("Move sensitivity", Analog.MoveSensKey, ref Analog.MoveSens, 0.1f, 1.5f,
                "Walking is the game's own speed at full deflection. Above 1.0 would ask for a walk " +
                "faster than it has an animation for.");
 
         if (ImGui.TreeNode("Fine tuning"))
         {
+            // 3D reads the left stick on a fixed 0.3 cross of its own (Analog.TankDeadzone),
+            // so the move deadzone is 2D's too.
+            ImGui.BeginDisabled(tank);
             Slider("Look deadzone", Analog.LookDeadKey, ref Analog.LookDeadzone, 0f, 0.5f,
                    "How far the stick must move before anything happens. Set it just past where " +
                    "the readout below rests with your hands off the pad.");
@@ -48,9 +62,11 @@ public static class AnalogPage
             Slider("Look curve", Analog.LookCurveKey, ref Analog.LookCurve, 1f, 3f,
                    "1.0 is linear. Higher gives finer aim near centre and the same speed at the " +
                    "edge, at the cost of a slower response in between.");
+            ImGui.EndDisabled();
             Slider("Move curve", Analog.MoveCurveKey, ref Analog.MoveCurve, 1f, 3f);
 
             ImGui.Spacing();
+            ImGui.BeginDisabled(tank);
             Check("Look acceleration", Analog.AccelKey, ref Analog.LookAccel,
                   "Holding the stick out keeps speeding the camera up for the first half second, " +
                   "the way a modern shooter's does. Fine aim near centre is unaffected — the ramp " +
@@ -64,14 +80,19 @@ public static class AnalogPage
             Check("Camera stops on release", Analog.StopKey, ref Analog.CameraInstantStop,
                   "The game ramps a released look velocity down over about a third of a second, " +
                   "which reads as inertia on a stick. Off restores that ramp. Walking momentum is " +
-                  "the game's own and is not affected either way.");
+                  "the game's own and is not affected either way. 3D's turn always ramps down as " +
+                  "the D-pad's does.");
+            ImGui.EndDisabled();
 
             ImGui.Spacing();
             Note("Which way \"+\" points is the game's convention, not the port's — flip an axis " +
                  "here if it runs backwards.");
             // Look Y is Gameplay's "Inverted camera" (PortSettings.InvertedCamera).
             Check("Invert turn", Analog.InvertTurnKey, ref Analog.InvertTurn);
+            // 3D's left stick does not strafe; L1 and R1 are buttons.
+            ImGui.BeginDisabled(tank);
             Check("Invert strafe", Analog.InvertStrafeKey, ref Analog.InvertStrafe);
+            ImGui.EndDisabled();
             ImGui.SameLine();
             Check("Invert forward", Analog.InvertFwdKey, ref Analog.InvertForward);
 

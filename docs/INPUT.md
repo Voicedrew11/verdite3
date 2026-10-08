@@ -398,17 +398,33 @@ in-game PORT SETTINGS page; `KF3_TANK` in `docs/ENV_VARS.md`) chooses the layout
 2D is the default and is the twin sticks above: the left stick walks and strafes,
 the right stick turns and looks.
 
-3D is tank controls on the stick. `ReplaceMove` drops the left stick's sideways
+3D is one stick, as tank controls are. `ReplaceMove` drops the left stick's sideways
 deflection, so the stick no longer strafes, and `BeforeLook` adds it to the turn
 instead: full deflection turns at the game's own rate (`0x801B2668`, 32 walking, 40
 standing) times the turn sensitivity (`kf3.analog.turn`, 1.25), and
 `kf3.analog.invertturn` flips it. The right stick's look ramp does not apply to
 that turn. Forward and back keep the move curve, read on their own deadzone (below).
+L1 and R1 strafe and L2 and R2 look, as the game has them, and **the right stick is
+not read at all**. The D-pad and keyboard are unchanged: the keyboard's arrows
+already turn, and A and D strafe in both layouts.
 
-L1 and R1 still strafe, the right stick still turns and looks, and the D-pad and
-keyboard are unchanged: the keyboard's arrows already turn, and A and D strafe in
-both layouts. Built 2026-10-08; not measured on a pad and not judged by eye. No
-stick could be driven in a run, and the synthetic-stick hack above was not used.
+**The first 3D kept the right stick turning and looking**, so the player had two
+sticks that turned and nothing to say which one to use. The user found that "super
+weird" (2026-10-08): tank-control games, this one on the PS1 among them, are played
+with one stick or the D-pad. 3D now reads the right stick as centred
+(`BeforeLook`'s `right` is off in 3D), and the left stick's turn no longer needs
+"Right stick turns and looks" (`kf3.analog.look`), only "Left stick walks"
+(`kf3.analog.move`). Input ▸ Gamepad dims the right stick's rows in 3D, and the move
+deadzone and invert strafe with them, since 3D reads neither; Gameplay ▸ Inverted
+camera is dimmed in 3D too (`Usable`). A picked-up item still turns on the right
+stick in both layouts (`ItemTurn`), since that is not walking. Its Y inversion
+is the same key, so set it in 2D.
+
+**The turn ramps as the D-pad's does.** The 3D turn moves toward the stick's by the
+game's own accel each tick, `rate >> 2`, starting from the velocity the game left
+(so a push during a D-pad turn's slow-down carries on from it). Back inside the
+deadzone, the stick hands the velocity to the game's decay, the slow-down a released
+Left or Right gets, instead of `CameraInstantStop`'s zero, which is the right stick's.
 
 **The first 3D build read the left stick through the twin sticks' radial deadzone**
 (0.15), so past it both axes counted in full. The user found 3D "super weird" in
@@ -418,12 +434,23 @@ straight; and a sideways push slightly off level crept forward or back at about 
 of the walk speed. 3D now reads each axis on its own deadzone, 0.3 (`TankDeadzone`,
 a cross rather than a circle), rescaled past it, and squares the turn
 (`TankTurnCurve`), so a small push corrects finely and a full one still turns at
-the full rate; the walk keeps the move curve (1.0). The turn still starts and stops
-on the tick, unlike the D-pad's ramp over about four ticks; whether 3D wants that
-ramp is left until this has been felt.
+the full rate; the walk keeps the move curve (1.0). The turn then started and stopped
+on the tick; it now ramps (above).
 
-Not yet judged by eye: the turn rate's feel at full deflection, the 0.3 deadzone and
-the squared turn; whether the left stick's leak into the D-pad's turn bits is fully
+Measured 2026-10-08, slot 1 (`fdat17`, area 5), 144 fps, standing (rate 40), with the
+sticks synthesised by the same kind of uncommitted hack as above, a line a tick:
+
+- 3D, right stick full right and up for 2 s: yaw 1718 and pitch 4017 throughout,
+  `turnVel` and `pitchVel` 0.
+- 3D, left stick full right: `turnVel` −10, −20, −30, −40, −50 and held at −50 (40 ×
+  1.25), yaw falling 50 a tick; `strafeVel` 0. Released to 0.13 (inside the 0.3
+  deadzone): −40, −30, −20, −10, 0, the game's decay.
+- 2D, the same schedule: the right stick turns and looks (`turnVel` −35 rising to −78
+  on the look ramp, `pitchVel` to −63) and stops on the release tick; the left stick
+  full right strafes at 200 and decays by 50 a tick. As before the change.
+
+Not yet judged by eye: the turn rate's feel at full deflection, the ramp up and
+down, the 0.3 deadzone and the squared turn; whether the left stick's leak into the D-pad's turn bits is fully
 owned on a real pad, since 3D's sideways turn is taken from it; the feel at 60 and
 144 fps.
 

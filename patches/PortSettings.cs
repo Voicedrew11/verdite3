@@ -241,15 +241,17 @@ public static class PortSettings
 
     // ---- Gameplay: the Gameplay tab ----
 
-    /// <summary>2D is the twin sticks, the left one walking and strafing; 3D is tank
-    /// controls, the left stick walking and turning as the D-pad does (Analog.Tank).</summary>
+    /// <summary>2D is the twin sticks, the left one walking and strafing; 3D is one
+    /// stick, as tank controls are: the left stick walking and turning as the D-pad
+    /// does, the right stick unused (Analog.Tank).</summary>
     public static readonly PortSetting Controls = new()
     {
         Key = Analog.ControlsKey, Envs = ["KF3_TANK"], Label = "Controls",
         Tip = "2D: the left stick walks and strafes, the right stick turns and looks.\n" +
-              "3D: tank controls. The left stick walks forward and back and turns; L1 and R1 strafe.",
+              "3D: one stick, as tank controls. The left stick walks forward and back and turns;\n" +
+              "L1 and R1 strafe, L2 and R2 look up and down, and the right stick is not used.",
         Page = Gameplay, MenuLabel = "CONTROLS", Steps = [0, 1], MenuValue = Named([0, 1], "2D", "3D"),
-        Names = ["2D", "3D (tank)"], Default = 0, Live = () => Analog.Tank ? 1 : 0, Apply = v => Analog.Tank = v != 0,
+        Names = ["2D (twin sticks)", "3D (one stick)"], Default = 0, Live = () => Analog.Tank ? 1 : 0, Apply = v => Analog.Tank = v != 0,
         Ui = Ui.Combo,
     };
 
@@ -258,7 +260,9 @@ public static class PortSettings
     /// (Analog.InvertPitch), which a picked-up item's turning follows too.</summary>
     public static readonly PortSetting InvertedCamera = Switch(Analog.InvertPitchKey, "KF3_ANALOG_INVERTY", "Inverted camera",
         Gameplay, "INVERTED CAMERA", () => Analog.InvertPitch, v => Analog.InvertPitch = v, false,
-        tip: "Reverses the right stick's up and down, like a plane's flight stick: push up to look down, pull back to look up.");
+        tip: "Reverses the right stick's up and down, like a plane's flight stick: push up to look down, pull back to look up.\n" +
+             "2D controls only: in 3D the right stick does not look.",
+        usable: () => !Analog.Tank);
 
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,

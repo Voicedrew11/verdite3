@@ -106,7 +106,7 @@ kept.
 | `KF3_MENUMOUSE_PROBE` | `1`: each widget's rows as drawn, and a line a second: the pointer in game pixels, the live widget and row, hovers, moves, scrolls, confirms, back-outs, injections | off |
 | `KF3_MOUSE_KEY` | a Silk.NET key name, or `None`: a key that captures and releases the pointer besides the click | None |
 | `KF3_ANALOG` | `0`: hand the sticks back (the default layout wires the left stick to the D-pad, which in this game turns); on by default | on |
-| `KF3_TANK` | `1`: 3D controls, tank controls on the stick: the left stick walks and turns, L1 and R1 strafe; `0` or unset: 2D, the left stick walks and strafes (Settings ▸ Gameplay ▸ Controls, `kf3.controls`) | off |
+| `KF3_TANK` | `1`: 3D controls, one stick as tank controls: the left stick walks and turns, L1 and R1 strafe, L2 and R2 look, the right stick is not read; `0` or unset: 2D, the left stick walks and strafes (Settings ▸ Gameplay ▸ Controls, `kf3.controls`) | off |
 | `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
 | `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |
 | `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.25, 1.25, 1.0 (2026-10-06) |

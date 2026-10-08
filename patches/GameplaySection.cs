@@ -65,10 +65,11 @@ public sealed class GameplaySection : ISettingsSection
 
     public void Draw()
     {
-        // 2D or 3D controls (Analog.Tank): the left stick strafes, or turns.
+        // 2D or 3D controls (Analog.Tank): twin sticks, or one stick that turns.
         PortSettings.Draw(PortSettings.Controls);
 
-        // The right stick's up and down reversed (Analog.InvertPitch).
+        // The right stick's up and down reversed (Analog.InvertPitch), dimmed in 3D,
+        // where the right stick does not look.
         PortSettings.Draw(PortSettings.InvertedCamera);
 
         // Dimmed rather than hidden while mouse look is off, as Verdite2's
