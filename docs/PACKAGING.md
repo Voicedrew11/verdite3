@@ -6,7 +6,7 @@ the document for working on the port; this one is about shipping it.
 **The launcher and the packaging are Verdite Core's**, shared with Verdite2, and
 were first written for Verdite2: the design and why it is shaped this way are in
 Verdite2's `docs/PACKAGING.md` (the problem a release has to solve, first run, the
-two things that were nearly wrong, versioning, telling the player about a new
+two things that were nearly wrong, versioning (Verdite3 differs: "The tag is the version" below), telling the player about a new
 release) and in Verdite Core's README ("The launcher", "Packaging"). This file is
 what is Verdite3's.
 
@@ -129,15 +129,40 @@ bash scripts/setup_tools.sh                 # builds the RecompOne subtree, trac
 
 bash packaging/linux/build-appimage.sh      # dist/Verdite3-<v>-x86_64.AppImage
 pwsh packaging/windows/build-windows.ps1    # dist/…-win-x64.zip and the installer
-bash scripts/release.sh 0.2.0               # bump VERSION, commit, tag; never pushes
+bash scripts/release.sh 0.2.0               # tag HEAD v0.2.0; commits nothing, never pushes
 ```
 
 All three are wrappers of Verdite Core's scripts, which read `packaging/package.env`
 (`NAME=Verdite3`, `APP_ID=verdite3`, and `INNO_APP_ID`, this port's installer
-GUID, which must never change or be reused). `VERSION` is the one place the
-number is written (`0.1.0` to start). `.github/workflows/ci.yml` builds the
+GUID, which must never change or be reused). `.github/workflows/ci.yml` builds the
 launcher and the stub with no disc on every push; `release.yml` packages both
 platforms on a `v*` tag and opens a draft release.
+
+### The tag is the version
+
+Verdite2 writes its number in a `VERSION` file, and a release there is a commit
+that bumps it and a tag on that commit, which CI checks against each other.
+Verdite3 has no `VERSION` file: **the version is the newest `vMAJOR.MINOR.PATCH`
+tag that `HEAD` contains**, and a release is that tag and nothing else. Verdite
+Core resolves it by one rule (its README, "Packaging"): a `VERSION` file first,
+which is why CI refuses one here; then `VERDITE_VERSION`, which `release.yml` sets
+from the tag it was pushed for; then the tags; then `0.0.0`, before the first.
+
+- A build between releases carries the last release's number, and the commit it
+  was made from after it (`0.2.0+<9-char sha>`, `Ver.Full`), which is what a bug
+  report should quote. It is never announced as an update to itself.
+- The number is still `MAJOR.MINOR.PATCH`, since the update check compares it so
+  and Windows wants numbers in the assembly version; how far to move it is the
+  person tagging's call. `release.sh` refuses one that is not above the newest
+  tag, because the update check never announces a lower one.
+- The clone needs its tags: CI checks out with `fetch-depth: 0`, and a shallow or
+  tagless checkout builds as `0.0.0` (`bash tools/verdite-core/scripts/version.sh`
+  prints what a build here would call itself).
+
+```bash
+bash scripts/release.sh 0.2.0
+git push origin HEAD && git push origin v0.2.0      # pushing the tag publishes the draft
+```
 
 `packaging/shared/verdite3.png` and `.ico` are, for now, Verdite2's orb copied;
 replace them at the same sizes (`packaging/shared/README.md`).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cut a release: bump VERSION, commit it, tag it. Does not push.
+# Cut a release: tag HEAD v<version>; the tag is the version. Does not push.
 #
 #   bash scripts/release.sh 0.2.0
 #

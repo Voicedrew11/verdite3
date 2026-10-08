@@ -27,7 +27,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      # Every tag, so a run started by hand is numbered by the newest one.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -49,19 +52,17 @@ jobs:
           test ! -e generated || { echo "generated/ exists in CI; it must not"; exit 1; }
           test -z "$(ls -A disc 2>/dev/null | grep -v README.md || true)" || { echo "disc data in CI"; exit 1; }
 
-      # The tag names the release and VERSION names the artifacts inside it, and
-      # nothing but this makes them the same number. Without it a v0.2.0 tag on a
-      # tree that still says 0.1.0 publishes 0.1.0 files under a 0.2.0 release --
-      # silently, and only visible after somebody has downloaded it.
-      - name: Assert the tag matches VERSION
+      # The tag is the version. Handed to every build as VERDITE_VERSION, so the
+      # artifacts are named by the tag this run was pushed for even where an
+      # older checkout has a higher tag beside it; a tag that is not
+      # MAJOR.MINOR.PATCH could never be announced, so it is refused here.
+      - name: Take the version from the tag
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
-          version="$(tr -d '[:space:]' < VERSION)"
-          tag="${GITHUB_REF_NAME#v}"
-          echo "VERSION=$version tag=$GITHUB_REF_NAME"
-          test "$version" = "$tag" || { echo "tag $GITHUB_REF_NAME does not match VERSION $version"; exit 1; }
-          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "VERSION is not MAJOR.MINOR.PATCH"; exit 1; }
+          version="${GITHUB_REF_NAME#v}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "tag $GITHUB_REF_NAME is not vMAJOR.MINOR.PATCH"; exit 1; }
+          echo "VERDITE_VERSION=$version" >> "$GITHUB_ENV"
 
       # The commit stamped into the assembly, so a downloaded build can say which
       # one it is. The checkout is a detached HEAD at the tag, so the sha the

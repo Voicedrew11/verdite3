@@ -1,4 +1,4 @@
-# Build the Windows x64 package: dist/Verdite3-<VERSION>-win-x64.zip, and the
+# Build the Windows x64 package: dist/Verdite3-<version>-win-x64.zip, and the
 # installer when iscc is on PATH.
 #
 # The script is Verdite Core's; packaging/package.env names this port to it. Needs

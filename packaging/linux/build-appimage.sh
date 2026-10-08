@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the Linux AppImage: dist/Verdite3-<VERSION>-x86_64.AppImage.
+# Build the Linux AppImage: dist/Verdite3-<version>-x86_64.AppImage.
 #
 # The script is Verdite Core's; packaging/package.env names this port to it. Needs
 # the RecompOne subtree built (scripts/setup_tools.sh) and the .NET 10 SDK, and
