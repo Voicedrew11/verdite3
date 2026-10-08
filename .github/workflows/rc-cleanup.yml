@@ -1,0 +1,22 @@
+# A published release supersedes the release candidate, so the rolling `rc`
+# prerelease (release.yml's rc job) and its tag go once one is. On publishing,
+# not on the draft release.yml opens: the candidate stays up until the release
+# it became is live.
+name: rc-cleanup
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  delete-rc:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.release.prerelease }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - run: gh release delete rc --cleanup-tag --yes || echo "no rc prerelease to delete"
