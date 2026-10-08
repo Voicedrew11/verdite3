@@ -1876,6 +1876,23 @@ Four files in the directory have no entry below:
   sensors off. Input only — **no recompile**. Verdite3's `ItemTurn` is the only
   caller; see "Turning a picked-up item" in Verdite3's `docs/INPUT.md`.
 
+- `0103-model-near-clip.patch` — a retained model's face is kept by the lit
+  assembler's tests (facing, mean depth), and a corner the GTE's divide saturates
+  (nearer than H/2, or off its range) was placed where the packets put it, at the
+  ends of that range (`modelPlace`). A large flat face reaching past the eye then
+  drew as a long sheared slab (Verdite3's billboards, looked at from below); the
+  packets never drew it at all, the GPU refusing a triangle more than 1023 pixels
+  across or 511 down, which `GpuRaster` and `GpuHleForward` follow, so dropping it
+  made the trees vanish. `RetainedScene.ModelNearClip` (`uModelClip`): a face
+  with a corner `modelProjects` refuses is kept by its plane against the eye and
+  drawn in the ordinary projection, clipped at the GPU's near plane (`uNear`, 16,
+  as the map's), which is what a `Tile` instance already gets; `modelFaceKept`
+  sets `gModelClip` for its corners and `modelPlace` leaves them alone. Not the
+  sky, nor a model placed in view space (the arm). Colour and normal programs, the
+  main view and the mirror. False, the default, is the draw as it was. **No
+  recompile.** See "Billboards sheared from below" in Verdite3's
+  `docs/GPU_RENDERER.md`.
+
 ## Retained contract additions under verification (2026-10-04)
 
 The depth-linear cue is curve 5 in `LinearDepthCue`, composed into the actual

@@ -744,6 +744,12 @@ internal static class GlShaders
         // whole loop, and any other goes to the game's clipper, which here is the GPU's
         // near clip and the face's plane against the eye.
         uniform int   uModelTile;
+        // 0103. A face with a corner the GTE cannot project (RetainedScene.ModelNearClip)
+        // is kept by its plane against the eye and drawn in the ordinary projection,
+        // clipped at the GPU's near plane, as a Tile instance's is; modelFaceKept sets
+        // gModelClip for its corners.
+        uniform int   uModelClip;
+        bool gModelClip = false;
 
         ivec3 modelPosed(int i) {
             if (uModelPose < 0) return texelFetch(uModelVerts, uModelBase + i).xyz;
@@ -789,7 +795,7 @@ internal static class GlShaders
         // assembler clips nothing, so neither does the near plane here. Anywhere else
         // the projection is the ordinary one, unchanged.
         vec4 modelPlace(vec4 p, vec3 v) {
-            if (uModel == 0 || uModelTile != 0) return p;
+            if (uModel == 0 || uModelTile != 0 || gModelClip) return p;
             if (v.z >= uH * 0.5) {
                 vec2 raw = uModelGteC + uH * v.xy / v.z;
                 if (all(greaterThanEqual(raw, vec2(-1024.0))) && all(lessThanEqual(raw, vec2(1023.0)))) return p;
@@ -830,11 +836,20 @@ internal static class GlShaders
             int z1 = int(clamp(v1.z, 0.0, 65535.0)) >> 2;
             int z2 = int(clamp(v2.z, 0.0, 65535.0)) >> 2;
             int z;
-            if (f3 != 0xFFFFFFFFu) {
-                vec3 v3 = modelEye(f3);
-                z = (z0 + z1 + z2 + (int(clamp(v3.z, 0.0, 65535.0)) >> 2)) >> 2;
-            } else z = (z0 + z1 + z2) / 3;
+            bool quad = f3 != 0xFFFFFFFFu;
+            vec3 v3 = quad ? modelEye(f3) : v2;
+            if (quad) z = (z0 + z1 + z2 + (int(clamp(v3.z, 0.0, 65535.0)) >> 2)) >> 2;
+            else z = (z0 + z1 + z2) / 3;
             if (uModelSky == 0 && (z <= 0 || float(z) < uModelNear || float(z) >= uModelFar)) return false;
+            // 0103. A face reaching past the eye, or off the divide's range: its corners'
+            // saturated places drew it as a sheared slab (and the GPU's size limit had the
+            // packets drop it); clipped instead, its facing is its plane's against the eye.
+            if (uModelClip != 0 && uModelSky == 0 && uModelView == 0
+                && !(modelProjects(v0) && modelProjects(v1) && modelProjects(v2) && modelProjects(v3))) {
+                gModelClip = true;
+                vec3 n = quad ? cross(v3 - v0, v2 - v1) : cross(v1 - v0, v2 - v0);
+                return dot(v0, n) > 0.0;
+            }
             vec2 s0 = modelScreen(v0), s1 = modelScreen(v1), s2 = modelScreen(v2);
             if (uModelSky != 0) { s0 = floor(s0); s1 = floor(s1); s2 = floor(s2); }
             return (s1.x - s0.x) * (s2.y - s0.y) - (s1.y - s0.y) * (s2.x - s0.x) > 0.0;

@@ -1102,6 +1102,16 @@ public static class RetainedScene
     /// default, is the walk as it was.</summary>
     public static int UnderSlots;
 
+    /// <summary>0103. Draw a retained model's face that has a corner the GTE cannot
+    /// project (nearer than H/2, or off the divide's range) in the ordinary projection,
+    /// clipped at the GPU's near plane and kept by its plane against the eye, as a
+    /// <c>Tile</c> instance's is. Placed at the divide's saturated ends instead, a large
+    /// flat face reaching past the eye drew as a long sheared slab; the packets never
+    /// drew it, the GPU refusing a triangle more than 1023 pixels across or 511 down.
+    /// Not the sky nor a model placed in view space. False, the default, is the draw as
+    /// it was.</summary>
+    public static bool ModelNearClip;
+
     /// <summary>0096. Set by the table walk while it is in <see cref="UnderSlots"/> after
     /// a main view that drew; false outside a walk.</summary>
     public static bool UnderWorld;
