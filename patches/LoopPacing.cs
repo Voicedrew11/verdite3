@@ -31,6 +31,7 @@ public static class LoopPacing
     /// a call from anywhere else is a modal loop drawing its own frame.</summary>
     const uint MainLoopReturn = 0x80014FB0;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.looppacing",

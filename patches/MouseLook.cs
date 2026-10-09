@@ -51,6 +51,7 @@ public static class MouseLook
     const uint Routine = 0x8002F5C0;
     const uint Pad = 0x801B265C;            // u16, the pad word stage 4 tests
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new() { Id = "kf3.mouselook", Name = "Mouse look", Version = "1.0" };
     static bool _queued;
     static float _fracTurn, _fracPitch;

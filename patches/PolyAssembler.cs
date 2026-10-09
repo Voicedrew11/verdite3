@@ -41,6 +41,7 @@ public static partial class PolyAssembler
     /// <summary>Running totals; never reset.</summary>
     public static long MapCalls;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.polyasm",

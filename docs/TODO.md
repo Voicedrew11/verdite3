@@ -154,7 +154,6 @@ recompiled and running, following Verdite2's method but applied to this disc.
   - Hard Reset in this port: a loop round `Entry.Run` in `Program.cs` that calls the
     runtime's reset and boots again, once the patches' static state is known to
     survive a second boot. Until then the menu item explains (runtime `0108`).
-  - A patch turned off for a fault still shows its switch on in Settings ▸ Testing.
   - The mixer's guard (runtime `0109`) has not run: nothing makes it throw on purpose.
   - Read, not changed: the C# routines copy the game's loops, counts and pointers
     from RAM included (`PolyAssembler` `MapBody`/`LitBody`, `PolyAssemblerHud`,

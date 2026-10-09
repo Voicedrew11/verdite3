@@ -74,6 +74,7 @@ public static class CameraBlock
 
     static readonly Differential _check = new("camerablock", "func_800357E8", 0x400);
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.camerablock",

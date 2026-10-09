@@ -59,6 +59,7 @@ public static class FramePacing
     static readonly HashSet<uint> _sites = Stages.Select(s => s.Site + 8).ToHashSet();
     const uint FirstSite = 0x80014F24 + 8;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new() { Id = "kf3.framepacing", Name = "Frame pacing", Version = "1.0" };
 
     static readonly Stopwatch _clock = Stopwatch.StartNew();

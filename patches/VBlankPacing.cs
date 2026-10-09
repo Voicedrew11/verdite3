@@ -37,6 +37,7 @@ public static class VBlankPacing
     /// <summary>Spin the last stretch; Thread.Sleep granularity is a few ms.</summary>
     const double SpinMs = 1.5;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.vblankpacing",

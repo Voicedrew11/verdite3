@@ -32,6 +32,7 @@ public static class ZBuffer
     /// pixels of depth slope, so two coplanar surfaces go to the later table entry.</summary>
     const float DefaultBias = 1f, DefaultSlope = 0.5f;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.zbuffer",

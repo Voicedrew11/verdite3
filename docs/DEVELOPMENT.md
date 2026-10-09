@@ -77,22 +77,28 @@ state read (`peek` it as the shell's `dump` is read).
   `Program.cs`'s catch round `Entry.Run`).
 - **A fault** (a patch's or mod's own code threw) turns that patch's hooks off for
   the session and runs the game's routine in its place, with a notice and a report
-  (runtime `0108`). A patch that faults is off until a restart: the Testing tab
-  still shows its switch as it was.
+  (runtime `0108`). A patch that faults is off until a restart, and the Testing tab
+  shows its rows off, greyed and marked "failed: off until restart", while the
+  kept setting stays as the player chose it (each row names its patch's
+  `ModInfo`; `[KF3] testing: <id> failed; shown off until a restart: <rows>`).
+  The Settings window's other tabs and the game's PORT SETTINGS page do not mark it.
 - **A hang** (no frame for 15 s, `KF3_HANG`) writes a report with the game
   thread's own stack, taken when it next makes an indirect call or reads a
   hardware register; a loop that does neither has only its registers, its last
   calls and its RAM. Holding the window (dragging it on Windows) for that long
   writes one too; the report says so. Nothing is written under a debugger.
 
-`KF3_FAULT=hook|crash|hang[:seconds]` makes each on purpose, that many seconds (20)
+`KF3_FAULT=hook|crash|hang[:seconds]` makes each on purpose (`hook@<mod id>` makes
+the throwing hook that patch's, so that patch is the one turned off), that many seconds (20)
 after the first area: measured 2026-10-08 from `KF3_AUTOSTART=1` in `fdat17`. `hook`:
 the report, `kf3.faultinject` off, the game ran on for the rest of the 75 s.
 `crash`: the report with the stack through `func_80014BD4` and `func_80014B48`
 to `game_entry`, and the crash window held for 35 s with no hang report.
 `hang` (the hook spinning on `I_STAT`): the hang report 6 s later
 (`KF3_HANG=6`), its stack the hook under `func_800341E8`'s detour, the last calls
-`80016AB8` 64 times. A clean 120 s run wrote nothing.
+`80016AB8` 64 times. A clean 120 s run wrote nothing. `hook@kf3.zbuffer`
+(2026-10-08, `fdat17`): the report, `kf3.zbuffer` off, the Testing line naming
+`kf3.zbuffer`, and the game drawing on to the end of the 60 s run.
 
 The cards are written whole or not at all, with the card as the session found it
 kept as `carda.sav.bak`; a damaged card is kept aside and the backup restored

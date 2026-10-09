@@ -47,10 +47,13 @@ public static class CrashReports
     // KF3_FAULT=hook|crash|hang[:seconds], timed from the first area module: a
     // test of each report's path, nothing a player sets.
     //     hook   a hook throws: a fault report, a notice, this hook off, the game goes on
+    //     hook@id   the same hook, owned by the patch with that mod id (kf3.zbuffer, say,
+    //            one the Testing tab has a row for), so that patch is the one turned off
     //     crash  the game's own code throws: a crash report and the crash screen
     //     hang   the game thread spins on a hardware register: a hang report with its stack
     static readonly ModInfo _self = new() { Id = "kf3.faultinject", Name = "Fault injection", Version = "1.0" };
     static string _mode = "";
+    static string? _target;
     static double _after = 20;
     static readonly System.Diagnostics.Stopwatch _clock = new();
 
@@ -59,6 +62,11 @@ public static class CrashReports
         if (string.IsNullOrWhiteSpace(spec)) return;
         var parts = spec.Trim().ToLowerInvariant().Split(':');
         _mode = parts[0];
+        if (_mode.StartsWith("hook@", StringComparison.Ordinal))
+        {
+            _target = _mode[5..];
+            _mode = "hook";
+        }
         if (_mode is not ("hook" or "crash" or "hang"))
         {
             Console.Error.WriteLine($"[KF3] KF3_FAULT: unknown '{spec}', want hook, crash or hang");
@@ -75,12 +83,18 @@ public static class CrashReports
         {
             SymbolRegistry.Build();
             if (SymbolRegistry.Resolve("game", null, AgentBeacon.FirstStage) is not { } t) return false;
-            HookManager.AddPre(_self, t, typeof(CrashReports).GetMethod(nameof(Fire),
+            var owner = _target == null ? _self : TestingSection.OwnerById(_target);
+            if (owner == null)
+            {
+                Console.Error.WriteLine($"[KF3] KF3_FAULT: no patch '{_target}' in the Testing tab");
+                return true;
+            }
+            HookManager.AddPre(owner, t, typeof(CrashReports).GetMethod(nameof(Fire),
                                          BindingFlags.Public | BindingFlags.Static)!);
             HookManager.Commit();
             return HookAttach.Installed(t);
         });
-        Console.WriteLine($"[KF3] fault injection: {_mode} {_after:F0}s after the first area");
+        Console.WriteLine($"[KF3] fault injection: {_mode}{(_target == null ? "" : $" as {_target}")} {_after:F0}s after the first area");
     }
 
     public static void Fire(CpuContext c, IMemory m)

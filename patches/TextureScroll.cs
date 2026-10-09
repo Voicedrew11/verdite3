@@ -43,6 +43,7 @@ public static class TextureScroll
     static double _probeAt = -1.0;
     static long _calls, _ran, _carried;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.texturescroll",

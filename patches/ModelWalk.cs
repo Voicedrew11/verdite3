@@ -111,6 +111,7 @@ public static class ModelWalk
 
     static readonly Differential _check = new("modelwalk", "func_80040AE4", 0x1000);
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.modelwalk",

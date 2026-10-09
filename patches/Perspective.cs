@@ -58,6 +58,7 @@ public static class Perspective
 
     static double Now => Environment.TickCount64 / 1000.0;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.perspective",

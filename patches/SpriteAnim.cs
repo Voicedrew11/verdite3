@@ -35,6 +35,7 @@ public static class SpriteAnim
 
     public static bool Enabled { get; set; } = true;
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.spriteanim",

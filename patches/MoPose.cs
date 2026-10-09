@@ -56,6 +56,7 @@ public static partial class MoPose
 
     static readonly Differential _check = new("mopose", "func_800431E8", 0x800);
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.mopose",

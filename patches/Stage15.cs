@@ -128,6 +128,7 @@ public static class Stage15
     /// <summary>Called with each camera handed to stage 15.</summary>
     public static Action<Camera>? OnHanded { get; set; }
 
+    internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new()
     {
         Id = "kf3.stage15",

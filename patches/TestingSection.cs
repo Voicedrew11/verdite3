@@ -1,6 +1,7 @@
 using ImGuiNET;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Host.Window;
+using RecompOne.Runtime.Modding;
 using Rt = RecompOne.Runtime.Runtime;
 
 namespace Kf3;
@@ -14,6 +15,10 @@ namespace Kf3;
 /// put back at the next boot, **unless the variable is set**, which wins. The
 /// routines' recompiled/C#/verify choice is not kept: verify is a comparison for
 /// one session. See "The Testing tab" in docs/DEVELOPMENT.md.
+///
+/// A patch whose own code threw is off for the rest of the session (runtime
+/// `0108`), whatever its switch says: its rows here show off, greyed, until a
+/// restart, and the kept value is left as the player chose it.
 /// </summary>
 public sealed class TestingSection : ISettingsSection
 {
@@ -51,26 +56,27 @@ public sealed class TestingSection : ISettingsSection
 
     static bool _installed;
 
-    // A kept setting: its key, its variable, how to read it and how to apply it.
-    sealed record Kept(string Key, string Env, Func<bool> Get, Action<bool> Set);
+    // A kept setting: its key, its variable, how to read it and how to apply it, and
+    // the patch whose hooks do it.
+    sealed record Kept(string Key, string Env, Func<bool> Get, Action<bool> Set, Func<ModInfo> Owner);
 
     static readonly Kept[] Switches =
     [
-        new("kf3.pacing", "KF3_FPS", () => FramePacing.Enabled, FramePacing.SetEnabled),
-        new("kf3.vblank_hold", "KF3_VBLANKPACING", () => VBlankPacing.Enabled, v => VBlankPacing.Enabled = v),
-        new("kf3.loop_pacing", "KF3_LOOPPACING", () => LoopPacing.Enabled, v => LoopPacing.Enabled = v),
-        new("kf3.smooth", "KF3_SMOOTH", () => ViewSmoothing.Enabled, v => ViewSmoothing.Enabled = v),
-        new("kf3.smooth_models", "KF3_SMOOTH_MODELS", () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v),
-        new("kf3.needle_hold", "KF3_STAGE15_NEEDLE", () => Stage15.NeedleHeld, v => Stage15.NeedleHeld = v),
-        new("kf3.msgbox_hold", "KF3_MSGBOX", () => MessageBoxHold.Enabled, v => MessageBoxHold.Enabled = v),
-        new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v),
-        new("kf3.menuworld", "KF3_MENUWORLD", () => MenuWorld.Enabled, v => MenuWorld.Enabled = v),
-        new("kf3.perspective", "KF3_PERSPECTIVE", () => Perspective.Enabled, v => Perspective.Enabled = v),
-        new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v),
-        new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v),
-        new("kf3.zbuffer", "KF3_ZBUFFER", () => ZBuffer.Enabled, v => ZBuffer.Enabled = v),
-        new(Mouse.OnKey, "KF3_MOUSE", () => Mouse.Enabled, v => Mouse.Enabled = v),
-        new(Mouse.LeadKey, "KF3_MOUSE_LEAD", () => Mouse.Lead, v => Mouse.Lead = v),
+        new("kf3.pacing", "KF3_FPS", () => FramePacing.Enabled, FramePacing.SetEnabled, () => FramePacing.Mod),
+        new("kf3.vblank_hold", "KF3_VBLANKPACING", () => VBlankPacing.Enabled, v => VBlankPacing.Enabled = v, () => VBlankPacing.Mod),
+        new("kf3.loop_pacing", "KF3_LOOPPACING", () => LoopPacing.Enabled, v => LoopPacing.Enabled = v, () => LoopPacing.Mod),
+        new("kf3.smooth", "KF3_SMOOTH", () => ViewSmoothing.Enabled, v => ViewSmoothing.Enabled = v, () => Stage15.Mod),
+        new("kf3.smooth_models", "KF3_SMOOTH_MODELS", () => ModelSmoothing.Enabled, v => ModelSmoothing.Enabled = v, () => ModelWalk.Mod),
+        new("kf3.needle_hold", "KF3_STAGE15_NEEDLE", () => Stage15.NeedleHeld, v => Stage15.NeedleHeld = v, () => Stage15.Mod),
+        new("kf3.msgbox_hold", "KF3_MSGBOX", () => MessageBoxHold.Enabled, v => MessageBoxHold.Enabled = v, () => MessageBoxHold.Mod),
+        new("kf3.sprite_hold", "KF3_SPRITEANIM", () => SpriteAnim.Enabled, v => SpriteAnim.Enabled = v, () => SpriteAnim.Mod),
+        new("kf3.menuworld", "KF3_MENUWORLD", () => MenuWorld.Enabled, v => MenuWorld.Enabled = v, () => MenuWorld.Mod),
+        new("kf3.perspective", "KF3_PERSPECTIVE", () => Perspective.Enabled, v => Perspective.Enabled = v, () => Perspective.Mod),
+        new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v, () => Subpixel.Mod),
+        new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v, () => Subpixel.Mod),
+        new("kf3.zbuffer", "KF3_ZBUFFER", () => ZBuffer.Enabled, v => ZBuffer.Enabled = v, () => ZBuffer.Mod),
+        new(Mouse.OnKey, "KF3_MOUSE", () => Mouse.Enabled, v => Mouse.Enabled = v, () => MouseLook.Mod),
+        new(Mouse.LeadKey, "KF3_MOUSE_LEAD", () => Mouse.Lead, v => Mouse.Lead = v, () => MouseLook.Mod),
     ];
 
     const string FpsKey = "kf3.fps", TickRateKey = "kf3.tickrate", TexKey = "kf3.texscroll", ShadingKey = "kf3.shading";
@@ -80,7 +86,20 @@ public sealed class TestingSection : ISettingsSection
         if (_installed) return;
         _installed = true;
         Event.AddListener<RuntimeReadyEvent>(_ => Ready());
+        HookManager.Faulted += (mod, _, _) =>
+        {
+            var rows = Switches.Where(k => k.Owner() == mod).Select(k => k.Key)
+                               .Concat(Routines.Where(r => r.Owner() == mod).Select(r => r.Label)).ToList();
+            if (TextureScroll.Mod == mod) rows.Add("Scrolling textures");
+            if (rows.Count > 0)
+                Console.WriteLine($"[KF3] testing: {mod.Id} failed; shown off until a restart: {string.Join(", ", rows)}");
+        };
     }
+
+    /// <summary>A patch this tab has rows for, by its mod id, for KF3_FAULT=hook@id.</summary>
+    internal static ModInfo? OwnerById(string id) =>
+        Switches.Select(k => k.Owner()).Concat(Routines.Select(r => r.Owner())).Append(TextureScroll.Mod)
+                .FirstOrDefault(m => m.Id == id);
 
     /// <summary>The config is loaded inside the host window's start-up, after Program.cs,
     /// so kept values go back here; a set variable is left as it chose.</summary>
@@ -121,15 +140,26 @@ public sealed class TestingSection : ISettingsSection
         Rt.SaveView();
     }
 
+    // Runtime 0108: a patch whose own code threw is off until a restart, whatever its
+    // switch says. Its rows show what runs (off, the game's routine), greyed, and write nothing.
+    static bool Failed(Func<ModInfo> owner) => HookManager.IsTurnedOff(owner());
+
+    const string FailedText = " (failed: off until restart)";
+    const string FailedTip = "This failed and was turned off until the game restarts; the game's own routine " +
+                             "runs in its place. The report is in crashes/. The setting is kept as you chose it.";
+
     static void Toggle(string label, Kept k, string tip)
     {
-        bool v = k.Get();
-        if (ImGui.Checkbox(label, ref v))
+        bool failed = Failed(k.Owner);
+        bool v = !failed && k.Get();
+        ImGui.BeginDisabled(failed);
+        if (ImGui.Checkbox(failed ? label + FailedText : label, ref v))
         {
             k.Set(v);
             Keep(k.Key, k.Get() ? 1 : 0);
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(tip);
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(failed ? FailedTip : tip);
     }
 
     // Dither (the console), None (15-bit, no crosshatch), Smooth (24-bit, no crosshatch).
@@ -143,14 +173,35 @@ public sealed class TestingSection : ISettingsSection
 
     static Kept K(string key) => Switches.First(s => s.Key == key);
 
-    static readonly string[] Routine = ["Recompiled", "C#", "Verify"];
+    static readonly string[] RoutineNames = ["Recompiled", "C#", "Verify"];
 
-    static void RoutineCombo(string label, Func<int> get, Action<int> set, string tip)
+    sealed record RoutineRow(string Label, Func<int> Get, Action<int> Set, Func<ModInfo> Owner, string Tip);
+
+    static readonly RoutineRow[] Routines =
+    [
+        new("Stage 15", () => Stage15.Setting, v => Stage15.Setting = v, () => Stage15.Mod,
+            "The frame builder. Smoothing needs it in C#."),
+        new("Camera block", () => CameraBlock.Setting, v => CameraBlock.Setting = v, () => CameraBlock.Mod,
+            "The view matrices from the camera."),
+        new("Polygon assemblers", () => PolyAssembler.Setting, v => PolyAssembler.Setting = v, () => PolyAssembler.Mod,
+            "The map's and the models' bulk polygons."),
+        new("Near path", () => NearPath.Setting, v => NearPath.Setting = v, () => NearPath.Mod,
+            "The near map and the models' near submit, with libgte's subdivision. The Z-buffer covers them only in C#."),
+        new("Model walk", () => ModelWalk.Setting, v => ModelWalk.Setting = v, () => ModelWalk.Mod,
+            "Creatures, objects, effects and billboards. Model smoothing needs it in C#."),
+        new("MO pose blender", () => MoPose.Setting, v => MoPose.Setting = v, () => MoPose.Mod,
+            "Animated models' poses. Animation smoothing needs it in C#."),
+    ];
+
+    static void RoutineCombo(RoutineRow r)
     {
-        int v = get();
+        bool failed = Failed(r.Owner);
+        int v = failed ? 0 : r.Get();
+        ImGui.BeginDisabled(failed);
         ImGui.SetNextItemWidth(160);
-        if (ImGui.Combo(label, ref v, Routine, Routine.Length)) set(v);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(tip);
+        if (ImGui.Combo(failed ? r.Label + FailedText : r.Label, ref v, RoutineNames, RoutineNames.Length)) r.Set(v);
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(failed ? FailedTip : r.Tip);
     }
 
     // The readout, measured from the frame and tick counters every half second.
@@ -180,8 +231,10 @@ public sealed class TestingSection : ISettingsSection
         Toggle("Frame pacing", K("kf3.pacing"),
             Localization.T("kf3testing.pacing.tip"));
 
+        // Frame pacing failed is no pacing, so what needs it greys out too.
+        bool pacing = FramePacing.Enabled && !Failed(() => FramePacing.Mod);
         bool uncapped = FramePacing.TargetFps <= 0.0;
-        if (!FramePacing.Enabled) ImGui.BeginDisabled();
+        if (!pacing) ImGui.BeginDisabled();
         int fps = uncapped ? (int)FramePacing.DefaultFps : (int)FramePacing.TargetFps;
         if (uncapped) ImGui.BeginDisabled();
         ImGui.SetNextItemWidth(240);
@@ -205,8 +258,8 @@ public sealed class TestingSection : ISettingsSection
         ImGui.SameLine();
         if (ImGui.Button(Localization.T("kf3testing.tickrate.reset")))
             KeepTickRate(FramePacing.DefaultTickRate);
-        if (FramePacing.Enabled) { Rates(); Note($"Drawing {_fps:0.0} fps at {_tps:0.0} ticks a second."); }
-        if (!FramePacing.Enabled) ImGui.EndDisabled();
+        if (pacing) { Rates(); Note($"Drawing {_fps:0.0} fps at {_tps:0.0} ticks a second."); }
+        if (!pacing) ImGui.EndDisabled();
 
         Toggle("Hold menus and loading screens to the vblank", K("kf3.vblank_hold"),
             "Waits a real vblank for every VSync call outside stage 15, as the console did.");
@@ -214,7 +267,7 @@ public sealed class TestingSection : ISettingsSection
             "Redraws stage 15 inside an animation loop (an item pickup, a message, a fade) until the world's next tick, instead of stepping the loop once per drawn frame.");
 
         ImGui.SeparatorText("Smoothing");
-        if (!FramePacing.Enabled)
+        if (!pacing)
         {
             Note("Everything here acts only with frame pacing on.");
             ImGui.BeginDisabled();
@@ -236,15 +289,19 @@ public sealed class TestingSection : ISettingsSection
             "Off lets the sprites animate at the drawn rate, as the game would.");
 
         string[] tex = ["Every drawn frame", "Held to the tick", "Carried between ticks"];
-        int t = TextureScroll.Setting;
+        bool texFailed = Failed(() => TextureScroll.Mod);
+        int t = texFailed ? 0 : TextureScroll.Setting;
+        ImGui.BeginDisabled(texFailed);
         ImGui.SetNextItemWidth(200);
-        if (ImGui.Combo("Scrolling textures", ref t, tex, tex.Length))
+        if (ImGui.Combo(texFailed ? "Scrolling textures" + FailedText : "Scrolling textures", ref t, tex, tex.Length))
         {
             TextureScroll.Setting = t;
             Keep(TexKey, t);
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Every drawn frame is the game's own code, too fast above 15 fps.");
-        if (!FramePacing.Enabled) ImGui.EndDisabled();
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(texFailed ? FailedTip : "Every drawn frame is the game's own code, too fast above 15 fps.");
+        if (!pacing) ImGui.EndDisabled();
 
         ImGui.SeparatorText("Picture");
         Note("Not judged yet: each ships off until it has been looked at.");
@@ -309,18 +366,7 @@ public sealed class TestingSection : ISettingsSection
 
         ImGui.SeparatorText("Routines in C#");
         Note("Verify runs both versions every call and prints mismatches to the console; it is slow.");
-        RoutineCombo("Stage 15", () => Stage15.Setting, v => Stage15.Setting = v,
-            "The frame builder. Smoothing needs it in C#.");
-        RoutineCombo("Camera block", () => CameraBlock.Setting, v => CameraBlock.Setting = v,
-            "The view matrices from the camera.");
-        RoutineCombo("Polygon assemblers", () => PolyAssembler.Setting, v => PolyAssembler.Setting = v,
-            "The map's and the models' bulk polygons.");
-        RoutineCombo("Near path", () => NearPath.Setting, v => NearPath.Setting = v,
-            "The near map and the models' near submit, with libgte's subdivision. The Z-buffer covers them only in C#.");
-        RoutineCombo("Model walk", () => ModelWalk.Setting, v => ModelWalk.Setting = v,
-            "Creatures, objects, effects and billboards. Model smoothing needs it in C#.");
-        RoutineCombo("MO pose blender", () => MoPose.Setting, v => MoPose.Setting = v,
-            "Animated models' poses. Animation smoothing needs it in C#.");
+        foreach (var r in Routines) RoutineCombo(r);
 
         ImGui.SeparatorText("Console probes");
         bool p = FramePacing.ProbeOn;
