@@ -403,27 +403,16 @@ if (!string.IsNullOrWhiteSpace(autopad))
 // made. See "The window icon" in docs/PACKAGING.md.
 RecompOne.Runtime.Runtime.AppId = "verdite3";
 
-foreach (var icon in new[]
-{
-    Path.Combine("packaging", "shared", "verdite3.png"),
-    Path.Combine(AppContext.BaseDirectory, "verdite3.png"),
-})
-{
-    if (!File.Exists(icon)) continue;
-    RecompOne.Runtime.Runtime.SetIcon(File.ReadAllBytes(icon));
-    break;
-}
-
 // What a desktop entry written for this run calls the port (Verdite Core's
 // DesktopEntry writes one only when no packager has).
 DesktopEntry.Name = "Verdite3";
 DesktopEntry.GenericName = "King's Field II";
 DesktopEntry.Comment = "A PC port of King's Field II (SLUS-00255). Requires your own disc image.";
 
-// And over it, the fourth save slot's memory-card icon off the player's disc,
-// which the release cannot carry. The orb above is the fallback.
+// The icon, everywhere: the fourth save slot's memory-card icon off the player's
+// disc, which the release cannot carry, so the port ships no mark at all. Until a
+// run has read it once there is none.
 //
-//     KF3_ICON=orb      keep the shipped mark
 //     KF3_ICON=off      no icon at all
 //     KF3_ICON=0|1|2    a frame of its three (2 by default)
 Kf3.CardIcon.Install(args.Length > 0 ? args[0] : null);

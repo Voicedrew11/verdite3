@@ -25,6 +25,11 @@ tools/RecompOne/RecompOne.Recompiler/AutoConfigure/signatures/psyq.json
 settings.json
 interface.ini
 
+# The card icon a run read off the disc, kept for the next (Verdite Core's
+# WindowIcon and ShortcutIcon): the game's art.
+/icon.png
+/icon.ico
+
 # Upstream's texture dumper writes the disc's textures here, and the census its reports.
 dump/
 

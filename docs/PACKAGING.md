@@ -89,12 +89,13 @@ scripted boot from the checkout sits at the picker (a managed stack shows it in
 
 ## The window icon
 
-The window wears **the fourth save slot's memory-card icon**, read off the
+The port's one icon is **the fourth save slot's memory-card icon**, read off the
 player's disc at boot by `patches/CardIcon.cs`, in its third frame (the hair blown
-furthest out). The orb in `packaging/shared/` is the shipped mark and the
-fallback: `Program.cs` sets it first, and the card icon replaces it only when the
-disc answers. The release cannot carry the game's art, which is the same line
-`generated/` is on.
+furthest out). The release cannot carry the game's art, which is the same line
+`generated/` is on, so it ships **no mark at all** (2026-10-08; Verdite2's orb,
+copied, stood in until then): the executables have no icon resource, the AppImage
+a transparent one, and until a run has read the disc once there is no icon.
+After that it is the card icon everywhere the game can put it (below).
 
 **Where it is.** Each of the five save slots has its own icon: the card shows
 "2-1" to "2-5" in the save's title, and each slot's header carries a different
@@ -113,24 +114,52 @@ in the hair: 0 tucked in, 1 part out, 2 furthest out. Nothing in `GAME.EXE` hold
 a second copy of a palette (Verdite2's icon is found that way); the only copy on
 the disc is the archive's. So `CardIcon` finds entry 96 through the archive's
 table and checks the icon's palette and its sixteen rows against a SHA-256 before
-using them: another revision of the disc keeps the orb rather than wearing
-whatever bytes sit there (`[KF3] icon: the icon is not where SLUS-00255 has it`).
+using them: another revision of the disc wears no icon rather than whatever bytes
+sit there (`[KF3] icon: the icon is not where SLUS-00255 has it; no card icon this
+run`).
 
 **When it is read.** With a disc on the command line (the launcher always passes
 one, and so does a run from the checkout) the icon is read at once, before
 `Entry.Run`. With none — `KingsField3.exe` opened on its own — the disc is not
 known yet: `settings.json` is loaded by the window, which `Entry.Run` makes, and
 a first run's disc only once the picker answers. `CardIcon` read an empty
-`CdPath` there and returned without a word, so Windows showed the orb. It now
+`CdPath` there and returned without a word, so Windows showed the shipped mark. It now
 waits for the first overlay to load and sets the icon on the window's thread
 (`GpuJobs.Run`); measured under Wine with no argument, the icon line now comes
 just before `loaded overlay: open`.
 
-Decoding, the whole-multiple scale to 16-256 px and the icon theme copy for
-Wayland are Verdite Core's `WindowIcon` and `DesktopEntry`, as in Verdite2.
-`KF3_ICON=orb` keeps the shipped mark, `off` clears it, `0`/`1`/`2` picks a frame;
-`KF3_ICON_INSTALL=0` writes nothing into `~/.local/share/icons` or
-`applications`. The app id is `verdite3`, set in `Program.cs` before the window.
+**Where else it goes.** Each read writes the icon out of the window too, all of
+it Verdite Core's (`WindowIcon`, `DesktopEntry`, `ShortcutIcon`):
+
+- **`icon.png`** (256 px) in the data directory, the working directory. The next
+  run sets it before anything else: the launcher before its build popup, and
+  `CardIcon` before the disc is read, which is what a run with no disc argument
+  shows until the first overlay.
+- **Linux:** every size into `~/.local/share/icons/hicolor/<n>x<n>/apps/verdite3.png`,
+  which outranks the AppImage's and is the only icon a Wayland compositor reads,
+  and a `verdite3.desktop` when no packager wrote one.
+- **Windows:** `icon.ico` (16, 32 and 48 as 32-bit DIBs, 256 as PNG) in the data
+  directory, and every shortcut on the Desktop, in the Start menu or pinned to
+  the taskbar whose target is this process, or the stub one level above `bin\`,
+  pointed at it, then Explorer told (`[KF3] icon: 2 shortcut(s) now wear
+  icon.ico`). An executable's own icon is read out of the file, which is the
+  release's, so the shortcuts are what carry the card; `Verdite3.exe` itself
+  shows Windows's plain program icon in a folder view. The installer is per-user
+  (`INNO_PRIVILEGES=lowest` in `packaging/package.env`, into
+  `%LOCALAPPDATA%\Programs\Verdite3`), so its shortcuts are the player's and
+  writable; an all-users shortcut is left as it is, with a line saying so.
+
+Measured 2026-10-08 under Wine, in a fresh prefix, with the developer build
+published for `win-x64` into a `bin\` beside a stand-in stub: a desktop shortcut
+to `bin\KingsField3.exe` and a Start menu one to the stub both came to name
+`icon.ico`, a Notepad shortcut beside them did not, and a second run rewrote
+nothing. The `.ico` decodes at all four sizes to the card icon. **Not seen:** how
+Explorer and the taskbar draw it on Windows, and the installer itself (no `pwsh`
+or `iscc` here).
+
+`KF3_ICON=off` clears the icon, `0`/`1`/`2` picks a frame; `KF3_ICON_INSTALL=0`
+writes nothing into `~/.local/share/icons` or `applications`, or the shortcuts.
+The app id is `verdite3`, set in `Program.cs` before the window.
 
 ## Building a release
 
@@ -143,8 +172,9 @@ bash scripts/release.sh 0.2.0               # tag HEAD v0.2.0; commits nothing, 
 ```
 
 All three are wrappers of Verdite Core's scripts, which read `packaging/package.env`
-(`NAME=Verdite3`, `APP_ID=verdite3`, and `INNO_APP_ID`, this port's installer
-GUID, which must never change or be reused). `.github/workflows/ci.yml` builds the
+(`NAME=Verdite3`, `APP_ID=verdite3`, `INNO_APP_ID`, this port's installer
+GUID, which must never change or be reused, and `INNO_PRIVILEGES=lowest`, the
+per-user install "The window icon" needs). `.github/workflows/ci.yml` builds the
 launcher and the stub with no disc on every push; `release.yml` packages both
 platforms on a `v*` tag and opens a draft release.
 
@@ -211,6 +241,3 @@ commit (`0.1.0+<sha>`).
   `gh secret set PREVIEW_PASSWORD` changes it.
 - Called `rc` until 2026-10-08; renamed because it is handed out for any fix worth
   testing, not only a commit meant to ship.
-
-`packaging/shared/verdite3.png` and `.ico` are, for now, Verdite2's orb copied;
-replace them at the same sizes (`packaging/shared/README.md`).

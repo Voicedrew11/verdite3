@@ -6,12 +6,12 @@ using RecompOne.Runtime.Host;
 namespace Kf3;
 
 /// <summary>
-/// The window icon is one of the game's own memory-card icons, read off the disc.
+/// The port's icon is one of the game's own memory-card icons, read off the disc:
+/// the window's, the desktop's and the shortcuts'. There is no other.
 ///
-///     KF3_ICON=orb      the shipped verdite mark instead
 ///     KF3_ICON=off      no icon at all
 ///     KF3_ICON=0        a frame of the icon's three (2, the hair blown out, by default)
-///     KF3_ICON_INSTALL=0   do not write the icon into the desktop's icon theme
+///     KF3_ICON_INSTALL=0   do not write the icon into the desktop's icon theme or the shortcuts
 ///
 /// Each of the five save slots has its own card icon ("2-1" to "2-5" in the
 /// save's title), and this is the fourth's. All five sit in CD/COM/FDAT.T entry
@@ -22,8 +22,9 @@ namespace Kf3;
 ///
 /// The entry is found through the archive's own table, and the icon's palette and
 /// pixels are checked against a fingerprint before they are used, so another
-/// revision of the disc keeps the shipped mark rather than wearing whatever bytes
-/// sit there. Decoding, scaling and the icon theme are Verdite Core's WindowIcon.
+/// revision of the disc wears no icon rather than whatever bytes sit there.
+/// Decoding, scaling, the icon theme, the shortcuts and the copy kept for the next
+/// run are Verdite Core's WindowIcon.
 /// </summary>
 public static class CardIcon
 {
@@ -45,6 +46,9 @@ public static class CardIcon
     {
         if (WindowIcon.Frame(Frames, byDefault: 2) is not { } frame) return;
 
+        // What an earlier run read, until this one reads the disc.
+        WindowIcon.ApplySaved();
+
         if (!string.IsNullOrWhiteSpace(discPath) && File.Exists(discPath))
         {
             Apply(discPath, frame);
@@ -54,8 +58,9 @@ public static class CardIcon
         // No disc on the command line: KingsField3.exe opened on its own. The saved
         // disc is only known once the window has loaded settings.json, and a first
         // run's only once the picker answers, both inside Entry.Run, so this read an
-        // empty path and the orb stayed. The first overlay loads after both, on the
-        // game thread, so the icon is set on the window's own.
+        // empty path and the card icon never came. The first overlay loads after both, on the
+        // game thread, so the icon is set on the window's own; until then it is the
+        // copy an earlier run kept.
         bool done = false;
         Event.AddListener<OverlayLoadedEvent>(_ =>
         {
@@ -64,7 +69,7 @@ public static class CardIcon
             var path = RecompOne.Runtime.Runtime.CdPath;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
-                Console.Error.WriteLine("[KF3] icon: no disc path to read it from; keeping the shipped mark");
+                Console.Error.WriteLine("[KF3] icon: no disc path to read it from; no card icon this run");
                 return;
             }
 
@@ -79,7 +84,7 @@ public static class CardIcon
             using var disc = DiscFs.Open(path);
             if (Read(disc, out byte[] clut, out byte[] pixels) is { } why)
             {
-                Console.Error.WriteLine($"[KF3] icon: {why}; keeping the shipped mark");
+                Console.Error.WriteLine($"[KF3] icon: {why}; no card icon this run");
                 return;
             }
 
@@ -87,7 +92,7 @@ public static class CardIcon
         }
         catch (Exception e)
         {
-            Console.Error.WriteLine($"[KF3] icon: {e.Message}; keeping the shipped mark");
+            Console.Error.WriteLine($"[KF3] icon: {e.Message}; no card icon this run");
         }
     }
 

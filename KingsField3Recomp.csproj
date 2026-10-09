@@ -14,7 +14,6 @@
           See "Build and run" in docs/DEVELOPMENT.md.
         -->
         <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
-        <ApplicationIcon>packaging/shared/verdite3.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>

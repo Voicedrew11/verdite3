@@ -13,8 +13,11 @@
         <VerditeAppId>verdite3</VerditeAppId>
         <VerditeEnvPrefix>VERDITE3_</VerditeEnvPrefix>
 
-        <!-- Windows reads the icon out of the executable itself, so it is set here. -->
-        <ApplicationIcon>../packaging/shared/verdite3.ico</ApplicationIcon>
+        <!--
+          No ApplicationIcon: the port has no mark of its own. Its icon is the
+          card icon off the player's disc, which no file shipped can carry; the
+          game points the shortcuts at it (docs/PACKAGING.md, "The window icon").
+        -->
     </PropertyGroup>
 
     <Import Project="../tools/verdite-core/launcher/Launcher.targets" />
