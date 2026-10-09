@@ -122,12 +122,12 @@ kept.
 | `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis; `KF3_ANALOG_INVERTY` is Settings ▸ Gameplay ▸ Inverted camera, kept as `kf3.analog.invertpitch`, and the variable wins | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 | `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |
-| `KF3_ITEMTURN_GYRO` | `1`: the pad's gyroscope turns it too, and the runtime switches the sensor on | off |
+| `KF3_ITEMTURN_GYRO` | `0`: the pad's gyroscope does not turn it too; on, the runtime switches the sensor on | on (2026-10-08) |
 | `KF3_ITEMTURN_PROBE` | `1`: a line a second while an item is held up: the phase, the record, the turn and tilt, frames drawn turned, spin passes held, frames each input drove | off |
 | `KF3_ITEMTURN_TEST` | an item id (`0x6B` in `fdat02`): hold it up from the player's tick 10 s after the first area load, the right stick taken as full right and half down for the hold's second second; turns the probe on; dismiss with `KF3_AUTOPAD` (e.g. `17:Cross:300`) | none |
 | `KF3_ITEMEYE` | `0`: a picked-up item is aimed at the nominal eye, not the camera, so it sits off the centre while the walk bobs (`docs/INPUT.md`, "The item held up at the eye") | on |
 | `KF3_ITEMEYE_PROBE` | `1`: a line for each target the pickup asks for (hold or fly-out, the shift, the target, the view pitch), and twice a second during the hold the item's position in the camera's frame; works with `KF3_ITEMEYE=0`, to compare | off |
-| `KF3_GYROAIM` | `1`: the pad's gyroscope aims a drawn bow (weapon 27 or 28, the attack drawn), one to one, through the look (`docs/INPUT.md`, "Gyro aim with a drawn bow"); switches the sensor on | off |
+| `KF3_GYROAIM` | `1`: the pad's gyroscope aims a drawn bow (weapon 27 or 28, the attack drawn), one to one, through the look (`docs/INPUT.md`, "Gyro aim with a drawn bow"); switches the sensor on; `0` off | on (2026-10-08) |
 | `KF3_GYROAIM_PROBE` | `1`: a line a second: on/off, the pad's gyro, the weapon, the swing clock, attack held or up, vblanks gated in, ticks spent, units turned and pitched | off |
 | `KF3_RUMBLE` | `0`: no rumble; the pad rumbles as a bow is nocked, drawn and loosed (`docs/INPUT.md`, "Rumble") | on |
 | `KF3_RUMBLE_HD` | `0`: a Switch Pro Controller, a single Joy-Con and a DualSense over USB take two-motor rumble, not HD rumble (runtime 0104 for the Switch pads, 0105 for the DualSense) | on |

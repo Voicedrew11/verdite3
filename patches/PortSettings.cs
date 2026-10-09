@@ -304,11 +304,11 @@ public static class PortSettings
         null, null, () => ItemTurn.Enabled, ItemTurn.SetEnabled, true,
         tip: "While an item you pick up is held up, the mouse and the right stick turn it. It spins again when you let go.");
     public static readonly PortSetting ItemTurnGyro = Switch(ItemTurn.GyroKey, "KF3_ITEMTURN_GYRO", "Gyro turns it too",
-        null, null, () => ItemTurn.UseGyro, ItemTurn.SetGyro, false,
+        null, null, () => ItemTurn.UseGyro, ItemTurn.SetGyro, true,
         tip: "Turn and tip the pad and the item turns with it. Needs a pad with a gyroscope, such as a DualShock 4, DualSense or Switch Pro.",
         usable: () => ItemTurn.Enabled);
     public static readonly PortSetting GyroAimOn = Switch(GyroAim.OnKey, "KF3_GYROAIM", "Gyro aims a drawn bow",
-        null, null, () => GyroAim.Enabled, GyroAim.SetEnabled, false,
+        null, null, () => GyroAim.Enabled, GyroAim.SetEnabled, true,
         tip: "While a bow is drawn, turn and tip the pad to aim. Needs a pad with a gyroscope, such as a DualShock 4, DualSense or Switch Pro.");
     public static readonly PortSetting RumbleOn = Switch(Rumble.OnKey, "KF3_RUMBLE", "Rumble",
         null, null, () => Rumble.Enabled, Rumble.SetEnabled, true,

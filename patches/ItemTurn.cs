@@ -13,7 +13,7 @@ namespace Kf3;
 /// stick, and the pad's gyroscope when asked.
 ///
 ///     KF3_ITEMTURN=0          the game's own spin only
-///     KF3_ITEMTURN_GYRO=1     the gyroscope turns it too (off by default)
+///     KF3_ITEMTURN_GYRO=0     the gyroscope does not turn it too (it does by default since 2026-10-08)
 ///     KF3_ITEMTURN_PROBE=1    a line a second while an item is held up
 ///     KF3_ITEMTURN_TEST=id    hold up item <c>id</c> from the player's tick 10 s after
 ///                             the first area load, with the right stick taken as
@@ -85,7 +85,7 @@ public static class ItemTurn
     public const string GyroKey = "kf3.itemturn.gyro";
 
     public static bool Enabled = true;
-    public static bool UseGyro;
+    public static bool UseGyro = true;
 
     static readonly HashSet<string> _fromEnv = [];
     static readonly ModInfo _self = new()

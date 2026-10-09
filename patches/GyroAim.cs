@@ -9,7 +9,7 @@ namespace Kf3;
 /// Aim a drawn bow with the pad's gyroscope: while a bow is in hand and being
 /// drawn, turning and tipping the pad turns and tips the view, one to one.
 ///
-///     KF3_GYROAIM=1           on (off by default)
+///     KF3_GYROAIM=0           off (on by default since 2026-10-08)
 ///     KF3_GYROAIM_PROBE=1     a line a second: the weapon, the clock, the attack
 ///                             button, vblanks gated in, the units handed to the look
 ///
@@ -48,7 +48,7 @@ public static class GyroAim
 
     public const string OnKey = "kf3.gyroaim.on";
 
-    public static bool Enabled;
+    public static bool Enabled = true;
 
     static readonly HashSet<string> _fromEnv = [];
     static readonly Stopwatch _clock = Stopwatch.StartNew();

@@ -483,7 +483,7 @@ spin, and the spin comes back 1.5 s after the hand lets go. When the item is put
 away or taken, the turn eases back to nothing over about a tenth of a second while
 the game turns it to face the camera or flies it out. Settings ▸ Gameplay:
 **Turn a picked-up item** (`kf3.itemturn.on`, on) and under it **Gyro turns it
-too** (`kf3.itemturn.gyro`, off).
+too** (`kf3.itemturn.gyro`, on since 2026-10-08).
 
 **The pickup is `func_8005DB30`**, a loop that draws its own frames (the
 return addresses of its stage-15 calls name its parts):
@@ -640,9 +640,9 @@ the levelling's feel, and a pickup on landing (the dip, not driven).
 
 ## Gyro aim with a drawn bow
 
-`patches/GyroAim.cs` (switch `KF3_GYROAIM`, off by default): while a bow is in
+`patches/GyroAim.cs` (switch `KF3_GYROAIM`, on by default since 2026-10-08): while a bow is in
 hand and being drawn, **the pad's gyroscope turns and tips the view, one to one**.
-Settings ▸ Gameplay: **Gyro aims a drawn bow** (`kf3.gyroaim.on`, off), drawn under
+Settings ▸ Gameplay: **Gyro aims a drawn bow** (`kf3.gyroaim.on`, on), drawn under
 the item-turn rows. The game's own PORT SETTINGS page GAMEPLAY has one row for
 both gyroscope readers, **GYRO** (`row.gyro`, `docs/SETTINGS.md`): ON sets this and
 **Gyro turns it too** together, OFF clears both, and one without the other shows
