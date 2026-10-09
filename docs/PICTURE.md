@@ -231,6 +231,9 @@ screenshots.
   shop's and the equipment page's item model was tested against the world and cut
   into the shopkeeper behind it. Unrecorded, it draws over the world in table
   order, as on the console. Verdite2's preview (`func_800346CC`) had the same fault.
+  **Gap**: the item pickup's held item (`func_8005DB30`) is a world object and is
+  still tested against the world; it should be nearer than any wall, but that is
+  not measured (`docs/TODO.md`).
 - `patches/ZBuffer.cs` (agent-drafted from Verdite2's): the switch, the coplanar
   tolerance (`DepthBias` 1, `DepthSlope` 0.5), blended surfaces after the opaque
   ones behind them (`KF3_BLENDORDER`), the restart threshold (off), the probe.

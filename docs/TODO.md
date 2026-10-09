@@ -108,6 +108,14 @@ recompiled and running, following Verdite2's method but applied to this disc.
   are implemented and measured, awaiting visual judgement, as units 3 and 4 of
   **`docs/PICTURE.md`** (24-bit colour, perspective, sub-pixel and
   the Z-buffer, planned 2026-10-02).
+- **The Z-buffer and the item pickup** (a gap, left 2026-10-08): the item
+  `func_8005DB30` holds up is a world object (the model walk), so it is depth-tested
+  like one. Held in the middle of the screen it is close to the eye and should stay
+  in front, but a wall nearer than it would cut into it; not seen, not measured.
+  **To try**: pick an item up standing against a wall. If it clips, drop its records
+  only while it is held (`ItemTurn` knows the phase), not on the flight in and out,
+  where the world should still cover it. The menu's preview is done ("Not recorded"
+  in `docs/PICTURE.md`).
 - ~~**Carrying the view between ticks**~~ (chosen 2026-10-02, ahead of the near
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
   their clip times, verified and judged, on under pacing; every switch is live in
