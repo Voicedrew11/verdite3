@@ -104,6 +104,13 @@ Kf3.AutoReload.Configure(Environment.GetEnvironmentVariable("KF3_AUTORELOAD"),
                          Environment.GetEnvironmentVariable("KF3_AUTORELOAD_DELAY"),
                          Environment.GetEnvironmentVariable("KF3_AUTORELOAD_SLOT"));
 Kf3.AutoReload.Install();
+
+// Verdite2's GearCompare: every stat an equip or a purchase would change, beside
+// the equipment and shop lists, drawn with the game's menu routines. On by default;
+// Gameplay ▸ Compare gear. KF3_GEARCOMPARE=0 off, =probe a line for each item
+// compared. See "Comparing gear" in docs/GAME_INTERNALS.md.
+Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
+Kf3.GearCompare.Install();
 Kf3.StageProbe.Install();
 Kf3.GeometryProbe.Install();
 Kf3.SceneCensus.Install();

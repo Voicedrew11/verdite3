@@ -281,6 +281,10 @@ public static class PortSettings
         Usable = () => AutoReload.Enabled, Ui = Ui.Combo,
     };
 
+    public static readonly PortSetting GearCompareOn = Switch(GearCompare.OnKey, "KF3_GEARCOMPARE", "Compare gear",
+        Gameplay, "COMPARE GEAR", () => GearCompare.Enabled, GearCompare.SetEnabled, true,
+        tip: "Choosing equipment or browsing a shop shows every stat the item would change, now and after.");
+
     public static readonly PortSetting MessageFade = new()
     {
         Key = Kf3.MenuWorld.FadeKey, Envs = ["KF3_MESSAGE_FADE"], Label = "Message fade length",
@@ -391,7 +395,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion,
         RenderDistanceRow, Water,
-        Controls, InvertedCamera, AutoReloadOn, Gyro, RumbleRow,
+        Controls, InvertedCamera, AutoReloadOn, GearCompareOn, Gyro, RumbleRow,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -400,7 +404,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
+        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, GearCompareOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
         ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 

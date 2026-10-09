@@ -454,6 +454,27 @@ font's glyph-index alphabet, A = 0x00 .. Z = 0x19 (CONDITION at `0x8007F3B0` is
 `02 0e 0d 03 08 13 08 0e 0d`). That and `func_8002AB18`, which arms each
 condition, settle the condition fields above.
 
+The names on the status screens are pictures in `GAME.EXE`, not text, so the
+labels were read off the screen by the user (2026-10-08) and the drawing calls
+off the recompiled code. Page 1's frame is `func_80026ACC(155, 26, 141, 180)`.
+Stat 0 `0x801B2524` is PWR, drawn at (233, 104), and `0x801B2530` (+1) is WIS
+at (261, 104), beside it as "PWR·WIS 47·1". The five MAG words are drawn as
+icons: `0x801B252E` HOLY (the sun) at (198, 121), `0x801B2526` FIRE at (247,
+121), `0x801B2528` EARTH at (198, 136), `0x801B252C` WIND at (247, 136) and
+`0x801B252A` WATER at (198, 151).
+
+Page 2 `func_80023300` draws in the frame `func_80026ACC(20, 26, 276, 180)`.
+OFFENSE is at (30, 34), eight rows from Y 50 at X 30, 16 apart: SLASH `0x2538`,
+BLOW `0x253A`, STAB `0x253C`, HOLY MAGIC `0x253E`, FIRE MAGIC `0x2540`, EARTH
+MAGIC `0x2542`, WIND MAGIC `0x2544`, WATER MAGIC `0x2546`. DEFENSE is at (164,
+34), nine rows from Y 51, 17 apart: SLASH `0x254A`, BLOW `0x254C`, STAB `0x254E`,
+POISON `0x2550`, DARK MAGIC `0x2552`, FIRE MAGIC `0x2554`, EARTH MAGIC `0x2556`,
+WIND MAGIC `0x2558`, WATER MAGIC `0x255A`. Each label is drawn by
+`func_800261DC(0x8007E570, record)`; each number is formatted by
+`func_800277C0(value, 6, 0, 0, buffer)` into `[sp+0x10]` and drawn by
+`func_8002636C(0x8007E564, record)` at the label's X + 77. The frame is drawn
+last.
+
 `func_80029500` is the recompute every equip, level-up, load and condition
 change calls. It copies the six base stats `0x801B2516..2520` into the adjusted
 `0x801B2524..252E`, halves them while the curse flag `0x801B255E` is set, zeroes
@@ -461,6 +482,28 @@ the 17 ratings `0x801B2538..255A`, and sums in the equipped weapon
 (`0x801B25AF`, record `0x801D37A4`, stride 0x44) and the accessory records
 (`func_800293E4`). Anything written straight to `0x801B2524..255A` lasts only
 until the next call. A mod hooks the recompute and overwrites the derived words.
+
+The recompute reads its inputs directly, not through the cached pointers: the
+weapon id `0x801B25AF` and the seven slot bytes `0x801B25D4..25DA`, the weapon
+record `0x801D37A4 + id × 0x44` (+6 to +0x14), and, through `func_800293E4(id)`,
+the armour record `0x801E6078 + id × 0x20` (the raw id; its +2 to +0x12 are nine
+u16 bonuses) added to the DEFENSE words `0x254A, 254C, 254E, 255A, 2550, 2552,
+2554, 2556, 2558` in that field order. It adds fixed bonuses for particular
+ids: FLAME ROD (0x21) +20 FIRE `0x2526`, GROUNDAL CROWN (0x26) +20 PWR, WIND
+NECKLACE (0x59) +20 WIND `0x252C`, EVIL RING (0x52) +8 to the five MAG words and
+-30 PWR. The condition words `0x801B256A`, `0x801B256E` and `0x801B2578` and an
+area test (`0x801BA9E9` = 1 and `0x8018FAD8` = 0x1A: +50 to `0x252C`) add
+their own. The adjusted stats are clamped to 0..999. It writes only
+`0x2524..0x252E`, the 17 ratings and `0x801C12F0` (the u32 at `0x801B2584`,
+when non-zero), and calls nothing but `func_800293E4` and the runtime's
+interrupt poll.
+
+The weapon setter `func_8002BDC0` does more than the recompute: it writes
+`0x801B24F3` = 0xA, clears the charge `0x801B2502/2504`, writes the record
+pointer `0x801B2594`, loads the weapon's model (`func_8001A154(4, id + 0x62)`)
+and calls `func_80042C64`, `func_80015CE0` and others before the recompute.
+`func_8002BB84` only writes the slot byte, rebuilds the seven cached pointers
+and recomputes.
 
 `func_8002A310(gain)` is EXP gain and level-up. It adds to EXP `0x801B24E4`,
 caps it at 0xF423F, and while EXP ≥ `0x801B24E8` and the level is below 0xFF
@@ -744,6 +787,55 @@ same page, u 238 for codes 0..10 and u 245 from 11, v = `index × 15`) is 0..9,
 `func_800277C0(n, digits, pad, mode)` formats a number into it, and modes 1..5
 add `×`, `G`, `MP`, `EXP` or `LV`.
 
+### The equipment page and the shop
+
+Read 2026-10-08 off the recompiled code. The equipment page's addresses were
+measured through `KF3_GEARCOMPARE=probe` (under "Comparing gear"); the shop's
+were not run.
+
+**The equipment page `func_8001C7A8`** (from the top menu, RA `0x8001A880`)
+draws ten rows from the labels at `0x8007F230`: WEAPON, MAGIC, SHIELD, HEAD,
+BODY, ARMS, FEET, ITEM 1, ITEM 2, * BUTTON. Its descriptor is at `sp+0x18`, its
+list at (27, 35), ten rows. Row 1 opens the spell page `func_8001D0C4`, row 9
+`func_8001D3A0`, and the others `func_8001CBB8(row)`.
+
+**The candidate picker `func_8001CBB8(row)`** takes its slot byte and id range
+from a jump table at `0x80011460`: row 0 the weapon, slot `0x25AF`, ids
+0x00..0x21; row 2 the shield `0x25D6`, 0x33..0x3E; row 3 the head `0x25D4`,
+0x22..0x29; row 4 the body `0x25D5`, 0x2A..0x32; row 5 the arms `0x25D7`,
+0x3F..0x47; row 6 the feet `0x25D8`, 0x48..0x50; rows 7 and 8 the rings `0x25D9`
+and `0x25DA`, 0x51..0x5E (while the list is built the other ring's count is
+decremented, and restored after). `func_8001AEA4` lists the held ids of the
+range: names at `sp+0x50`, counts at `sp+0x410`, ids at `sp+0x438`, and a last
+TAKE OFF row with id 0xFF. The descriptor at `sp+0x18` puts the list at X 27,
+Y 147, three rows, under a header EQUIPMENT at (31, 32) drawn by
+`func_80027688`. The highlighted id is `u8[sp+0x438 + u8[sp+0x39]]` and its
+count `u8[sp+0x36]`.
+
+The picker's loop is the stepper `func_800222FC` (RA `0x8001CF34`), then two
+frames of head, the item's model `func_80025BE8(id)` (RA `0x8001CF78`), the list
+`func_80025468(desc, 5)` (RA `0x8001CF84`) and the presenter (RA `0x8001CF8C`).
+Confirm opens the prompt `func_80024C70(desc, 5, 5, id)` (RA `0x8001CEB0`), with
+USE at (45, 58) and CANCEL at (45, 84); its own frames draw the list at RA
+`0x80024F34`. USE equips through `func_8002BDC0(id)` for the weapon, and through
+`func_8002BB84(id, slot)` for rows 2 to 8 with slot 4, 0, 1, 2, 3, 5, 6.
+
+**The shop.** The event script interpreter `func_8005C308` runs a byte
+0x00..0x0F as `func_80021114(byte & 0xF)` (RA `0x8005C6BC`), the shop's group 6:
+BUY is `func_80021298(shop)` and SELL `func_80021724(shop)`. BUY builds its stock
+from the 150-byte table `0x80080718 + 150 × shop` through `func_8001AEA4` and
+`func_800216A4`: ids at `sp+0x1190`, prices as u32 at `[sp+0x50] + 4 × index`,
+and the descriptor at `sp+0x20` from `func_80027688(desc, 6, 0)`. The
+highlighted id is `u8[sp+0x1190 + u8[sp+0x41]]` and its count `u8[sp+0x3E]`.
+The loop is the stepper (RA `0x8002149C`), two frames of head, the model (RA
+`0x800215A4`), the list `func_80025468(desc, mode)` (RA `0x800215B0`) and the
+presenter (RA `0x800215B8`). The mode is 0x0D for shop 0 and 0x0A otherwise;
+shop 0 has no quantity, and the others multiply by the quantity `gp+0x48`.
+Confirm opens `func_80024C70(desc, 3, mode, id)` (RA `0x80021420`). A purchase
+checks GOLD `0x801B2534` against price × quantity and the count below 100,
+subtracts the gold, adds to the count and, for shop 0 and an id other than 0x6B
+(DRAGON CRYSTAL), takes one from the stock table.
+
 ### The port settings page
 
 Read 2026-10-06 off the recompiled code and `GAME.EXE`'s data, for
@@ -841,6 +933,57 @@ A death by damage, measured 2026-10-06 at `KF3_FPS=144`: the shell's `hurt 500`
 took HP 108 to 0 through `func_8002A6F4`, whose latch call armed the same reload
 (`death (LV 12, max HP 134)`, then `reloaded slot 1 into area 5 (HP 108/134, …)`).
 Not measured: the DRAGON CRYSTAL deferral.
+
+## Comparing gear
+
+`patches/GearCompare.cs` is Verdite2's gear comparison, originally by @Acranon
+as a Verdite2 mod, ported to these addresses. Beside the equipment page's
+candidate list and a shop's buy list (and over their USE/CANCEL prompts), it
+shows every stat the highlighted item would change, now and after: PWR, MAG,
+OFFENSE and DEFENSE, with a TOTAL under the last two as a rough guide. It is on
+by default. Settings ▸ Gameplay ▸ Compare gear and the menu's PORT SETTINGS ▸
+GAMEPLAY ▸ COMPARE GEAR set it, kept as `kf3.gearcompare.enabled`; the variable
+`KF3_GEARCOMPARE` wins (`0` off, `probe` a line per item compared;
+`docs/ENV_VARS.md`).
+
+"After" is the game's own arithmetic, not a copy of it. The candidate is written
+into its slot byte, `func_80029500` runs, the words are read, and then the slot
+byte, `0x801B2524..0x801B255B` and `0x801C12F0` are put back. The real setters
+are never called, since the weapon one loads a model. The slot is the picker's
+row on the equipment page; on a shop it is the id's range, a ring taking an
+empty ring slot first.
+
+The hooks: a pre and a post on `func_8001CBB8` and on `func_80021298` mark which
+page is open. A post on the list drawer `func_80025468` whose RA is `0x8001CF84`
+or `0x800215B0` reads the highlighted id, recomputes when it changes, and draws.
+RA `0x80024F34`, the prompt's list, redraws the last panel.
+
+It is drawn with the game's own menu routines, called from C#, as status page 2
+draws: labels by `func_800261DC` in the label font `0x8007E570`; numbers by
+`func_800277C0` then `func_8002636C` in the number font `0x8007E564`; and the
+window `func_80026ACC` last, so it lands underneath. It is not Verdite2's
+MenuDraw, whose packets and addresses belong to the other game.
+
+The layout is right-aligned at X 293, between Y 24 and 141: above the list frame
+at 147, and right of the header and the prompt's boxes. It is one column of full
+names, 13 px a row, when that fits; otherwise two columns of three-letter names,
+12 px a row.
+
+### Measured (2026-10-08)
+
+Slot 1 (fdat17, LV 12), driven through the shell's `press`: `[KF3] gear compare:
+on, probe, 3 routines hooked`. Circle, Down, Down, Cross, Cross opens WEAPON's
+candidates, and each Down gives a line: id 0x00 (EXCELLECTOR, worn) `no change`,
+0x03 (LONG SWORD) `SLASH 39>50, BLOW 32>21, STAB 9>11, TOTAL 80>82`, 0x04 (FLAME)
+`... FIRE 0>22, TOTAL 80>111`. BODY's candidates: 0x2C (HIGH-METAL ARMOR, worn) `no
+change`, 0xFF (TAKE OFF) `SLASH 39>22, BLOW 42>31, STAB 27>18, TOTAL 108>71`. Cross
+on FLAME opened USE/CANCEL and Circle closed it. Afterwards the weapon byte, the
+seven slot bytes and `0x801B2524..0x801B255B` read as before, and no exception was
+logged.
+
+Not measured: a shop (none was reached), a ring row, and anything by eye. The
+panel's place against the item's model, the USE/CANCEL boxes and the shop's page
+are for the user to judge.
 
 ## The ending
 

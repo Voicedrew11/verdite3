@@ -27,6 +27,7 @@ kept.
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
 | `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |
 | `KF3_AUTORELOAD_DELAY` | seconds of the death sequence before the reload (0-10); not a setting | 2.5 |
+| `KF3_GEARCOMPARE` | `0`: no stat comparison on the equipment and shop lists; `probe`: a line for each item compared. Settings ▸ Gameplay, kept as `kf3.gearcompare.enabled`; the variable wins | on |
 | `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is the kept rate (`kf3.fps`), else 144. Pacing is turned off only in Settings ▸ Testing (kept as `kf3.pacing=0`) | 144 (2026-10-06) |
 | `KF3_TICKRATE` | the world's rate under pacing (5-60 Hz); changes gameplay speed. Testing ▸ Frame pacing ▸ Tick rate, kept as `kf3.tickrate`; the variable wins at boot | 15 |
 | `KF3_FPS_PROBE` | `1`: a pacing line a second | off |

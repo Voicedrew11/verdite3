@@ -83,6 +83,9 @@ public sealed class GameplaySection : ISettingsSection
         PortSettings.Draw(PortSettings.AutoReloadSlot);
         ImGui.Unindent();
 
+        // Verdite2's GearCompare: every stat an equip or a purchase would change.
+        PortSettings.Draw(PortSettings.GearCompareOn);
+
         // How long a sign's or a message's fade takes (MenuWorld.FadeVBlanks).
         PortSettings.Draw(PortSettings.MessageFade);
 
