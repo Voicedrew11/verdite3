@@ -7,8 +7,8 @@
       its own names -
           AssemblyName       Verdite2, the shipped executable
           RootNamespace      Verdite2.Launcher
-          ApplicationIcon    the .ico Windows reads out of the executable
-          VerditeAppId       verdite2, the shipped PNG's name
+          ApplicationIcon    the .ico Windows reads out of the executable, if any
+          VerditeAppId       verdite2, the shipped PNG's name (a port may ship none)
           VerditeEnvPrefix   VERDITE2_, read for <prefix>BUILD below
       - then imports this file, and holds one Program.cs that hands
       Verdite.Launcher.Launcher.Run a LauncherGame record. Everything else is here.
@@ -148,7 +148,7 @@
         <Content Include="$(VerditeCore)src/**/*.cs" LinkBase="content/src/verdite-core" CopyToOutputDirectory="PreserveNewest" />
         <Content Include="$(VerditeGameRoot)mods/**/*" Exclude="$(VerditeGameRoot)mods/.cache/**;$(VerditeGameRoot)mods/**/bin/**;$(VerditeGameRoot)mods/**/obj/**" LinkBase="content/mods" CopyToOutputDirectory="PreserveNewest" />
         <Content Include="$(VerditeGameRoot)LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
-        <Content Include="$(VerditeGameRoot)packaging/shared/$(VerditeAppId).png" Link="$(VerditeAppId).png" CopyToOutputDirectory="PreserveNewest" />
+        <Content Condition="Exists('$(VerditeGameRoot)packaging/shared/$(VerditeAppId).png')" Include="$(VerditeGameRoot)packaging/shared/$(VerditeAppId).png" Link="$(VerditeAppId).png" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <!--

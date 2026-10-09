@@ -2,8 +2,8 @@
 #
 # Run through the game's packaging/windows/build-windows.ps1, or directly; the game
 # is the checkout this subtree sits in (tools/verdite-core), or $env:VERDITE_GAME_ROOT.
-# Its packaging/package.env names it (NAME, APP_ID, INNO_APP_ID), and
-# packaging/shared/ holds its $APP_ID.ico.
+# Its packaging/package.env names it (NAME, APP_ID, INNO_APP_ID, and INNO_PRIVILEGES
+# when it is not "admin"), and packaging/shared/ holds its $APP_ID.ico if it ships one.
 #
 # Needs the RecompOne subtree built (the game's scripts/setup_tools.sh) and the
 # .NET 10 SDK. It does NOT need the disc: the launcher carries the inputs to a
@@ -75,7 +75,11 @@ Write-Host "==> stub"
 $stubProj = Join-Path $PSScriptRoot 'Stub\Verdite.Stub.csproj'
 $stubOut = Join-Path $dist 'stub'
 if (Test-Path $stubOut) { Remove-Item -Recurse -Force $stubOut }
-dotnet publish $stubProj -c Release -o $stubOut "-p:StubName=$name" "-p:StubIcon=$icon"
+# A port that ships no mark gets a stub with none: Windows draws its plain
+# program icon until the game points the shortcuts at the card icon it read.
+$stubArgs = @("-p:StubName=$name")
+if (Test-Path $icon) { $stubArgs += "-p:StubIcon=$icon" }
+dotnet publish $stubProj -c Release -o $stubOut @stubArgs
 if ($LASTEXITCODE -ne 0) { throw "stub publish failed" }
 Copy-Item (Join-Path $stubOut "$name.exe") (Join-Path $stage "$name.exe")
 $stubConfig = Join-Path $stubOut "$name.exe.config"
@@ -103,6 +107,7 @@ Compress-Archive -Path "$stage\*" -DestinationPath $zip
 $env:VERDITE_VERSION = $version
 $env:VERDITE_NAME = $name
 $env:VERDITE_INNO_APP_ID = $pkg['INNO_APP_ID']
+$env:VERDITE_INNO_PRIVILEGES = $pkg['INNO_PRIVILEGES']
 $env:VERDITE_ROOT = "$root"
 
 if (Get-Command iscc -ErrorAction SilentlyContinue) {

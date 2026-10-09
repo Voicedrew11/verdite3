@@ -66,8 +66,16 @@ public static class Launcher
             UpdateBadge.Install();
             UpdateCheck.Start();
 
-            var icon = Path.Combine(AppContext.BaseDirectory, game.AppId + ".png");
-            if (File.Exists(icon)) Runtime.SetIcon(File.ReadAllBytes(icon));
+            // The card icon the game kept on an earlier run (Verdite Core's
+            // WindowIcon.Saved, in the data directory, which is the working
+            // directory from Paths.Prepare on), else the port's shipped mark if it
+            // ships one. A first run has neither until the game reads the disc.
+            foreach (var icon in new[] { "icon.png", Path.Combine(AppContext.BaseDirectory, game.AppId + ".png") })
+            {
+                if (!File.Exists(icon)) continue;
+                Runtime.SetIcon(File.ReadAllBytes(icon));
+                break;
+            }
 
             // The runtime's own picker: it opens a native file dialog, refuses
             // anything DiscValidator rejects, saves the accepted path, and pumps the
