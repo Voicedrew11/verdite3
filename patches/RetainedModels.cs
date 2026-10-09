@@ -13,6 +13,8 @@ public static class RetainedModels
     /// the billboards (the walk's call at <c>0x800419EC</c>) apart.</summary>
     public static bool ClipProbe;
     public static long ClipFaces, Clipped, ClipBillboardFaces, ClipBillboardClipped;
+    /// <summary>Models submitted with a non-zero CLUT offset (scratchpad <c>+0x84</c>).</summary>
+    public static long ClutOffsetDraws;
     public static bool Submit(PSMemory m, uint sub, int bias, uint flags, bool perspective,
         uint caller, uint routine = 0x8003E34C, bool sky = false)
     {
@@ -26,7 +28,11 @@ public static class RetainedModels
         if (RetainedScene.Find(RetainedScene.Serial) is not { } frame)
         { GpuWorld.Fallback(routine, caller, "no-retained-frame"); MoPose.Materialize(m); return false; }
         uint table = m.ReadU32(Pad + 0x10), header = table + 12 + (sub & 0xFFFF) * 28;
-        var mesh = RetainedAssets.Get(m, table, header, sky ? RetainedAssets.Family.Sky : RetainedAssets.Family.Lit, out reason!);
+        // The lit assembler's CLUT offset: an effect's palette (RetainedAssets.Get).
+        // func_8003E34C draws with its caller's; the arm's func_8003DF50 zeroes it.
+        ushort clutOffset = sky || routine == 0x8003DF50 ? (ushort)0 : m.ReadU16(Pad + 0x84);
+        if (clutOffset != 0) ClutOffsetDraws++;
+        var mesh = RetainedAssets.Get(m, table, header, sky ? RetainedAssets.Family.Sky : RetainedAssets.Family.Lit, out reason!, clutOffset);
         if (mesh == null) { GpuWorld.Fallback(routine, caller, reason!); MoPose.Materialize(m); return false; }
         uint count = m.ReadU32(header + 4), vertices = m.ReadU32(Pad + 0x4C);
         if (count == 0 || count > 8192 || mesh.MaxVertex >= count)

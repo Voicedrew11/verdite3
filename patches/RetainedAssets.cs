@@ -17,7 +17,7 @@ public static class RetainedAssets
         public readonly Dictionary<byte, int> IgnoredCommands = new();
     }
     public readonly record struct Face(int Corner, int Corners, int Mode, bool Semi, byte Command);
-    static readonly Dictionary<(uint Table, uint Header, Family Family), Mesh> Meshes = new();
+    static readonly Dictionary<(uint Table, uint Header, Family Family, ushort ClutOffset), Mesh> Meshes = new();
     static readonly Dictionary<(uint Address, int Count, ulong Hash), int> Rigid = new();
     static int _generation = -1;
     public static long MeshBuilds, MeshHits, MeshMutations, RigidBuilds, RigidHits;
@@ -34,14 +34,19 @@ public static class RetainedAssets
         if (_generation == RetainedScene.MeshGeneration) return;
         Meshes.Clear(); Rigid.Clear(); _generation = RetainedScene.MeshGeneration;
     }
-    public static Mesh? Get(PSMemory m, uint table, uint header, Family family, out string reason)
+    /// <summary>The mesh as <paramref name="family"/>'s assembler reads it. The lit
+    /// assembler adds the u16 at scratchpad <c>+0x84</c> to every face's CLUT
+    /// (<c>PolyAssemblerLit</c>), which the object loop in <c>func_80040AE4</c> sets
+    /// from a record's <c>+0xE</c> for the spells' effects; a mesh is kept per offset.</summary>
+    public static Mesh? Get(PSMemory m, uint table, uint header, Family family, out string reason,
+        ushort clutOffset = 0)
     {
         CheckGeneration(); reason = "";
         if (!InRam(header, 28)) { reason = "mesh-header-outside-ram"; return null; }
         uint faces = table + 12 + m.ReadU32(header + 16), normals = table + 12 + m.ReadU32(header + 8);
         uint count = m.ReadU32(header + 20);
         if (count > 4096 || !InRam(faces, 4) || !InRam(normals, 8)) { reason = "mesh-range"; return null; }
-        var key = (table, header, family);
+        var key = (table, header, family, clutOffset);
         if (Meshes.TryGetValue(key, out var cached))
         {
             if (cached.Faces.Length == count && InRam(faces, cached.FaceBytes) && InRam(normals, cached.NormalBytes)
@@ -50,11 +55,12 @@ public static class RetainedAssets
             { MeshHits++; return cached; }
             MeshMutations++;
         }
-        var mesh = Build(m, faces, count, normals, family, out reason);
+        var mesh = Build(m, faces, count, normals, family, clutOffset, out reason);
         if (mesh != null) { Meshes[key] = mesh; MeshBuilds++; }
         return mesh;
     }
-    static Mesh? Build(PSMemory m, uint source, uint count, uint normals, Family family, out string reason)
+    static Mesh? Build(PSMemory m, uint source, uint count, uint normals, Family family, ushort clutOffset,
+        out string reason)
     {
         reason = "";
         var opaque = new List<RetainedScene.Vertex>(); var blended = new List<RetainedScene.Vertex>();
@@ -110,7 +116,7 @@ public static class RetainedAssets
             }
             var template = new RetainedScene.Vertex
             {
-                Clut = textured ? m.ReadU16(body + 2) & 0x7FFFu : 0, Texpage = tpage,
+                Clut = textured ? (ushort)(m.ReadU16(body + 2) + clutOffset) & 0x7FFFu : 0, Texpage = tpage,
                 Dqa = vi[0], Dqb = vi[1], Curve = vi[2], Rgbc = n == 4 ? vi[3] : uint.MaxValue,
                 Rect = (uint)(u0 | v0 << 8 | u1 << 16 | v1 << 24),
                 Flags = RetainedScene.FlagDots | (textured ? RetainedScene.FlagRect : 0)

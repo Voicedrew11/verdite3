@@ -1355,6 +1355,13 @@ tests and the same record fields, with other strides:
 | effects | `0x801B80EC` | 128 | `0x4C` | `u8[+0x0] != 0xFF` | 128 x `0x48` |
 | billboards | `0x80182968` | 128 | `0x18` | | 128 x `0x18` |
 
+An effect record's `+0xE` is a CLUT offset: the effect loop stores it at scratchpad
+`+0x84`, which the lit assembler adds to every face's CLUT, and it picks the spell's
+palette row (Fire Ball `+0x40`, Meteor `+0x80`; the rows are in "Spell effects in
+the wrong palette" in `GPU_RENDERER.md`). `+0x8` bits 0-1 gate the draw (0 hidden,
+2 always, else the point query against `+0xA`) and bits 2-3 pick one of four sets
+of stack arguments to `func_8003E34C`. The billboard loop resets `+0x84` to 0.
+
 A creature: flags at `+0x28` (`0x2000`, `0x80000` the volume query, `0x20`
 placed at its record with the matrix at `0x8007E4C4`), the query at `+0x2C`, the
 model `u8[+1] + 0x80`, rotation `+0x40/+0x42+0x800/+0x44`, and the stack

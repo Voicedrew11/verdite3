@@ -256,6 +256,7 @@ public static class AgentServer
                  ",\"clipFaces\":" + RetainedModels.ClipFaces + ",\"clipped\":" + RetainedModels.Clipped +
                  ",\"clipBillboardFaces\":" + RetainedModels.ClipBillboardFaces +
                  ",\"clipBillboardClipped\":" + RetainedModels.ClipBillboardClipped +
+                 ",\"clutOffsetDraws\":" + RetainedModels.ClutOffsetDraws + ",\"meshBuilds\":" + RetainedAssets.MeshBuilds +
                  ",\"underSamples\":" + RetainedScene.UnderSamples + ",\"underShown\":" + RetainedScene.UnderShown +
                  ",\"instances\":" + RetainedScene.InstancesDrawn + ",\"maskOn\":" + (RetainedScene.ModelMask ? "true" : "false") +
                  ",\"maskFrames\":" + RetainedScene.MaskFrames + ",\"maskBatches\":" + RetainedScene.MaskBatches +

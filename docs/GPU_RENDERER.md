@@ -827,3 +827,43 @@ Two defects found by reading, neither seen in play:
 
 `RetainedModels.Submit` also falls back (`no-retained-frame`) where it used to
 dereference a null frame; capture implies a begun frame, so this is not expected.
+
+## Spell effects in the wrong palette (2026-10-09)
+
+Reported: many spells' effects drew with a pink texture, Meteor's among them where
+it strikes.
+
+**What it is.** The lit assembler adds the u16 at scratchpad `+0x84` to every
+face's CLUT (`docs/GEOMETRY.md`), and the walk's effect loop (`func_80040AE4`,
+`0x8004167C`) sets it from each effect record's `+0xE` before calling
+`func_8003E34C`; the billboard loop after it puts it back to 0. The offset picks the
+spell's palette: the fireball's two models (faces on CLUT `383E` and `3A3E`) are
+drawn with `+0x40`, and Meteor's record carries `+0x80`. `RetainedAssets` built a
+mesh from the faces' own CLUTs and cached it by table and header alone, so the
+retained renderer drew every effect in its base palette. Read from VRAM in `fdat17`:
+
+| CLUT | row | the 16 colours |
+|---|---|---|
+| `383E` | 224 | a brown ramp ending in **magenta** (`b800f8`) |
+| `387E` (`+0x40`) | 225 | black, red, orange, yellow, white: the fire |
+| `38BE` (`+0x80`) | 226 | black to cyan to white |
+| `3A3E` | 232 | the same brown ramp, ending in magenta (`9000f8`) |
+
+The packets (`PolyAssemblerLit`, the generated assembler) always added the offset,
+so a model the retained path declined was right.
+
+**Fix.** `RetainedModels.Submit` reads the offset (0 for the sky, whose assembler
+does not add it, and for the arm, whose `func_8003DF50` zeroes it) and
+`RetainedAssets.Get` keys the mesh by it and adds it to each face's CLUT, a mesh per
+offset. `clutOffsetDraws` in the shell's `gpu` counts the models submitted with one.
+
+### Measured
+
+`KF3_AUTOSTART=1` (`fdat17`), Fire Ball cast from the shell (`press Triangle`):
+`clutOffsetDraws` 0 to 38-39 (two runs) and `meshBuilds` 114 to 116, the two models at offset
+`0x40`, and no draw with an offset before the cast. Meteor, learned and cast by
+pokes, made its record (`+0xE` = `0x80`) with no creature in reach, and it was gone
+before a walk drew it, so no Meteor draw was counted.
+
+**Not judged by eye.** For the user: Fire Ball, Meteor striking a creature, and the
+other effects, against `KF3_GPU_WORLD=0`.
