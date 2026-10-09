@@ -61,7 +61,9 @@ magic too; both are migrated once. A player who picks
 another preset in the game's own screen moves the pad's verbs and not the keys'.
 
 Select is **inferred** to be the map screen — its handler `func_80019F58(3)` is
-an empty stub in this build and the body begins at `func_80019F60`.
+an empty stub in this build and the body begins at `func_80019F60`. The maps are
+opened from USE ITEM instead, and the port's M / touchpad key opens them: see "The
+maps" in `docs/GAME_INTERNALS.md`.
 
 The modal menus do their own `PadRead_game` rather than reading `0x801B265C`
 (`func_8001A774` keeps the word locally; the card helpers poll `PadRead_game`
@@ -105,6 +107,11 @@ arrows are: the runtime's table holds one key a button. Only with this layout in
 place, and not for a press that closed a popup or while Escape is the mouse's
 capture key.
 **L2 and R2 are left unbound**, because pitch is the mouse's and only the mouse's.
+
+**M** (and the touchpad of a DualShock 4 or DualSense) opens the map of the current
+area if its map item is held: a port key outside the binding table
+(`patches/MapKey.cs`, `KF3_MAPKEY`). M again or the touchpad closes it, as does any
+pad button.
 
 It is the port's *default*, not an override: `Configure` runs before
 `ConfigManager.Load`, so a fresh install gets it and `settings.json` wins on every

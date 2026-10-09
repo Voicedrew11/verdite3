@@ -37,7 +37,7 @@ verified, on), the creatures, objects and their clip times carried between ticks
 (`KF3_SMOOTH_MODELS`, judged, on under pacing) and the scrolling textures held
 to the tick (`KF3_TEXSCROLL`); the title's Continue and the in-game Save with a full card
 (`KF3_FULLCARD`) and the last save reloaded on death (`KF3_AUTORELOAD`,
-Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); Verdite2's gear comparison beside the equipment and shop lists, drawn with the game's menu routines (`KF3_GEARCOMPARE`, Settings ▸ Gameplay; measured on the equipment page, the shop not run, not judged; `docs/GAME_INTERNALS.md`); keyboard and mouse controls (`KF3_KEYS`,
+Settings ▸ Gameplay), both measured (`docs/GAME_INTERNALS.md`); Verdite2's gear comparison beside the equipment and shop lists, drawn with the game's menu routines (`KF3_GEARCOMPARE`, Settings ▸ Gameplay; measured on the equipment page, the shop not run, not judged; `docs/GAME_INTERNALS.md`); the map of the area the player is in, PIXY'S MAP or MAP OF VERDITE, opened by M or the pad's touchpad when held (`KF3_MAPKEY`; measured through its test switch, the keys not pressed, not judged; `docs/GAME_INTERNALS.md`); keyboard and mouse controls (`KF3_KEYS`,
 `KF3_MOUSE`; `docs/INPUT.md`, not yet judged by eye) and the menus pointed at and
 clicked with the mouse (`KF3_MENUMOUSE`, Verdite2's `MenuMouse`; measured, not
 judged); a picked-up item turned by the mouse, the right stick and the pad's

@@ -787,6 +787,62 @@ same page, u 238 for codes 0..10 and u 245 from 11, v = `index × 15`) is 0..9,
 `func_800277C0(n, digits, pad, mode)` formats a number into it, and modes 1..5
 add `×`, `G`, `MP`, `EXP` or `LV`.
 
+### The maps
+
+Read 2026-10-08 off `generated/game.cs`, unless marked measured.
+
+**The items.** Names come from GAME.EXE's name records at `0x8007F620 + id × 0x18`:
+`0x5F` MAP OF VERDITE, `0x60` PIXY'S MAP, `0x61` and `0x62` empty records, `0x63`
+LYN'S NOTE, `0x64` LEON'S NOTE. They are held like any item: a count byte at
+`0x800C85E8 + id` (overflow at `0x800C867E + id`).
+
+**USE ITEM** `func_8001AA84` sends `0x5F`..`0x64` to one arm: `func_80027E60`,
+`func_80027B5C`, then PIXY'S MAP (`0x60`) to `func_8001BABC` and the others to
+`func_8001B5C4(id)`, then sound `0xE` through `func_8002792C`.
+
+**PIXY'S MAP** `func_8001BABC` (no arguments) loads picture file 6, entry
+`0x2D1 + area` (area byte at `0x8018FADD`), one picture per area. It marks the
+player from `0x801B25F0` and `0x801B25F8`, and the yaw at `0x801B260A`. Areas 25
+and 27 put the marker at a fixed point, (0x98, 0x70).
+
+**MAP OF VERDITE** `func_8001B5C4(id)` loads entry `0x2F1` for MAP OF VERDITE,
+`0x2F3` for LYN'S NOTE and `0x2F2` otherwise, and marks the player only when the
+area is below 12 (a 4-wide grid by area & 3, area >> 2).
+
+**The CD.** Both viewers size and allocate (`func_80019CC4`, `func_800194F0`),
+and `func_80027D88` starts the CD read. `gp+0x1C` (`0x8009C230`) is set to 1, and
+the viewer waits on `VSync(2)` until it changes. Only the menu's CD ready callback
+`func_80027EA8` changes it: 2 when the last of the `gp+0x20` sectors is in, 3 on
+error. Each menu page installs it on entry with `func_80027BB4`, and swaps the
+world's callback (`0x80019848`) back in with `func_80027C8C` on leaving. Called
+outside a page, the viewer waits forever: measured, `0x8009C230` held 1 with the
+main loop stopped.
+
+**Closing.** The viewer closes on any pad button (`func_800279A4`, after two
+frames), then `func_80027A70` and `func_80027A40`, which waits for the release.
+
+**Select** is not a map here: its handler `func_80019F58(3)` is an empty stub.
+
+**The port's map key** (`patches/MapKey.cs`, `KF3_MAPKEY`): M, or the touchpad
+(SDL button 20) of a DualShock 4 or DualSense. It is taken from a post-hook on
+stage 4 on a world tick, and acts only when a character is present (max HP
+`0x801B24FA` non-zero), the character is not dead (`0x801B25E5` != 0x11), no load
+is pending (`0x8018FAD4`) and the bottom message box is idle (`0x801AEAF7`). A
+press older than 0.5 s is dropped. It opens PIXY'S MAP when held, else MAP OF
+VERDITE in areas 0..11, else logs "no map held". It reproduces the wrapping:
+`func_80027198` (menu enter), `func_80027BB4`, `func_80027E60`, `func_80027B5C`,
+the viewer, `func_8002792C(0xE)`, `func_80027C8C`, `func_80027310(0)` (menu
+leave). While open, M or the touchpad again holds Circle through `PadReadEvent`,
+which closes it.
+
+**Measured** 2026-10-08, slot 1 in fdat17 (area 5), with `KF3_MAPKEY_TEST`: MAP OF
+VERDITE opened, the main loop stopped while it was up, Circle (autopad) closed it,
+and the player then walked (position changed). With PIXY'S MAP poked into the
+inventory (`poke 800c8648 01`), PIXY'S MAP opened and Cross closed it. Not
+measured: the key and the touchpad themselves (only the test switch was run), the
+touchpad index on a real pad, and an area change after a map was opened. Not
+judged by eye: whether the right picture and marker are shown.
+
 ### The equipment page and the shop
 
 Read 2026-10-08 off the recompiled code. The equipment page's addresses were

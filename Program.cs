@@ -111,6 +111,14 @@ Kf3.AutoReload.Install();
 // compared. See "Comparing gear" in docs/GAME_INTERNALS.md.
 Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
 Kf3.GearCompare.Install();
+
+// M, or the touchpad of a DualShock 4 or DualSense, opens the map of the area the
+// player is in when its map item is held: PIXY'S MAP, else MAP OF VERDITE in the
+// areas it covers. KF3_MAPKEY=0 off, KF3_MAPKEY_TEST=sec opens it once that long
+// into the first area. See "The maps" in docs/GAME_INTERNALS.md.
+Kf3.MapKey.Configure(Environment.GetEnvironmentVariable("KF3_MAPKEY"),
+                     Environment.GetEnvironmentVariable("KF3_MAPKEY_TEST"));
+Kf3.MapKey.Install();
 Kf3.StageProbe.Install();
 Kf3.GeometryProbe.Install();
 Kf3.SceneCensus.Install();
