@@ -116,6 +116,16 @@ table and checks the icon's palette and its sixteen rows against a SHA-256 befor
 using them: another revision of the disc keeps the orb rather than wearing
 whatever bytes sit there (`[KF3] icon: the icon is not where SLUS-00255 has it`).
 
+**When it is read.** With a disc on the command line (the launcher always passes
+one, and so does a run from the checkout) the icon is read at once, before
+`Entry.Run`. With none — `KingsField3.exe` opened on its own — the disc is not
+known yet: `settings.json` is loaded by the window, which `Entry.Run` makes, and
+a first run's disc only once the picker answers. `CardIcon` read an empty
+`CdPath` there and returned without a word, so Windows showed the orb. It now
+waits for the first overlay to load and sets the icon on the window's thread
+(`GpuJobs.Run`); measured under Wine with no argument, the icon line now comes
+just before `loaded overlay: open`.
+
 Decoding, the whole-multiple scale to 16-256 px and the icon theme copy for
 Wayland are Verdite Core's `WindowIcon` and `DesktopEntry`, as in Verdite2.
 `KF3_ICON=orb` keeps the shipped mark, `off` clears it, `0`/`1`/`2` picks a frame;

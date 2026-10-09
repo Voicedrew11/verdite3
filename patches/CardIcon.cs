@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using RecompOne.Runtime.Cdrom;
+using RecompOne.Runtime.Events;
+using RecompOne.Runtime.Host;
 
 namespace Kf3;
 
@@ -43,9 +45,35 @@ public static class CardIcon
     {
         if (WindowIcon.Frame(Frames, byDefault: 2) is not { } frame) return;
 
-        var path = string.IsNullOrWhiteSpace(discPath) ? RecompOne.Runtime.Runtime.CdPath : discPath;
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        if (!string.IsNullOrWhiteSpace(discPath) && File.Exists(discPath))
+        {
+            Apply(discPath, frame);
+            return;
+        }
 
+        // No disc on the command line: KingsField3.exe opened on its own. The saved
+        // disc is only known once the window has loaded settings.json, and a first
+        // run's only once the picker answers, both inside Entry.Run, so this read an
+        // empty path and the orb stayed. The first overlay loads after both, on the
+        // game thread, so the icon is set on the window's own.
+        bool done = false;
+        Event.AddListener<OverlayLoadedEvent>(_ =>
+        {
+            if (done) return;
+            done = true;
+            var path = RecompOne.Runtime.Runtime.CdPath;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                Console.Error.WriteLine("[KF3] icon: no disc path to read it from; keeping the shipped mark");
+                return;
+            }
+
+            GpuJobs.Run(() => Apply(path, frame));
+        });
+    }
+
+    static void Apply(string path, int frame)
+    {
         try
         {
             using var disc = DiscFs.Open(path);
