@@ -11,8 +11,9 @@ namespace Kf3;
 /// Each finished C# packet's corner depths, recorded for the Z-buffer
 /// (<see cref="ZBuffer"/>, <see cref="GtePacketDepth"/>). The map's bulk assembler
 /// (`func_80039D50`) and the lit models' (`func_80035CA4`) are recorded; the HUD's
-/// models and the first-person arm are not, so they keep painter's order, as do the
-/// sky, the front table and the near path (docs/PICTURE.md, "Unit 3").
+/// models, the menu's item preview (`func_8004290C`) and the first-person arm are not,
+/// so they keep painter's order, as do the sky, the front table and the near path
+/// (docs/PICTURE.md, "Unit 3").
 ///
 /// The map's vertex pass is C# (<see cref="Transform"/>), so each corner's full SZ3
 /// is kept. The models' pass is the submitter's, still recompiled, so only the
@@ -34,10 +35,13 @@ public static partial class PolyAssembler
     /// <summary>Set while func_8003DF50 draws the first-person arm.</summary>
     public static bool InArm;
 
-    /// <summary>HUD and arm calls left unrecorded, for the probe.</summary>
-    public static long HudCalls, ArmCalls;
+    /// <summary>Set while func_8004290C draws a menu's item model.</summary>
+    public static bool InPreview;
 
-    static bool DepthOn() => GtePacketDepth.Active && !InHud && !InArm;
+    /// <summary>HUD, arm and preview calls left unrecorded, for the probe.</summary>
+    public static long HudCalls, ArmCalls, PreviewCalls;
+
+    static bool DepthOn() => GtePacketDepth.Active && !InHud && !InArm && !InPreview;
 
     static uint _rangeSize;
 
@@ -117,12 +121,12 @@ public static partial class PolyAssembler
         GtePacketDepth.Recorded++;
     }
 
-    // ---- func_8003C35C (the HUD) and func_8003DF50 (the arm) ------------------
+    // ---- func_8003C35C (the HUD), func_8003DF50 (the arm), func_8004290C (the preview)
 
-    const uint Hud = 0x8003C35C, Arm = 0x8003DF50;
+    const uint Hud = 0x8003C35C, Arm = 0x8003DF50, Preview = 0x8004290C;
 
-    /// <summary>Attach the HUD and arm flags. Called once, from Program.cs after
-    /// PolyAssembler.Install; the record table sizes itself on first recording.</summary>
+    /// <summary>Attach the HUD, arm and preview flags. Called once, from Program.cs
+    /// after PolyAssembler.Install; the record table sizes itself on first recording.</summary>
     public static void InstallDepth() => HookAttach.OnOverlayLoad("depth", AttachDepth);
 
     static bool _depthQueued;
@@ -132,7 +136,8 @@ public static partial class PolyAssembler
         SymbolRegistry.Build();
         var hud = SymbolRegistry.Resolve("game", null, Hud);
         var arm = SymbolRegistry.Resolve("game", null, Arm);
-        if (hud == null || arm == null) return false;
+        var preview = SymbolRegistry.Resolve("game", null, Preview);
+        if (hud == null || arm == null || preview == null) return false;
 
         if (!_depthQueued)
         {
@@ -142,17 +147,22 @@ public static partial class PolyAssembler
             HookManager.AddPost(_self, hud, self.GetMethod(nameof(AfterHud), flags)!);
             HookManager.AddPre(_self, arm, self.GetMethod(nameof(BeforeArm), flags)!);
             HookManager.AddPost(_self, arm, self.GetMethod(nameof(AfterArm), flags)!);
+            HookManager.AddPre(_self, preview, self.GetMethod(nameof(BeforePreview), flags)!);
+            HookManager.AddPost(_self, preview, self.GetMethod(nameof(AfterPreview), flags)!);
             _depthQueued = true;
         }
 
         HookManager.Commit();
-        int hooked = (HookAttach.Installed(hud) ? 1 : 0) + (HookAttach.Installed(arm) ? 1 : 0);
-        Console.WriteLine($"[KF3] depth: record table over {_rangeSize >> 10} KB, {hooked}/2 hook(s)");
-        return hooked == 2;
+        int hooked = (HookAttach.Installed(hud) ? 1 : 0) + (HookAttach.Installed(arm) ? 1 : 0)
+                   + (HookAttach.Installed(preview) ? 1 : 0);
+        Console.WriteLine($"[KF3] depth: record table over {_rangeSize >> 10} KB, {hooked}/3 hook(s)");
+        return hooked == 3;
     }
 
     public static void BeforeHud(CpuContext c, IMemory m) => InHud = true;
     public static void AfterHud(CpuContext c, IMemory m) { InHud = false; HudCalls++; }
     public static void BeforeArm(CpuContext c, IMemory m) => InArm = true;
     public static void AfterArm(CpuContext c, IMemory m) { InArm = false; ArmCalls++; }
+    public static void BeforePreview(CpuContext c, IMemory m) => InPreview = true;
+    public static void AfterPreview(CpuContext c, IMemory m) { InPreview = false; PreviewCalls++; }
 }

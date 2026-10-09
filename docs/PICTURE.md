@@ -195,7 +195,8 @@ screenshots.
   can be read back from the GTE as each cache entry is written.
 - **Recorded**: `func_80039D50` (the map's bulk) and `func_80035CA4` (the lit
   models). **Not recorded**: the HUD's models (`func_80035CA4` reached from
-  `func_8003C35C`: an `InHud` flag round that call, as Verdite2's), the
+  `func_8003C35C`: an `InHud` flag round that call, as Verdite2's), the menu's
+  item preview (`func_8004290C`, `InPreview`, since 2026-10-08; see below), the
   first-person arm (`func_8003DF50`, `InArm`), the sky and everything in the front
   table (drawn first, behind everything), the blended and front-table variants
   (`func_80037BEC`, `func_80038844`, still recompiled), the overlays and
@@ -222,9 +223,14 @@ screenshots.
 - **Depth**: the map keeps the full `SZ3` per cache slot from its C# vertex pass,
   checked against the two cache words. The models' vertex pass is still the
   recompiled submitter's, so their records use `otz << 2` and lose two bits.
-- **Not recorded**: the HUD's models (`func_80035CA4` under `func_8003C35C`) and
-  the arm (`func_8003DF50`), by pre/post flags; the near path, the sky and
-  everything else are not C# and have no records. They keep painter's order.
+- **Not recorded**: the HUD's models (`func_80035CA4` under `func_8003C35C`), the
+  menu's item preview (`func_8004290C` under `func_80025BE8`) and the arm
+  (`func_8003DF50`), by pre/post flags; the near path, the sky and everything else
+  are not C# and have no records. They keep painter's order. The preview was
+  recorded until 2026-10-08: it builds its faces with the lit assembler, so the
+  shop's and the equipment page's item model was tested against the world and cut
+  into the shopkeeper behind it. Unrecorded, it draws over the world in table
+  order, as on the console. Verdite2's preview (`func_800346CC`) had the same fault.
 - `patches/ZBuffer.cs` (agent-drafted from Verdite2's): the switch, the coplanar
   tolerance (`DepthBias` 1, `DepthSlope` 0.5), blended surfaces after the opaque
   ones behind them (`KF3_BLENDORDER`), the restart threshold (off), the probe.
