@@ -83,14 +83,16 @@ public static class SceneFeatures
         GteDepth.RadialFog = mode == 2;
     }
     // KF3_FOG, then the old KF3_FOG_DEPTH switch, then the kept choice, then the old
-    // kept switches (kf3.radialfog, kf3.fogdepth), so a player's file keeps what it chose.
+    // kept switches (kf3.radialfog, kf3.fogdepth), so a player's file keeps what it
+    // chose; with none of them, distance from the eye (PortSettings.Fog.Default).
     static int BootFog() => Env("KF3_FOG")?.Trim().ToLowerInvariant() switch
     {
         "0" or "corners" => 0,
         "1" or "depth" => 1,
         "2" or "distance" or "radial" => 2,
         _ => Env("KF3_FOG_DEPTH") is { Length: > 0 } old ? (old is "0" or "off" ? 0 : 1)
-            : Rt.View.GetInt("kf3.fog", Rt.View.GetInt("kf3.radialfog", 0) != 0 ? 2 : Rt.View.GetInt("kf3.fogdepth", 1) != 0 ? 1 : 0),
+            : Rt.View.GetInt("kf3.fog", Rt.View.GetInt("kf3.radialfog", 0) != 0 ? 2
+                : Rt.View.GetInt("kf3.fogdepth", -1) switch { -1 => (int)PortSettings.Fog.Default, 0 => 0, _ => 1 }),
     };
     public static void SetQuality(int quality)
     {

@@ -162,13 +162,14 @@ public static class PortSettings
     /// the eye (runtime 0100), the same at the picture's centre, more at its edges and
     /// still as the view turns. Distance is per pixel too, so the two switches this
     /// replaced (<c>kf3.fogdepth</c>, <c>kf3.radialfog</c>) had a combination that half
-    /// worked. Applied at boot by <see cref="SceneFeatures"/>.</summary>
+    /// worked. Distance is the default (2026-10-08). Applied at boot by
+    /// <see cref="SceneFeatures"/>.</summary>
     public static readonly PortSetting Fog = new()
     {
         Key = "kf3.fog", Envs = ["KF3_FOG", "KF3_FOG_DEPTH"], Label = "kf3scene.fog", Localized = true,
         Steps = [0, 1, 2], MenuValue = Named([0, 1, 2], "CORNERS", "DEPTH", "DISTANCE"),
         Names = ["kf3scene.fogcorners", "kf3scene.fogdepth", "kf3scene.fogdistance"],
-        Default = 1, Live = () => SceneFeatures.Fog, Apply = v => SceneFeatures.SetFog((int)v), Ui = Ui.Combo,
+        Default = 2, Live = () => SceneFeatures.Fog, Apply = v => SceneFeatures.SetFog((int)v), Ui = Ui.Combo,
     };
     public static readonly PortSetting Ao = Switch("kf3.ao", "KF3_AO", "kf3scene.ao",
         null, null, () => GteDepth.AmbientOcclusion, v => GteDepth.AmbientOcclusion = v, true, localized: true);

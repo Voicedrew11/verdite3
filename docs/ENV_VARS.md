@@ -204,7 +204,7 @@ See `GPU_RENDERER.md` for what is implemented, exercised, verified and unresolve
 - `KF3_FOG=corners|depth|distance` (or `0|1|2`): the fog worked out at a face's corners
   as the game does, by each pixel's view depth, or by each pixel's distance from the eye,
   which holds still as the view turns (runtime `0100`); unset uses the saved choice
-  (`kf3.fog`, Video ▸ World enhancements ▸ *Fog*), default `depth`. See "Radial fog" in
+  (`kf3.fog`, Video ▸ World enhancements ▸ *Fog*), default `distance` (2026-10-08; `depth` before). See "Radial fog" in
   `WIDESCREEN.md`. `KF3_FOG_DEPTH=0` (the old switch) still means `corners`.
 - `KF3_AO=1`, `KF3_AO_QUALITY=low|medium|high`: shared SSAO and its resolution/
   sample quality (on, medium by default, 2026-10-06).

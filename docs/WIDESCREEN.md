@@ -390,8 +390,9 @@ performance outdoors; the fade pulling in when looking down.
 ## Radial fog
 
 `KF3_FOG=distance` (Video ▸ World enhancements ▸ *Fog* ▸ *By distance from the
-eye*, `kf3.fog` = 2), runtime `0100`, **not the default (by pixel depth); measured;
-seen working by the user, the look not yet judged** (2026-10-07). It was a checkbox of
+eye*, `kf3.fog` = 2), runtime `0100`, **the default since 2026-10-08** (by pixel
+depth before; a kept `kf3.fog`, or an old `kf3.fogdepth`, still wins); measured;
+seen working by the user (2026-10-07). It was a checkbox of
 its own beside *Fog from pixel depth* at first; the two were one choice with a
 combination that half worked (distance over corner fog is the level rescale's
 approximation), so they are one dropdown.
