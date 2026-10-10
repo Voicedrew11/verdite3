@@ -25,6 +25,10 @@ namespace Kf3;
 /// </summary>
 public static class FramePacing
 {
+    // The frame cap's sleep, as a section of the frame profiler.
+    public static readonly int FloorWait = RecompOne.Runtime.Diagnostics.Profiler.Register(
+        "FramePacing.Floor (frame cap)", RecompOne.Runtime.Diagnostics.ProfileGroup.Wait);
+
     public const double DefaultTickRate = 15.0;
     public static double LogicHz { get; private set; } = DefaultTickRate;
     public static double TargetFps { get; private set; }
@@ -343,7 +347,7 @@ public static class FramePacing
         if (_due < now - min) _due = now;
         if (now < _due)
         {
-            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(FrameProfiler.FloorWait);
+            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(FloorWait);
             double sleepUntil = _due - SpinMs;
             if (now < sleepUntil && (int)(sleepUntil - now) is > 0 and var ms) Thread.Sleep(ms);
             while (_clock.Elapsed.TotalMilliseconds < _due) Thread.SpinWait(48);

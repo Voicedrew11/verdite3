@@ -52,6 +52,34 @@ public sealed class InputSection : ISettingsSection
     int _padRow = -1;
     bool _padAdd;
 
+    // The middle column of Verdite Core's binding table, handed in: what each
+    // button does in King's Field by default, measured from the action-mask
+    // table at 0x80081868: Left and Right turn, Up and Down walk, R1/L1 strafe
+    // right/left, R2/L2 pitch (R2 down, L2 up). L3/R3 have no entry; Start is the
+    // card and options menu; Select is blank because its branch has never been
+    // identified, and a guess in a column read as measurement is worse than a gap.
+    // See "The pad and the action-mask table" in docs/INPUT.md.
+    const string ActionColumn = "In King's Field";
+
+    static readonly Dictionary<string, string> BindingActions = new()
+    {
+        ["Cross"] = "examine, open, talk",
+        ["Circle"] = "the in-game menu",
+        ["Square"] = "attack",
+        ["Triangle"] = "magic",
+        ["L1"] = "strafe left",
+        ["R1"] = "strafe right",
+        ["L2"] = "tilt the view; with R2, level it",
+        ["R2"] = "tilt the view; with L2, level it",
+        ["L3"] = "the game does not read it",
+        ["R3"] = "the game does not read it",
+        ["Start"] = "the card and options menu",
+        ["Up"] = "walk forward",
+        ["Down"] = "walk back",
+        ["Left"] = "turn left",
+        ["Right"] = "turn right",
+    };
+
     /// <summary>"Mouse" is the one label the runtime's table has no key for, so
     /// the port supplies all three of its languages rather than hardcode it.</summary>
     const string Names = """
@@ -136,7 +164,7 @@ public sealed class InputSection : ISettingsSection
         KeyLayoutPage.Draw();
         ImGui.Spacing();
 
-        BindingTable.Draw(gamepad: false, ref _keyRow, ref _padAdd);
+        BindingTable.Draw(gamepad: false, ref _keyRow, ref _padAdd, ActionColumn, BindingActions);
         ActionNote();
 
         ImGui.Spacing();
@@ -169,7 +197,7 @@ public sealed class InputSection : ISettingsSection
         AnalogPage.Draw();
         ImGui.Spacing();
 
-        BindingTable.Draw(gamepad: true, ref _padRow, ref _padAdd);
+        BindingTable.Draw(gamepad: true, ref _padRow, ref _padAdd, ActionColumn, BindingActions);
         ActionNote();
 
         ImGui.Spacing();

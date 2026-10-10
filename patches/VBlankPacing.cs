@@ -24,6 +24,10 @@ namespace Kf3;
 /// </summary>
 public static class VBlankPacing
 {
+    // The vblank wait outside stage 15, as a section of the frame profiler.
+    public static readonly int VBlankWait = RecompOne.Runtime.Diagnostics.Profiler.Register(
+        "VBlankPacing (a real vblank outside stage 15)", RecompOne.Runtime.Diagnostics.ProfileGroup.Wait);
+
     const uint VSyncThunk = 0x8007910C;  // LibEtc.VSync, GAME.EXE's copy
     const uint Stage15 = 0x800422B8;     // the frame builder; its frame swap is FramePacing's
 
@@ -137,7 +141,7 @@ public static class VBlankPacing
 
         if (now < _due)
         {
-            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(FrameProfiler.VBlankWait);
+            int profile = RecompOne.Runtime.Diagnostics.Profiler.Begin(VBlankWait);
             double sleepUntil = _due - SpinMs;
             if (now < sleepUntil && (int)(sleepUntil - now) is > 0 and var ms) Thread.Sleep(ms);
             while (_clock.Elapsed.TotalMilliseconds < _due) Thread.SpinWait(48);

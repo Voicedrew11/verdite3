@@ -154,11 +154,14 @@ Kf3.CrossProbe.Install();
 //     KF3_PROFILE_SPIKE=12      a console line per frame over 12 ms of work
 //     KF3_PROFILE_FUNCS=stages  time all fifteen main-loop stages, or name
 //                               functions: game:80030FCC+8003BFD0
-Kf3.FrameProfiler.Configure(Environment.GetEnvironmentVariable("KF3_PROFILE"),
-                            Environment.GetEnvironmentVariable("KF3_PROFILE_OUT"),
-                            Environment.GetEnvironmentVariable("KF3_PROFILE_SPIKE"),
-                            Environment.GetEnvironmentVariable("KF3_PROFILE_FUNCS"));
-Kf3.FrameProfiler.Install();
+Verdite.Core.FrameProfiler.Configure(Environment.GetEnvironmentVariable("KF3_PROFILE"),
+                                     Environment.GetEnvironmentVariable("KF3_PROFILE_OUT"),
+                                     Environment.GetEnvironmentVariable("KF3_PROFILE_SPIKE"),
+                                     Environment.GetEnvironmentVariable("KF3_PROFILE_FUNCS"),
+                                     Kf3.ProfilerKnown.Table);
+Verdite.Core.FrameProfiler.Install();
+Verdite.Core.ProfilerPanel.Configure(() => Kf3.FramePacing.Enabled && !Kf3.FramePacing.Uncapped ? 1000.0 / Kf3.FramePacing.TargetFps : 0,
+                                     defaultProbe: "game:8003BFD0", stages: 15);
 
 // VSync calls outside stage 15 wait a real vblank, as the console's did. On by
 // default; KF3_VBLANKPACING=0 compares against the runtime's clock. See "Menus and
@@ -350,10 +353,10 @@ Kf3.PortSettings.Install();
 //     KF3_PREJIT=0        leave every method to its first call -- the comparison
 //     KF3_PREJIT_PROBE=1  a line per batch as the pass reaches its end
 //     KF3_PREJIT_THREADS=n  threads for the pass (a quarter of the cores, 1-4)
-Kf3.Prejit.Configure(Environment.GetEnvironmentVariable("KF3_PREJIT"),
-                     Environment.GetEnvironmentVariable("KF3_PREJIT_PROBE"),
-                     Environment.GetEnvironmentVariable("KF3_PREJIT_THREADS"));
-Kf3.Prejit.Install();
+Verdite.Core.Prejit.Configure(Verdite.Core.Game.Env("PREJIT"),
+                              Verdite.Core.Game.Env("PREJIT_PROBE"),
+                              Verdite.Core.Game.Env("PREJIT_THREADS"));
+Verdite.Core.Prejit.Install("Kf3");
 
 // Scripted pad input, seconds:button:holdMs, timed from the first area module load
 // (the one moment that means "in game"):
