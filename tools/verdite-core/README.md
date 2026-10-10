@@ -115,6 +115,17 @@ compiles the same sources on the developer path: a difference is a bug that
 exists only in the release. Both games' csprojs set what it assumes (unsafe,
 nullable, implicit usings plus `Verdite.Core`, QuickJit off in the runtimeconfig).
 
+**The build reads only what the release shipped.** `Launcher.targets` writes
+`content/manifest.txt`, every staged payload file's link, and `Build/Payload.cs`
+compiles, hashes and seeds only the files it lists. A release unpacked over an
+older one keeps the files the new one deleted, and the build used to compile every
+`.cs` under `content/src`: Verdite3 0.1.1 unpacked over 0.1.0 kept three patches
+that 0.1.1 had moved into this tree, and failed with seven errors. Anything
+unlisted is named at startup (`[Verdite3] ignoring 14 file(s) under content/ …`),
+and an install with no manifest builds from the whole directory as before. The
+installer also deletes `{app}\content` and `{app}\bin` before it copies, so an
+upgrade starts clean; the zip cannot, which is what the manifest is for.
+
 ### Telling the player about a new release
 
 `UpdateCheck` asks `api.github.com/repos/<UpdateRepository>/releases/latest`

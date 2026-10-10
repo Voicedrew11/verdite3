@@ -52,6 +52,7 @@ public static class Launcher
             // which an installed build cannot write to, or in whatever directory a
             // shortcut happened to start us in.
             Paths.Prepare();
+            Payload.Report();
 
             Runtime.DiscValidator = DiscCheck.Validate;
 

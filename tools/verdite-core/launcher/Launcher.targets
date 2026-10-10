@@ -152,6 +152,26 @@
     </ItemGroup>
 
     <!--
+      content/manifest.txt: where each payload file above was staged, one Link a
+      line. The launcher reads only the files listed (Build/Payload.cs), because a
+      release unpacked over an older one keeps the files the new one deleted, and
+      the build used to compile every .cs it found: Verdite3 0.1.1 over 0.1.0
+      failed with seven errors from three stale patches. Written before
+      AssignTargetPaths so it is copied and published like the payload it lists.
+      The SDK has already turned each LinkBase into a Link at evaluation; the
+      separators are the host's, and Payload.cs normalises them.
+    -->
+    <Target Name="VerditeContentManifest" BeforeTargets="AssignTargetPaths">
+        <WriteLinesToFile File="$(IntermediateOutputPath)verdite-manifest.txt" Lines="@(Content->'%(Link)')"
+                          Overwrite="true" WriteOnlyWhenDifferent="true" />
+        <ItemGroup>
+            <Content Include="$(IntermediateOutputPath)verdite-manifest.txt" Link="content/manifest.txt"
+                     CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+            <FileWrites Include="$(IntermediateOutputPath)verdite-manifest.txt" />
+        </ItemGroup>
+    </Target>
+
+    <!--
       Program.cs, patches/** and core's src/** are payload, NOT sources of this
       assembly: they call into Recompiled.<Game>, which does not exist until a disc
       has been recompiled. They sit outside this project's directory, so the
