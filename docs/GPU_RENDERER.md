@@ -218,9 +218,8 @@ inferred from the earlier zero. No arm or blended-solid surface coverage was
 exercised by this area-5 run.
 
 The map assembler's source RGB is scratchpad +54 (the model families use +64).
-Until per-frame static-map RGB is expressed in the scene contract, non-neutral
-map RGB is an explicit `map-source-colour` fallback, rather than silently drawing
-it as 808080. This branch is source-reviewed, not exercised by the corpus.
+It is the OPTION menu's BRIGHTNESS, baked into the static map since 2026-10-10:
+see "The map at another brightness".
 
 Continuation priority: selected inner native comparisons (half, forced/front/sky
 assemblers and synthetic independent-cell fixtures), followed by retained near
@@ -867,3 +866,51 @@ before a walk drew it, so no Meteor draw was counted.
 
 **Not judged by eye.** For the user: Fire Ball, Meteor striking a creature, and the
 other effects, against `KF3_GPU_WORLD=0`.
+
+## The map at another brightness (2026-10-10)
+
+**Reported** on another player's save (card A slot 4, `fdat17`): faces at the
+bottom corner of the picture or on a wall in a narrow passage now and then gone,
+the world seen through them; and the fog on a maze coming and going as it is
+approached.
+
+**Cause.** The map assembler starts its lighting from scratchpad `+0x54`, which
+`func_8003BFD0` copies from `gp+0xCC` (`0x8009C2E0`) at every walk. Stage 15's
+head (`func_800422B8`, `Stage15.cs`) writes the byte at `0x801B25E1`, the OPTION
+menu's BRIGHTNESS, kept in the save, to all three channels of that word: `0x80`
+unless the player moved it. `RetainedMap.Submit` drew a half only when the word was
+`0x808080` and sent the rest to the packets as `map-source-colour`. That save's
+brightness is `0x95`. A 60 s `KF3_GPU_CENSUS_FILE` run from its position: 376,501 map
+submissions, 21,553 retained, **354,948 `map-source-colour`**. Nearly the whole map
+was the game's packets, with the near path's faces that have no depth and the
+packet fog, mixed with retained halves. That is the problem "Seeing through doors"
+fixed for the retained halves. Every player who raises BRIGHTNESS hit it. No
+corpus save had, so the branch had never run.
+
+**Fix.** `RetainedMap` reads the word, folds it into every chunk's hash and bakes it
+into each corner's `Rgbc`, which `recordLit` already multiplies in as `NCDS` does
+(`(rgbc * ir) << 4 >> 12`). So a change of brightness rebuilds the map once, after
+the usual settle, and `Submit` sends a half to the packets only while the word
+differs from the one the chunks were built with.
+
+
+### Measured
+
+60 s runs, `KF3_GPU_CENSUS_FILE`, `KF3_MAPPROBE=1`:
+
+| run | map submissions | retained | fallbacks |
+|---|---|---|---|
+| slot 4 (`0x95`), before | 376,501 | 21,553 | 354,948 `map-source-colour` |
+| slot 4 (`0x95`), after | 376,711 | 376,711 | none |
+| slot 1 (`0x80`, `fdat05`), after | 156,101 | 156,101 | none |
+| slot 4, `0x801B25E1` poked to `0x80` then back to `0x95` | 1,550,059 | 1,550,059 | none |
+
+The poked run rebuilt the whole map once after each change: 100 chunks in 5.6 ms,
+each after the 150 ms settle. During the settle the map was the packets ("packets
+until it is rebuilt"), which the census does not count as submissions. Card A was
+unchanged by every run.
+
+**For the user to judge**: on that save, the bottom corners and walls of the narrow
+passages while turning against them, and the fog on the maze as it is approached.
+The fog on the maze is not separately explained: the mix of packet fog and
+retained fog on neighbouring halves is the likely cause, and is gone with this.

@@ -226,7 +226,7 @@ walls still pop in is the user's to look at.
 
 `patches/RenderDistance.cs` with runtime `0089` (`DistanceFade`). Built
 2026-10-05 from `RENDER_DISTANCE_HANDOFF.md`; the models since 2026-10-06, with
-runtime `0098` (a model's own fade). **Measured, not judged; both off by default.**
+runtime `0098` (a model's own fade). **Measured, not judged; on by default at 16 tiles faded over 3** (`PortSettings.EnhancedTiles`, `EnhancedFade`; NOTES.md).
 The retained renderer only: the packet path and the reflections keep the game's
 reach, and the guest's grid is never changed.
 

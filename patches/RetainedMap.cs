@@ -13,6 +13,12 @@ public static class RetainedMap
     static readonly ulong[] ModelSignatures = new ulong[240];
     static readonly int[] Records = new int[RetainedScene.RecordCount * RetainedScene.RecordInts];
     static ulong _lights, _water;
+    /// <summary>The colour the map assembler starts its lighting from (scratchpad
+    /// +0x54, copied from gp+0xCC by the walk): the OPTION menu's BRIGHTNESS in all
+    /// three channels, 0x80 unless the player moved it. Baked into the chunks, which
+    /// rebuild when it changes; <see cref="_builtRgbc"/> is what they were built with.</summary>
+    const uint Brightness = 0x8009C2E0;
+    static uint _rgbc = 0x808080, _builtRgbc = 0x808080;
     // Each half's record plus one, 0 for none, as NeighbourBlend takes them.
     static readonly byte[] Halves = new byte[RetainedScene.HalvesW * RetainedScene.HalvesH];
     static int _mixedHalves = -1; static long _mixedRecords = -1;
@@ -55,6 +61,7 @@ public static class RetainedMap
         long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
         UpdateRecords(m);
         UpdateHalves(m);
+        uint rgbc = m.ReadU32(Brightness) & 0xFFFFFF;
         uint table = m.ReadU32(TablePointer);
         if (!RetainedAssets.InRam(table, 12)) { Ready = false; return; }
         Span<bool> used = stackalloc bool[240]; used.Clear();
@@ -90,6 +97,7 @@ public static class RetainedMap
         {
             // A chunk's water faces and free corners (WaterSwell), its tiles and meshes.
             ulong hash = (14695981039346656037 ^ WaterSwell.ChunkHash[chunk]) * 1099511628211;
+            hash = (hash ^ rgbc) * 1099511628211;
             int x0 = chunk % 10 * 8, z0 = chunk / 10 * 8;
             for (int z = z0; z < z0 + 8; z++)
                 for (int x = x0; x < x0 + 8; x++)
@@ -133,6 +141,7 @@ public static class RetainedMap
         for (int chunk = 0, n = 0; chunk < 100; chunk++)
             if (Chunks[chunk] == null || Signatures[chunk] != now[chunk]) todo[n++] = chunk;
         int[] work = todo.ToArray();
+        _rgbc = rgbc;
         unsafe
         {
             fixed (byte* ram = m.Ram)
@@ -163,6 +172,7 @@ public static class RetainedMap
                 $"concat+sort {System.Diagnostics.Stopwatch.GetElapsedTime(t1).TotalMilliseconds:0.0} ms, " +
                 $"overlays {string.Join("+", RecompOne.Runtime.Dispatch.Dispatcher.ActiveNames)}");
         _waited = 0;
+        _builtRgbc = rgbc;
         Ready = RetainedScene.StaticCount[0] > 0;
     }
     /// <summary>The chunks laid end to end for SetStatic, kept between rebuilds.</summary>
@@ -213,7 +223,7 @@ public static class RetainedMap
                             (px, pz) = rot switch { 1 => (pz, -px), 2 => (-px, -pz), 3 => (-pz, px), _ => (px, pz) };
                             int wx = x * 2048 + 1024 + px, wy = -(U8(ram, half + 1) << 7) + py, wz = z * 2048 + 1024 + pz;
                             v.X = wx; v.Y = wy; v.Z = wz;
-                            v.Dqa = v.Dqb = v.Curve = 0; v.Light = light; v.Rgbc = 0x808080;
+                            v.Dqa = v.Dqb = v.Curve = 0; v.Light = light; v.Rgbc = _rgbc;
                             // recordLit returns a colour, whereas a model mesh carries
                             // raw light dots. Keeping FlagDots here lights it twice.
                             v.Flags = (v.Flags & ~(RetainedScene.FlagQuadTail | RetainedScene.FlagDots))
@@ -289,7 +299,8 @@ public static class RetainedMap
         if (index >= 64000 || index % 5 != 0) { GpuWorld.Fallback(0x8003BB04, caller, "independent-map-cell"); return false; }
         uint kind = m.ReadU8(half);
         if (kind >= 240 || Models[kind] == null) { GpuWorld.Fallback(0x8003BB04, caller, "map-mesh-unavailable"); return false; }
-        if ((m.ReadU32(0x1F800054) & 0xFFFFFF) != 0x808080)
+        // A brightness the chunks were not built with (the frames before they rebuild).
+        if ((m.ReadU32(0x1F800054) & 0xFFFFFF) != _builtRgbc)
         { GpuWorld.Fallback(0x8003BB04, caller, "map-source-colour"); return false; }
         if (near)
         {
