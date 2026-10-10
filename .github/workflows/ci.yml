@@ -50,5 +50,32 @@ jobs:
           echo "informational version: ${got:-<none>}"
           test -n "$got" || { echo "the assembly does not carry $v plus a commit"; exit 1; }
 
+      # A release unpacked over an older one keeps the files the new one deleted,
+      # and 0.1.1 over 0.1.0 failed to compile on three of them. The launcher
+      # builds only what content/manifest.txt lists (Verdite Core's
+      # launcher/Build/Payload.cs); these hold that in place on what is shipped,
+      # the publish: the manifest names exactly the files under content/, and a
+      # file planted there is set aside, not compiled. The launcher is killed by
+      # the timeout at the disc picker; the line is printed before the window.
+      - name: Publish the launcher
+        run: dotnet publish Verdite3.Launcher/Verdite3.Launcher.csproj -c Release -o out
+
+      - name: Assert the manifest lists exactly the shipped content
+        working-directory: out
+        run: |
+          test -s content/manifest.txt || { echo "the publish has no content/manifest.txt"; exit 1; }
+          diff <(tr '\\' / < content/manifest.txt | grep '^content/' | sort -u) \
+               <(find content -type f ! -path content/manifest.txt | sort) \
+            || { echo "content/manifest.txt does not match content/"; exit 1; }
+
+      - name: Assert a file left by an older release is not built
+        run: |
+          echo '#error left by an older release' > out/content/src/patches/Stale.cs
+          VERDITE3_DATA="$RUNNER_TEMP/data" VERDITE3_UPDATE_CHECK=0 \
+            timeout 30 dotnet out/Verdite3.dll > launch.log 2>&1 || true
+          head -20 launch.log
+          grep -qx '\[Verdite3\]   src/patches/Stale.cs' launch.log \
+            || { echo "the launcher did not set aside a file the release did not ship"; exit 1; }
+
       # KingsField3Recomp.csproj is deliberately NOT built here: it compiles
       # generated/ and so cannot build without the disc, by design.

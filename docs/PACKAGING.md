@@ -55,6 +55,20 @@ The launcher's own switches are `VERDITE3_DATA` (the data directory, otherwise
 (`0` off, `force` past the hourly limit) and `VERDITE3_BUILD` (the commit stamped
 into a build made outside a checkout); see `docs/ENV_VARS.md`.
 
+**An install unpacked over an older one** (2026-10-10). A player unpacked 0.1.1
+over 0.1.0 and the build failed with seven errors (CS1501, CS1503, CS0407 in
+`AgentServer.cs`, `InputSection.cs`, `SettingsPage.cs`, `PortSettings.cs`): 0.1.1
+had moved `SettingsSession.cs`, `PortSetting.cs`, `MenuFont.cs` and eleven other
+patches into Verdite Core, the old copies stayed in `content/src/patches`, and
+the launcher compiled every `.cs` there, the old `Kf3.SettingsSession` shadowing
+core's. The launcher now builds only what `content/manifest.txt` lists (Verdite
+Core's README, "The build reads only what the release shipped"), and the
+installer clears `content\` and `bin\` before an upgrade. Reproduced on a
+publish with v0.1.0's fourteen deleted patches planted: without the manifest, the
+player's seven errors at their lines and columns; with it, `ignoring 14 file(s)`,
+the game built and loaded `open`. CI publishes the launcher and checks that the
+manifest lists exactly `content/`, and that a planted `#error` file is set aside.
+
 ## Measured
 
 2026-10-05, on the change that added the launcher:
