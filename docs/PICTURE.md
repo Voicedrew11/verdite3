@@ -440,3 +440,79 @@ this game's quarter-depth near/far formula; 270 actual Radeon shader cases pass
 exactly. Its 32000 cutoff, truncation and 7951 maximum belong to this cue; the
 existing reciprocal curves remain available for other games. Complete native
 light products, near subdivision and visual judgement remain open gates.
+
+## The flames and the sprites turned to the eye (2026-10-10)
+
+Reported: the flames do not turn to face the camera, and the trees perhaps have a
+perspective fault.
+
+**What the game does.** Read from each submit's GTE matrix on the retained path
+(`KF3_FACING_PROBE=1`) on a warp tour of all 28 areas at four headings each:
+
+- **The billboard table is the flames** (`0x80182968`, the walk's call at
+  `0x800419EC`, in 13 areas: fdat02, 17, 20, 26, 41, 50, 53, 56, 59, 68, 71, 74, 77).
+  Models 0-3 are the four cels, at two sizes: two quads 512 x 640 or 768 x 960 units,
+  one at z = +8 facing +Z and one at z = -8 facing -Z, standing on their origin. The
+  walk hands them the view matrix and no rotation, so their world orientation is the
+  identity at every heading measured: **fixed in the world, edge-on from east and
+  west.** That is the recompiled code (the C# walk verifies against it), so the
+  console draws them so too. The front-table ones (`+0` bit `0x8000`) are handed the
+  fixed matrix `0x8007E4C4` and face the picture; none was seen.
+- **The game's own upright sprites are objects with flag `0x40`** (their models were
+  not dumped; the trees are taken to be among them; `0x800414A4`, 13 areas, 22,776 submits in fdat26's two minutes), handed the
+  pitch-only matrix `0x801AEC0C` with the rotation zeroed. The view is Pitch x Yaw, so
+  their world orientation is the camera's yaw undone: upright, and **parallel to the
+  picture**, measured 0.0° from the view's forward everywhere. A sprite near the edge
+  of the picture is then seen at an angle, wider still in this port's widescreen,
+  and slides round as the view turns.
+- The effects handed `0x8007E4C4` (spells) face the picture, and the retained
+  renderer follows them; the effects handed the view matrix are 3D, with the
+  record's rotation. Neither is changed.
+
+The retained renderer was not the fault: `RetainedModels.Place` takes the world
+placement from the GTE matrix, whatever the matrix argument was, and the camera
+block rebuilds `0x801AEC0C` from the carried angles on every drawn frame.
+
+**The fix** (`patches/BillboardFacing.cs`, `KF3_BILLBOARDS`, Testing ▸ Picture ▸
+Flames and sprites, kept as `kf3.billboards`). The submitter's matrix argument is
+only the left factor of the model's rotation: `func_8003E34C` takes the light matrix
+from the rotation first, then multiplies the argument in, and places the model with
+the view matrix. The C# walk hands it, in place of the game's, a matrix it writes
+above the carry in its own frame (`0xC0` bytes, the matrix at `+0xA8`): Base x Yaw x
+Turned^T, a turn about the vertical, where Turned takes the model's +Z to the
+direction from the eye to the model (on the ground). A flame's base is the view; a
+sprite's is the game's own `0x801AEC0C`, which keeps that matrix's 65/64 scale. So
+the lighting, the position, the cull and the cels are the game's.
+
+| `KF3_BILLBOARDS` | flames | sprites |
+|---|---|---|
+| `0`, `game` | fixed in the world | parallel to the picture |
+| `1`, `view` | parallel to the picture, as the game's sprites | as the game |
+| `2`, `eye` (default) | toward the eye | toward the eye |
+
+The recompiled walk and `KF3_MODELWALK=verify` draw as the game.
+
+### Measured
+
+`KF3_FACING_PROBE=1`, a warp tour of areas 0, 5, 8 and 24 at four headings in each
+mode: the largest angle, over every upright flame and sprite drawn, between its +Z
+and the eye's direction to it, and the view's forward:
+
+| mode | flames from the eye | flames from the view | sprites from the eye | sprites from the view |
+|---|---|---|---|---|
+| 0 | up to 176° | up to 180° | up to 173° | 0.0° |
+| 1 | up to 166° | **0.0°** | up to 173° | 0.0° |
+| 2 | **0.0°** | up to 166° | **0.0°** (see below) | up to 90° |
+
+- In mode 2, 480 of fdat26's 15,336 sprites and 135 of fdat74's 4,995 read up to 166°
+  off, every one 32,790 units or more from the eye: past the s16 the submitter hands
+  the GTE (`pos - camera` as halfwords), the game's own placement wraps, which the
+  probe reads back and the turn does not. At the edge of the 16-tile render distance;
+  not changed.
+- `KF3_MODELWALK=verify`: 0 RAM, scratchpad, register and GTE mismatches over about
+  2,400 walks in fdat17. `KF3_GPU_WORLD=0` (the packets) runs; the settings check
+  reads 0 defaults wrong. No exception in any run.
+
+**Not judged by eye.** For the user, modes 0 and 2 compared: the flames from the side
+(fdat74 has the most), the trees at the edge of the picture while turning, and close
+up while walking past one, where a sprite turned to the eye turns quickly.

@@ -755,6 +755,7 @@ public static partial class NativeScene
         mem.WriteU32((c.S3 + 0x4Cu), c.V0);
         c.V0 = c.S6 & 0x0040u;
         L8003EEC4: ;
+        RetainedModels.ProbeMatrix = c.FP;
         if (RetainedModels.Submit(mem, c.S1, (int)c.S5, c.S6, c.FP != 0,
             mem.ReadU32(c.SP + 0x114) - 8)) goto L8003F2A4;
         MoPose.Materialize(mem);

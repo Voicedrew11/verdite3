@@ -121,6 +121,7 @@ public sealed class TestingSection : ISettingsSection
         foreach (var k in Switches)
             if (Unset(k.Env) && Rt.View.GetInt(k.Key, -1) is >= 0 and var v) k.Set(v != 0);
         if (Unset("KF3_TEXSCROLL") && Rt.View.GetInt(TexKey, -1) is >= 0 and var t) TextureScroll.Setting = t;
+        if (Unset("KF3_BILLBOARDS") && Rt.View.GetInt(BillboardFacing.Key, -1) is >= 0 and var b) BillboardFacing.Setting = b;
         if (Unset("KF3_TRUECOLOR") && Unset("KF3_NODITHER") && Rt.View.GetInt(ShadingKey, -1) is >= 0 and var sh)
             SetShading(sh);
     }
@@ -340,6 +341,18 @@ public sealed class TestingSection : ISettingsSection
         PortSettings.Draw(PortSettings.HudAnchor);
         Toggle("The world live behind menus and messages", K("kf3.menuworld"),
             "Draws the world behind a menu, a sign or a line of dialogue instead of the game's 320-wide still of it, so it fills the margin. Takes effect on the next menu.");
+
+        string[] facing = ["As the game draws them", "Flames turned to the view", "Turned toward the eye"];
+        int bf = BillboardFacing.Setting;
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.Combo("Flames and sprites", ref bf, facing, facing.Length))
+        {
+            BillboardFacing.Setting = bf;
+            Keep(BillboardFacing.Key, bf);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("The game leaves its flames fixed in the world, edge-on from the side, and turns its upright sprites (the trees) "
+                + "to the view's direction, parallel to the picture. Turned toward the eye, each faces where it is seen from. Needs the model walk in C#.");
 
         Toggle("Perspective-correct textures", K("kf3.perspective"),
             "Textures follow each corner's depth instead of warping across a polygon.");

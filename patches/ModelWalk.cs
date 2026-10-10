@@ -100,7 +100,9 @@ public static class ModelWalk
 
     // The carried position and rotation, in the walk's frame above its own 0x90 bytes.
     const uint Frame = 0x90u, CarryFrame = 0xA8u, CarriedPos = 0x90u, CarriedRot = 0xA0u;
-    static bool _carry;
+    // And above them the rotation BillboardFacing turns a flame or a sprite with.
+    const uint FacingFrame = 0xC0u, FacingMatrix = 0xA8u;
+    static bool _carry, _facing;
     static long _billboardTick = -1;
 
     // The record whose submit is next: its table (-1 none), address and identity.
@@ -220,7 +222,8 @@ public static class ModelWalk
     {
         uint entry = c.SP;
         _carry = _mode == Mode.On && ModelSmoothing.Active;
-        uint frame = _carry || ItemTurn.Showing ? CarryFrame : Frame;
+        _facing = _mode == Mode.On && BillboardFacing.Setting != 0;
+        uint frame = _facing ? FacingFrame : _carry || ItemTurn.Showing ? CarryFrame : Frame;
         uint sp = entry - frame;
         RenderDistance.InWalk = _mode == Mode.On;
         c.SP = sp;
@@ -579,7 +582,8 @@ public static class ModelWalk
                     a0: mem.ReadU8(s4), a1: s1 & 0xFFFFu, pos: s6, rot: Pad + 0x114u,
                     s10: s3, s14: fp, matrix: PitchMatrix,
                     s1c: mem.ReadU8(s0 - 2u), s20: mem.ReadU16(s0 + 7u), s24: mem.ReadU8(s0 + 2u),
-                    s28: (short)mem.ReadU16(s0 + 0xDu), s2c: t0, s30: (short)mem.ReadU16(s0 + 0xBu));
+                    s28: (short)mem.ReadU16(s0 + 0xDu), s2c: t0, s30: (short)mem.ReadU16(s0 + 0xBu),
+                    face: BillboardFacing.Kind.Sprite);
             }
             else if ((v1c & 8u) == 0u)
             {
@@ -721,7 +725,7 @@ public static class ModelWalk
             SubmitWorld(c, mem, sp, 0x800419F4u,
                 a0: mem.ReadU8(s0 - 3u), a1: (mem.ReadU16(s1) + 0x28u) & 0xFFFFu, pos: s2, rot: Pad + 0x114u,
                 s10: 0, s14: 0, matrix: ViewMatrix, s1c: mem.ReadU8(s0) + 0x80u,
-                s20: 0, s24: 0x36, s28: (int)s3, s2c: 5, s30: 0);
+                s20: 0, s24: 0x36, s28: (int)s3, s2c: 5, s30: 0, face: BillboardFacing.Kind.Flame);
         }
     L800419F4:
         if (!step) goto L80041A70;
@@ -749,10 +753,12 @@ public static class ModelWalk
     /// Nine stack words, sp+0x10..0x30, as the walk writes them.</summary>
     static void SubmitWorld(CpuContext c, PSMemory mem, uint sp, uint ra,
         uint a0, uint a1, uint pos, uint rot,
-        uint s10, uint s14, uint matrix, uint s1c, uint s20, uint s24, int s28, uint s2c, int s30)
+        uint s10, uint s14, uint matrix, uint s1c, uint s20, uint s24, int s28, uint s2c, int s30,
+        BillboardFacing.Kind face = BillboardFacing.Kind.None)
     {
         c.A0 = a0; c.A1 = a1;
         bool carried = Carry(mem, sp, ref pos, ref rot);
+        if (_facing) matrix = BillboardFacing.Matrix(mem, face, pos, sp + FacingMatrix, matrix);
         c.A2 = pos;
         c.A3 = rot;
         mem.WriteU32(sp + 0x10u, s10);

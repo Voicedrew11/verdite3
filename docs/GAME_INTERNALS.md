@@ -1362,6 +1362,15 @@ the wrong palette" in `GPU_RENDERER.md`). `+0x8` bits 0-1 gate the draw (0 hidde
 2 always, else the point query against `+0xA`) and bits 2-3 pick one of four sets
 of stack arguments to `func_8003E34C`. The billboard loop resets `+0x84` to 0.
 
+**The billboard table is the flames**, models 0-3 (`+0x28`) the cels: two quads, one
+facing +Z and one -Z, drawn with the view matrix and no rotation, so fixed in the
+world. **An object with flag `0x40`** in `u8[+3]` (the byte whose `0x08` is far scenery) is
+drawn with the pitch-only matrix `0x801AEC0C` and its rotation zeroed: upright and
+parallel to the picture. `func_8003E34C`'s matrix argument (`sp+0x18`) is only the
+rotation's left factor, multiplied in after the light matrix is taken; the model is
+placed with the view matrix whatever it is. Measured in "The flames and the sprites
+turned to the eye" in `docs/PICTURE.md`.
+
 A creature: flags at `+0x28` (`0x2000`, `0x80000` the volume query, `0x20`
 placed at its record with the matrix at `0x8007E4C4`), the query at `+0x2C`, the
 model `u8[+1] + 0x80`, rotation `+0x40/+0x42+0x800/+0x44`, and the stack

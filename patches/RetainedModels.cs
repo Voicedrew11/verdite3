@@ -64,6 +64,7 @@ public static class RetainedModels
         };
         ReadMatrix(ref instance);
         Place(ref instance, frame.View);
+        if (FacingProbe && caller is 0x800419ECu or 0x800414A4u) Facing(instance, caller, frame.View);
         ReadLight(ref instance);
         if (ClipProbe && !sky && !arm && !instance.Tile) CountClips(mesh, instance, bias, caller == 0x800419ECu);
         if (sky)
@@ -102,6 +103,44 @@ public static class RetainedModels
         m.WriteU32(Pad + 0x20, table + 12 + m.ReadU32(header + 16) + mesh.FaceBytes);
         m.WriteU32(Pad + 0x78, m.ReadU32(Pad + 0x78) + m.ReadU32(header + 20));
         return true;
+    }
+    /// <summary><c>KF3_FACING_PROBE=1</c>: for the flames (the walk's call at
+    /// <c>0x800419EC</c>) and the objects (<c>0x800414A4</c>), how far each one drawn
+    /// turns its +Z from the eye and from the view's forward on the ground, in degrees,
+    /// from the placement drawn (BillboardFacing), by the submit's matrix argument.</summary>
+    public static uint ProbeMatrix;
+    static readonly bool FacingProbe = Environment.GetEnvironmentVariable("KF3_FACING_PROBE") == "1";
+    static readonly Dictionary<(uint, string), (long N, long Upright, double Eye, double View, long Off, double OffNear, string OffAt)> _facing = new();
+    static long _facingAt;
+    static void Facing(in RetainedScene.ModelInstance m, uint caller, in RetainedScene.View v)
+    {
+        var key = (caller, ProbeMatrix >= 0x801F0000u ? "turned" : ProbeMatrix.ToString("X8"));
+        _facing.TryGetValue(key, out var e);
+        double zx = m.R02, zz = m.R22, ex = m.Tx - v.CamX, ez = m.Tz - v.CamZ;
+        static double Angle(double ax, double az, double bx, double bz)
+        {
+            double d = Math.Sqrt((ax * ax + az * az) * (bx * bx + bz * bz));
+            return d < 1e-9 ? 0 : Math.Acos(Math.Clamp((ax * bx + az * bz) / d, -1, 1)) * 180 / Math.PI;
+        }
+        // Upright: turned about the vertical only, as the game's sprites are.
+        bool upright = Math.Abs(m.R01) < 0.01f && Math.Abs(m.R21) < 0.01f && Math.Abs(m.R10) < 0.01f && Math.Abs(m.R12) < 0.01f;
+        e.N++;
+        if (upright)
+        {
+            e.Upright++;
+            double a = Angle(zx, zz, ex, ez);
+            e.Eye = Math.Max(e.Eye, a);
+            if (a > 2) { e.Off++; double dist = Math.Sqrt(ex * ex + ez * ez); if (e.Off == 1 || dist < e.OffNear) { e.OffNear = dist; e.OffAt = $"({m.Tx:F0},{m.Ty:F0},{m.Tz:F0}) eye ({v.CamX:F0},{v.CamZ:F0})"; } }
+            e.View = Math.Max(e.View, Angle(zx, zz, v.R20, v.R22));
+        }
+        _facing[key] = e;
+        if (Environment.TickCount64 < _facingAt) return;
+        _facingAt = Environment.TickCount64 + 4000;
+        foreach (var (k, x) in _facing)
+            Console.WriteLine($"[KF3] facing {AgentBeacon.Overlay} {k.Item1:X8} m={k.Item2} n={x.N} upright={x.Upright} " +
+                              $"max-from-eye={x.Eye:F1} max-from-view={x.View:F1} off2={x.Off} nearest={x.OffNear:F0} {x.OffAt} flames/sprites={BillboardFacing.Flames}/{BillboardFacing.Sprites}");
+        Console.Out.Flush();
+        _facing.Clear();
     }
     static void ReadMatrix(ref RetainedScene.ModelInstance m)
     {

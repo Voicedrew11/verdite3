@@ -116,6 +116,13 @@ public static class PortSettings
         null, null, () => Kf3.Subpixel.Enabled, v => Kf3.Subpixel.Enabled = v, true, ui: Ui.None);
     public static readonly PortSetting ZBuffer = Switch("kf3.zbuffer", "KF3_ZBUFFER", "Z-buffer",
         null, null, () => Kf3.ZBuffer.Enabled, v => Kf3.ZBuffer.Enabled = v, true, ui: Ui.None);
+    /// <summary>The flames and the upright sprites turned to the eye (BillboardFacing).</summary>
+    public static readonly PortSetting Billboards = new()
+    {
+        Key = BillboardFacing.Key, Envs = ["KF3_BILLBOARDS"], Label = "Flames and sprites", Steps = [0, 1, 2],
+        MenuValue = Named([0, 1, 2], "GAME'S", "VIEW", "EYE"),
+        Default = BillboardFacing.Default, Live = () => BillboardFacing.Setting, Apply = v => BillboardFacing.Setting = (int)v, Ui = Ui.None,
+    };
     public static readonly PortSetting MenuWorld = Switch("kf3.menuworld", "KF3_MENUWORLD", "The world live behind menus and messages",
         null, null, () => Kf3.MenuWorld.Enabled, v => Kf3.MenuWorld.Enabled = v, true, ui: Ui.None);
 
@@ -398,7 +405,7 @@ public static class PortSettings
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
     public static readonly PortSetting[] All =
     [
-        Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, MenuWorld,
+        Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, Billboards, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, GearCompareOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
