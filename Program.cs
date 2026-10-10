@@ -12,8 +12,8 @@ Verdite.Core.Kept.BoolsAsInts = true;
 // with this port's version, place and switches in it. KF3_HANG=seconds without a
 // frame before a hang report (15; 0 turns it off); KF3_FAULT=hook|crash|hang[:s]
 // makes one on purpose. See "When it crashes" in docs/DEVELOPMENT.md.
-Kf3.CrashReports.Configure(Environment.GetEnvironmentVariable("KF3_HANG"));
-Kf3.CrashReports.InstallFault(Environment.GetEnvironmentVariable("KF3_FAULT"));
+Verdite.Core.CrashReports.Configure(Verdite.Core.Game.Env("HANG"), "Verdite3", Kf3.AgentBeacon.Snapshot, Kf3.AgentBeacon.FirstStage);
+Verdite.Core.CrashReports.InstallFault(Verdite.Core.Game.Env("FAULT"));
 
 // The runtime's log channels, through an env var:
 //     KF3_LOG=bios,cd,gpu,dma,sdk,spu,mdec,irq   (or KF3_LOG=all)
@@ -314,13 +314,13 @@ Kf3.ItemEye.Install();
 
 // Aiming a drawn bow with the gyroscope (KF3_GYROAIM, off): spent through the look
 // routine beside the right stick. See "Gyro aim with a drawn bow" in docs/INPUT.md.
-Kf3.GyroAim.Configure();
-Kf3.GyroAim.Install();
+GyroAim.Configure(Kf3.Bow.Reads);
+GyroAim.Install();
 
 // Rumble as a bow is drawn and loosed: two motors, or HD rumble on a Switch pad
 // (KF3_RUMBLE, KF3_RUMBLE_HD, both on; runtime 0104). See "Rumble" in docs/INPUT.md.
-Kf3.Rumble.Configure();
-Kf3.Rumble.Install();
+Rumble.Configure(Kf3.Bow.Reads);
+Rumble.Install();
 
 // The Input pane, the port's in place of the runtime's: Keyboard (the layout and
 // the bindings), Gamepad (the sticks and the bindings), Mouse. See "The Input pane
@@ -418,7 +418,7 @@ DesktopEntry.Comment = "A PC port of King's Field II (SLUS-00255). Requires your
 //
 //     KF3_ICON=off      no icon at all
 //     KF3_ICON=0|1|2    a frame of its three (2 by default)
-Kf3.CardIcon.Install(args.Length > 0 ? args[0] : null);
+Verdite.Core.CardIcon.Install(args.Length > 0 ? args[0] : null, 2, Kf3.CardIconSource.Read);
 
 // This file calls Entry.Run itself, with no loop to boot the game again, so the
 // runtime's Hard Reset (F1, System) would end the process: it explains instead.

@@ -3,6 +3,7 @@ using ImGuiNET;
 using RecompOne.Runtime;
 using RecompOne.Runtime.Events;
 using Rt = RecompOne.Runtime.Runtime;
+using static Verdite.Core.PortSetting;
 
 namespace Kf3;
 
@@ -18,11 +19,6 @@ namespace Kf3;
 public static class PortSettings
 {
     public const int MaxRows = SettingsPage.MaxRows;   // what the frame fits at the menu's spacing
-
-    static string Number(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
-
-    static Func<double, string> Named(double[] steps, params string[] names) => v =>
-        Array.FindIndex(steps, s => PortSetting.Same(s, v)) is >= 0 and var i ? names[i] : Number(v);
 
     static PortSetting Switch(string key, string env, string label, string? page, string? menu,
         Func<bool> get, Action<bool> set, bool on, bool localized = false, string? tip = null,
@@ -431,29 +427,8 @@ public static class PortSettings
     }
 
     /// <summary>A mistake in the list is the programmer's, so it stops the boot.</summary>
-    static void Validate()
-    {
-        var problems = new List<string>();
-        foreach (var dup in Listed.GroupBy(s => s.Key, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
-            problems.Add($"{dup.Key} declared {dup.Count()} times");
-        foreach (var page in Pages)
-        {
-            if (MenuFont.Check($"{page} 9/9", SettingsPage.LabelChars) is { } why) problems.Add($"page {page}: {why}");
-            if (OnPage(page).Count() is var n && (n == 0 || n > MaxRows)) problems.Add($"page {page}: {n} rows, 1 to {MaxRows}");
-        }
-        foreach (var s in Listed)
-        {
-            if (s.Page is null) continue;
-            if (!Menu.Contains(s)) problems.Add($"{s.Key}: has a page but is not in Menu");
-            if (!Pages.Contains(s.Page)) problems.Add($"{s.Key}: page {s.Page} is not in Pages");
-            if ((s.MenuLabel is null ? "missing" : MenuFont.Check(s.MenuLabel, SettingsPage.LabelChars)) is { } why)
-                problems.Add($"{s.Key}: label {s.MenuLabel}: {why}");
-            foreach (double v in s.Steps)
-                if (MenuFont.Check(s.MenuValue(v), SettingsPage.ValueChars) is { } bad) problems.Add($"{s.Key}: value {s.MenuValue(v)}: {bad}");
-        }
-        if (problems.Count > 0)
-            throw new InvalidOperationException("port settings: " + string.Join("; ", problems));
-    }
+    static void Validate() =>
+        SettingsCheck.Validate(Listed, Pages, OnPage, Menu, MaxRows, SettingsPage.LabelChars, SettingsPage.ValueChars);
 
     /// <summary>A setting with no key and no variable must boot at its declared default,
     /// or a reset would not put back what the player had.</summary>
