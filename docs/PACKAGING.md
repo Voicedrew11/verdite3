@@ -52,7 +52,7 @@ usings plus `Verdite.Core`, QuickJit off), and must stay so.
 
 The launcher's own switches are `VERDITE3_DATA` (the data directory, otherwise
 `~/.local/share/verdite3` or `%LOCALAPPDATA%\Verdite3`), `VERDITE3_UPDATE_CHECK`
-(`0` off, `force` past the daily limit) and `VERDITE3_BUILD` (the commit stamped
+(`0` off, `force` past the hourly limit) and `VERDITE3_BUILD` (the commit stamped
 into a build made outside a checkout); see `docs/ENV_VARS.md`.
 
 ## Measured
