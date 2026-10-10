@@ -85,6 +85,8 @@ kept.
 | `KF3_WIDESCREEN_EFFECTS` | `0`: leave the death fade and the damage flash 320 wide, to compare against the default (they are stretched across the margin whenever an aspect is chosen) | on |
 | `KF3_WIDESCREEN_HUD` | `1`: move the compass and the HP/MP panel out to the new edges by the margin, `0`: leave them in their 4:3 box; over DISPLAY ▸ HUD AT EDGES, kept as `kf3.widescreen.hud`. Nothing at 4:3 | off (not judged) |
 | `KF3_PRESENT_PROBE` | `1` or `2`: every 2 s, what each present picked -- wide, plain, VRAM fallback; the wide setting is `GpuHle.PresentProbe` | off |
+| `KF3_BILLBOARDS` | `0` (`game`): the flames fixed in the world and the upright sprites parallel to the picture, as the game draws them; `1` (`view`): the flames turned as the game turns its sprites; `2` (`eye`): the flames and the sprites each turned toward the eye about the vertical. Through the C# model walk only; Testing ▸ Picture ▸ Flames and sprites, kept as `kf3.billboards` (`docs/PICTURE.md`) | `2` (not judged) |
+| `KF3_FACING_PROBE` | `1`: every 4 s, for the flames (`0x800419EC`) and the objects (`0x800414A4`) on the retained path, by matrix argument: submits, upright ones, and the largest angle of their +Z from the eye and from the view's forward | off |
 | `KF3_ZBUFFER` | `0`: the ordering table alone, not per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | on (2026-10-06) |
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |
