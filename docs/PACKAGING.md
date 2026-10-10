@@ -175,7 +175,7 @@ All three are wrappers of Verdite Core's scripts, which read `packaging/package.
 (`NAME=Verdite3`, `APP_ID=verdite3`, `INNO_APP_ID`, this port's installer
 GUID, which must never change or be reused, and `INNO_PRIVILEGES=lowest`, the
 per-user install "The window icon" needs). `.github/workflows/ci.yml` builds the
-launcher and the stub with no disc on every push; `release.yml` packages both
+launcher with no disc on every push; `release.yml` packages both
 platforms on a `v*` tag and opens a draft release.
 
 ### The tag is the version

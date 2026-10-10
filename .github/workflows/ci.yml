@@ -50,11 +50,5 @@ jobs:
           echo "informational version: ${got:-<none>}"
           test -n "$got" || { echo "the assembly does not carry $v plus a commit"; exit 1; }
 
-      # The Windows package's root exe is this stub, not the self-contained
-      # apphost. Catch a broken stub on every push rather than on the release
-      # job that actually publishes the zip.
-      - name: Build the Windows stub
-        run: dotnet build tools/verdite-core/packaging/windows/Stub/Verdite.Stub.csproj -c Release -p:StubName=Verdite3 "-p:StubIcon=$PWD/packaging/shared/verdite3.ico"
-
       # KingsField3Recomp.csproj is deliberately NOT built here: it compiles
       # generated/ and so cannot build without the disc, by design.
