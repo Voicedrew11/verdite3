@@ -382,7 +382,7 @@ public static class AgentServer
         switch (verb)
         {
             case "list": break;
-            case "open": SettingsSession.Open(); break;
+            case "open": SettingsSession.Open(PortSettings.All); break;
             case "save" or "discard" or "step" or "reset" when session is null: return Err("no session; settings open");
             case "save": session!.Save(); break;
             case "discard": session!.Discard(); break;

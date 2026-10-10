@@ -170,7 +170,7 @@ public static class SettingsPage
         var saved = c.Snapshot();
         _open = true;
         Opened++;
-        var session = SettingsSession.Open();
+        var session = SettingsSession.Open(PortSettings.All);
         try
         {
             c.RA = 0u;                      // not the top menu's call, for the hook above

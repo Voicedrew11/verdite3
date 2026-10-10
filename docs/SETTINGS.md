@@ -44,12 +44,12 @@ store that touches the dictionary only on the host thread.
 
 | file | what |
 |---|---|
-| `patches/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
+| `tools/verdite-core/src/Settings/PortSetting.cs` | one setting: key, variables, both labels, page, the steps Left/Right moves through and their text, default, live getter and setter, how the key is stored (`Int`/`Float`, the text `SetInt`/`SetFloat` write), how the Settings window draws it, usable-when |
 | `patches/PortSettings.cs` | the list (41 settings), the game page's fifteen rows on four pages (DISPLAY, GRAPHICS, WORLD, GAMEPLAY), seven of them combined rows, checked at start-up, the boot check, and the Settings window's row drawer |
-| `patches/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
-| `patches/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
-| `patches/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
-| `patches/MenuFont.cs` | text to the menu font's codes, and why a text cannot be drawn |
+| `tools/verdite-core/src/Settings/WindowMode.cs` | windowed, fullscreen or borderless for the page: the runtime's two keys, applied on the host thread |
+| `tools/verdite-core/src/Settings/SettingsStore.cs` | the one writer: `Write` (the Settings window), `Submit` (any thread; queued off the host), a pump that writes the queue on the host's next frame |
+| `tools/verdite-core/src/Settings/SettingsSession.cs` | the page without its drawing: open, step, reset, save, discard |
+| `tools/verdite-core/src/Settings/MenuFont.cs` | text to the menu font's codes, and why a text cannot be drawn |
 | `patches/SettingsPage.cs` | the page in the game's menu: the PORT SETTINGS item, the loop, the drawing, SAVE CHANGES / DISCARD CHANGES |
 
 **Every value is a double**: a switch is 0/1, a choice the chosen value itself (an

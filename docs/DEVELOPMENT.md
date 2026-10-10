@@ -367,7 +367,7 @@ area held 25-39 a second. **Not judged by eye**: the cursor repeat (8 vblanks,
 ## Profiling a frame
 
 Verdite2's frame profiler, ported 2026-10-06: `patches/FrameProfiler.cs`,
-`patches/ProfilerPanel.cs`, `patches/GpuFrames.cs` and the runtime's
+`patches/ProfilerPanel.cs`, `tools/verdite-core/src/GpuFrames.cs` and the runtime's
 `Diagnostics/Profiler.cs` and `Diagnostics/GpuTimes.cs` (fork `0045`, `0084`). It says
 where a frame's time went, by section, on the game thread, and the GPU's time by
 pass. **Shift+P** opens the panel, and recording runs while it is open;
