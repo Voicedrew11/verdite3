@@ -92,6 +92,13 @@ public sealed class PortSetting
 
     public static bool Same(double a, double b) => Math.Abs(a - b) < 1e-4;
 
+    /// <summary>A value as the port settings page writes it: at most two decimals.</summary>
+    public static string Number(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>A value's name from a list of steps: the name of the step it equals, else its number.</summary>
+    public static Func<double, string> Named(double[] steps, params string[] names) => v =>
+        Array.FindIndex(steps, s => Same(s, v)) is >= 0 and var i ? names[i] : Number(v);
+
     public int StepIndex(double value)
     {
         for (int i = 0; i < Steps.Length; i++)
