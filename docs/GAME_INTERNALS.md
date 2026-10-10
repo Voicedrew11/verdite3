@@ -1576,6 +1576,23 @@ buffers a frame swaps and the vblank handler's counters:
   `func_800279D8`, the loading screens, the movies, `func_80019538`'s two-vblank
   wait) returned at once, held to a real vblank by `patches/VBlankPacing.cs`. Both
   2026-10-02; see `docs/SMOOTHING.md` and `docs/DEVELOPMENT.md`.
+- **The arrival flag `0x801B24F2`** (only at an area load, so a standing census
+  misses it: it stays 0). The loader `func_80018358` (stage 8) sets it to 1 after
+  the new area's init; the waker (stage 5, "Creatures wake and sleep by distance")
+  then wakes creatures already within `+0xA` tiles instead of parking them in state
+  2; the loop's inline `sb 0` between stages 6 and 7 clears it. That store is not a
+  call, so pacing ran it on every iteration and cleared the flag before the next
+  tick's stage 5 unless the load was long enough to grant a tick at once. **Every
+  creature near an arrival stayed parked**, invisible until the player went 17
+  tiles away and back: John Creel (area 26, creature 18, 12.6 tiles from the Forest
+  of Varde door) for good, since the locked palace leaves nowhere 17 tiles away.
+  Measured 2026-10-10 by warping in 10-14 tiles from him: parked on 5 of 6 arrivals
+  with pacing, awake on 6 of 6 without. Held across untimed iterations by
+  `FramePacing` (saved at stage 1, written back at stage 7's site) since
+  2026-10-10: awake on 12 of 12 (Creel, and Ralugo's creature 18). Not in the save:
+  the creature table is rebuilt at every load, so no save is harmed. Other NPCs
+  within 16 tiles of a door's arrival (an estimate from the door records' entrance
+  offsets): area 0's 28, area 1's 18, 24 and 40, area 2's 4, area 5's 0.
 - **The compass needle** (only while turning, so a standing census misses it):
   stage 15's HUD block steps its spring, the speed at `gp + 0xD8` (`0x8009C2EC`)
   and the yaw at `0x80081C3A`/`0x80081C5E`. Held to the tick by `Stage15` since

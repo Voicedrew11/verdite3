@@ -63,6 +63,15 @@ public static class FramePacing
     static readonly HashSet<uint> _sites = Stages.Select(s => s.Site + 8).ToHashSet();
     const uint FirstSite = 0x80014F24 + 8;
 
+    // The loop clears this byte inline between stages 6 and 7, outside any stage, so
+    // that store runs on every iteration. The loader (stage 8) sets it after an area
+    // load, for the waker (stage 5) to wake creatures already near the player; cleared
+    // on an iteration with no tick, it was gone before the next tick's stage 5, and an
+    // NPC near the entrance (John Creel) stayed asleep. Kept across such iterations.
+    const uint ArrivalFlag = 0x801B24F2;
+    const uint ClearSite = 0x80014F5C + 8;   // stage 7's, the first after the store
+    static byte _arrivalFlag;
+
     internal static ModInfo Mod => _self;
     static readonly ModInfo _self = new() { Id = "kf3.framepacing", Name = "Frame pacing", Version = "1.0" };
 
@@ -316,7 +325,9 @@ public static class FramePacing
             double now = _clock.Elapsed.TotalMilliseconds;
             bool live = _lastBoundaryMs >= 0.0 && now - _lastBoundaryMs <= BoundaryDeadMs;
             _iterationTicks = live ? _tickThisFrame : FallbackTick(now);
+            if (!_iterationTicks) _arrivalFlag = m.ReadU8(ArrivalFlag);
         }
+        else if (c.RA == ClearSite && !_iterationTicks) m.WriteU8(ArrivalFlag, _arrivalFlag);
         if (_iterationTicks) _windowStageRuns++; else _windowStageSkips++;
         return _iterationTicks;
     }
