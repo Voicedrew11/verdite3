@@ -60,6 +60,16 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: desktopicon; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+; An upgrade installs over the old tree, and Inno removes nothing the new release
+; dropped. A stale .cs in content\ was compiled into the game (Verdite3 0.1.1 over
+; 0.1.0: seven errors), and a stale DLL in bin\ can be loaded. Both are the
+; release's own, never the player's (saves and settings are in %LOCALAPPDATA%), so
+; they go before the new files land. The launcher also ignores anything in content\
+; that content\manifest.txt does not list, which covers the zip.
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\content"
+Type: filesandordirs; Name: "{app}\bin"
+
 [Files]
 Source: "{#Root}\dist\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

@@ -84,7 +84,7 @@ the launcher builds the game on the player's machine on first run. It settles th
 data directory and chdirs into it, validates the disc, recompiles it in process,
 compiles the result with the port's sources in one Roslyn pass, caches the
 assembly under a key of what went into it, and hands over; it also checks GitHub
-for a newer release once a day and says so (it downloads nothing).
+for a newer release at most once an hour and says so (it downloads nothing).
 
 It is **not** compiled into the game. A game's launcher project
 (`Verdite2.Launcher/Verdite2.Launcher.csproj`) sets its names and imports
@@ -115,12 +115,24 @@ compiles the same sources on the developer path: a difference is a bug that
 exists only in the release. Both games' csprojs set what it assumes (unsafe,
 nullable, implicit usings plus `Verdite.Core`, QuickJit off in the runtimeconfig).
 
+**The build reads only what the release shipped.** `Launcher.targets` writes
+`content/manifest.txt`, every staged payload file's link, and `Build/Payload.cs`
+compiles, hashes and seeds only the files it lists. A release unpacked over an
+older one keeps the files the new one deleted, and the build used to compile every
+`.cs` under `content/src`: Verdite3 0.1.1 unpacked over 0.1.0 kept three patches
+that 0.1.1 had moved into this tree, and failed with seven errors. Anything
+unlisted is named at startup (`[Verdite3] ignoring 14 file(s) under content/ …`),
+and an install with no manifest builds from the whole directory as before. The
+installer also deletes `{app}\content` and `{app}\bin` before it copies, so an
+upgrade starts clean; the zip cannot, which is what the manifest is for.
+
 ### Telling the player about a new release
 
 `UpdateCheck` asks `api.github.com/repos/<UpdateRepository>/releases/latest`
 (which leaves out drafts and prereleases) on a worker after the window is up, at
-most once a day; `update.json` in the data directory keeps the answer and any
-skipped version, and a cached answer is still announced when the network is down.
+most once an hour (GitHub allows 60 unauthenticated requests an hour per address);
+`update.json` in the data directory keeps the answer and any skipped version, and
+a cached answer is still announced when the network is down.
 `UpdatePopup` opens once, outside play (`PlayAfter`) and never over another popup;
 `UpdateBadge` puts a gold button in the menu bar until the player hides it. *Check
 for updates at launch* is in Settings ▸ Interface; `<prefix>UPDATE_CHECK=0` turns
