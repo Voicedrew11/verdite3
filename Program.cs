@@ -353,6 +353,11 @@ Kf3.TestingSection.Install();
 Kf3.SettingsPage.Configure(Environment.GetEnvironmentVariable("KF3_SETTINGSPAGE_PROBE"));
 Kf3.SettingsPage.Install();
 
+// The first-run setup run again from that page (RUN SETUP, on DISPLAY), its
+// choices applied live where a setter exists. The launcher shows the same setup
+// at first run, from config/onboarding.json. See "Onboarding" in docs/SETTINGS.md.
+Kf3.Setup.Install();
+
 // The port settings both screens draw from, and the one writer of interface.ini's
 // kf3.* keys (docs/SETTINGS.md). Last, so its boot check follows every start-up.
 Kf3.PortSettings.Install();

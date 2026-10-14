@@ -53,7 +53,12 @@ near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by d
 drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); the HUD at the screen edges, Verdite2's, moved by its
-records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); every
+records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); the
+sticks at the D-pad's rate with the game's ease, a picked-up item centred on its
+mesh, the pause while the window is in the background (`KF3_FOCUS_PAUSE`), and
+Verdite Core's first-run setup (`config/onboarding.json`, DISPLAY ▸ RUN SETUP),
+all from Verdite2 on 2026-10-14 (built and boot-checked, nothing run past boot;
+`docs/INPUT.md`, `docs/DEVELOPMENT.md`, `docs/SETTINGS.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
 of the shared fork `Voicedrew11/verdite-recompone` at `09f3f09` (this repo's
 retained-scene work through `0109` and the `0045` amendment pushed, merged with the
