@@ -41,6 +41,11 @@ internal static class GlShaders
         uniform sampler2D uSurface;
         uniform sampler2D uMatTable;
         uniform float uAoMatOn;
+        // 0099. The picture before the frame's see-through 2D primitives (GlDisplayRt.PreHud):
+        // under one (a mark above 511) the passes shade this, and what the primitive
+        // changed is added back after.
+        uniform sampler2D uPreHud;
+        uniform float uPreHudOn;
         out vec4 oColor;
 
         // What the reflection pass computed at uv from: the surface there (its
@@ -99,6 +104,19 @@ internal static class GlShaders
         void main() {
             vec2 t = (uOrigin + vUv * uSize) / uTexSize;
             vec3 c = texture(uVram, t).rgb;
+            vec3 hud = vec3(0.0);
+            // How much of the picture under a see-through box shows: the occlusion is
+            // laid on that share of it, as the reflection pass lays its own.
+            float share = 1.0;
+            if (uPreHudOn > 0.5) {
+                float sa = texture(uSurface, t).a;
+                if (sa > 511.5) {
+                    vec3 under = texture(uPreHud, t).rgb;
+                    hud = c - under;
+                    c = under;
+                    share = (int(sa + 0.5) >> 9) == 1 ? 0.5 : 1.0;
+                }
+            }
             // The occlusion texture is rendered at exactly this framebuffer's
             // size, so it is indexed by the present's own uv and needs no
             // geometry of its own.
@@ -108,13 +126,13 @@ internal static class GlShaders
                     int m = int(texture(uSurface, t).a + 0.5) & 511;
                     if (m > 0 && m < 256) ao = mix(ao, 1.0, texelFetch(uMatTable, ivec2(m, 2), 0).g);
                 }
-                c *= ao;
+                c *= mix(1.0, ao, share);
             }
             if (uSsrOn > 0.5) {
                 vec4 r = ssrAt(vUv);
                 c = c * (1.0 - r.a) + r.rgb;
             }
-            oColor = vec4(c, 1.0);
+            oColor = vec4(c + hud, 1.0);
         }
         """;
 
@@ -507,9 +525,12 @@ internal static class GlShaders
         flat out uint vTex;
         // 0089. The world program's; no packet is faded.
         out vec2 vFadeXZ;
+        // 0098. As WorldNormalVs's.
+        flat out float vKeep;
 
         void main() {
             vec2 p = (inPos + uPosBias) * uFbInv - 1.0;
+            vKeep = 1.0;
             float w = max(inZ, 1.0);
             gl_Position = vec4(p * w, 0.0, w);
             vDepth = inZ * (1.0/65536.0);
@@ -541,6 +562,8 @@ internal static class GlShaders
         flat in uint vTex;
         // 0089. A world corner's X and Z, for DistanceFade (WorldNormalVs).
         in vec2 vFadeXZ;
+        // 0098. A model's own weight (uModelKeep), 1 for everything else.
+        flat in float vKeep;
         // 0067. Two outputs. The first is the occlusion pass's normal buffer and
         // is blended (ONE, ONE_MINUS_SRC_ALPHA), so a translucent surface writes
         // alpha 0 and leaves the opaque surface under it -- whose depth is the one
@@ -608,7 +631,7 @@ internal static class GlShaders
             // Taken here, in uniform control flow, for a surface's texel below.
             vec2 dUvx = dFdx(vUv), dUvy = dFdy(vUv);
             // 0089. A pixel the colour pass dithers away by distance is no surface.
-            if (fadeDropped(distanceFade(vFadeXZ, z))) discard;
+            if (fadeDropped(vKeep * distanceFade(vFadeXZ, z))) discard;
             // A veil, a see-through 2D box: where it is see-through, both buffers
             // are left as they are and its mark is added to the id (the draw blends
             // it so); a texel without the semi-transparency bit is an overlay.
@@ -617,14 +640,12 @@ internal static class GlShaders
                 if ((vTex & 0x80000000u) != 0u) {
                     vec4 t = veilTexel(ivec2(floor(vUv)));
                     if (t.rgb == vec3(0.0) && t.a < 0.5) discard;
+                    // 0099. Text added or subtracted is see-through too: the surface stays
+                    // under it, and the present murks and reflects the picture as it
+                    // was before the text and puts the text's change back on top
+                    // (GlDisplayRt.PreHud). Marked as a cover, the letters over
+                    // murky water were the raw water's colour against the murk.
                     see = t.a >= 0.5;
-                    // Add/subtract text uses STP ink too. It covers water effects;
-                    // black STP texels remain holes in both modes.
-                    uint blend = (vTex >> 5u) & 3u;
-                    if (see && (blend == 1u || blend == 2u)) {
-                        if (t.rgb == vec3(0.0)) discard;
-                        see = false;
-                    }
                 }
                 if (see != (uVeilPass == 1)) discard;
                 oColor = vec4(0.0);
@@ -693,6 +714,9 @@ internal static class GlShaders
     /// </summary>
     const string ModelGlsl = """
         uniform int   uModel;
+        // 0098. The instance's own weight, 1 - ModelInstance.FadeOut: dithered as
+        // DistanceFade's, on top of it.
+        uniform float uModelKeep;
         uniform isamplerBuffer uModelVerts;
         uniform int   uModelBase;
         uniform mat3  uModelR;
@@ -720,6 +744,12 @@ internal static class GlShaders
         // whole loop, and any other goes to the game's clipper, which here is the GPU's
         // near clip and the face's plane against the eye.
         uniform int   uModelTile;
+        // 0103. A face with a corner the GTE cannot project (RetainedScene.ModelNearClip)
+        // is kept by its plane against the eye and drawn in the ordinary projection,
+        // clipped at the GPU's near plane, as a Tile instance's is; modelFaceKept sets
+        // gModelClip for its corners.
+        uniform int   uModelClip;
+        bool gModelClip = false;
 
         ivec3 modelPosed(int i) {
             if (uModelPose < 0) return texelFetch(uModelVerts, uModelBase + i).xyz;
@@ -765,7 +795,7 @@ internal static class GlShaders
         // assembler clips nothing, so neither does the near plane here. Anywhere else
         // the projection is the ordinary one, unchanged.
         vec4 modelPlace(vec4 p, vec3 v) {
-            if (uModel == 0 || uModelTile != 0) return p;
+            if (uModel == 0 || uModelTile != 0 || gModelClip) return p;
             if (v.z >= uH * 0.5) {
                 vec2 raw = uModelGteC + uH * v.xy / v.z;
                 if (all(greaterThanEqual(raw, vec2(-1024.0))) && all(lessThanEqual(raw, vec2(1023.0)))) return p;
@@ -806,11 +836,20 @@ internal static class GlShaders
             int z1 = int(clamp(v1.z, 0.0, 65535.0)) >> 2;
             int z2 = int(clamp(v2.z, 0.0, 65535.0)) >> 2;
             int z;
-            if (f3 != 0xFFFFFFFFu) {
-                vec3 v3 = modelEye(f3);
-                z = (z0 + z1 + z2 + (int(clamp(v3.z, 0.0, 65535.0)) >> 2)) >> 2;
-            } else z = (z0 + z1 + z2) / 3;
+            bool quad = f3 != 0xFFFFFFFFu;
+            vec3 v3 = quad ? modelEye(f3) : v2;
+            if (quad) z = (z0 + z1 + z2 + (int(clamp(v3.z, 0.0, 65535.0)) >> 2)) >> 2;
+            else z = (z0 + z1 + z2) / 3;
             if (uModelSky == 0 && (z <= 0 || float(z) < uModelNear || float(z) >= uModelFar)) return false;
+            // 0103. A face reaching past the eye, or off the divide's range: its corners'
+            // saturated places drew it as a sheared slab (and the GPU's size limit had the
+            // packets drop it); clipped instead, its facing is its plane's against the eye.
+            if (uModelClip != 0 && uModelSky == 0 && uModelView == 0
+                && !(modelProjects(v0) && modelProjects(v1) && modelProjects(v2) && modelProjects(v3))) {
+                gModelClip = true;
+                vec3 n = quad ? cross(v3 - v0, v2 - v1) : cross(v1 - v0, v2 - v0);
+                return dot(v0, n) > 0.0;
+            }
             vec2 s0 = modelScreen(v0), s1 = modelScreen(v1), s2 = modelScreen(v2);
             if (uModelSky != 0) { s0 = floor(s0); s1 = floor(s1); s2 = floor(s2); }
             return (s1.x - s0.x) * (s2.y - s0.y) - (s1.y - s0.y) * (s2.x - s0.x) > 0.0;
@@ -820,6 +859,11 @@ internal static class GlShaders
     public static readonly string WorldNormalVs = """
         #version 330 core
         layout(location = 0) in vec3  inWorld;
+        // The corner's texel, as WorldVs reads it: NormalFs drops a transparent one,
+        // so a billboard's box lays no normal over the wall behind it.
+        layout(location = 2) in float inClutF;
+        layout(location = 3) in float inTexpageF;
+        layout(location = 4) in vec2  inUV;
         layout(location = 5) in vec3  inCue;
         layout(location = 7) in uint  inFlags;
         layout(location = 8) in uint  inRgbc;
@@ -833,6 +877,8 @@ internal static class GlShaders
         // 0089. As WorldVs's.
         out vec2 vFadeXZ;
         uniform vec4 uFade;
+        // 0098. A model's own weight, as WorldVs folds it into vFade.
+        flat out float vKeep;
 
         uniform mat3  uR;
         uniform vec3  uCam;
@@ -868,6 +914,7 @@ internal static class GlShaders
             uint flags = inFlags;
             vec3 w = inWorld;
             vFadeXZ = vec2(0.0);
+            vKeep = uModel != 0 ? uModelKeep : 1.0;
             if (uModel != 0) {
                 uint m = uModelMat;
                 if (uModelBlend != 0) {
@@ -911,8 +958,12 @@ internal static class GlShaders
             vDepth = z > 0.0 ? z * (1.0 / 65536.0) : 0.0;
             uint m = flags & 255u;
             vM = semi ? float(uModel != 0 ? m : 2u) + 256.0 : float(m == 0u ? 1u : m);
-            vUv = vec2(0.0);
-            vTex = 0u;
+            // GlCore.VeilTex's packing: bit 31 textured, the CLUT above the texpage.
+            // GlShaders.RequireTexel fails the program if these go unread.
+            int tp = int(inTexpageF + 0.5);
+            vUv = inUV;
+            vTex = (tp & 0x8000) != 0 ? 0u
+                 : 0x80000000u | (uint(int(inClutF + 0.5)) & 0x7FFFu) << 16 | (uint(tp) & 0x7FFFu);
         }
         """.Replace("//@model", ModelGlsl);
 
@@ -948,6 +999,10 @@ internal static class GlShaders
         uniform sampler2D uDepth;
         uniform sampler2D uSurface;
         uniform sampler2D uColor;
+        // 0099. The picture before the frame's see-through 2D primitives (PresentFs's):
+        // the water's own colour under a HUD's text, for the lookups that read it.
+        uniform sampler2D uPreHud;
+        uniform int uPreHudOn;
         // The same rectangle and projection the occlusion pass is given.
         uniform vec2  uOrigin;
         uniform vec2  uSize;
@@ -976,6 +1031,8 @@ internal static class GlShaders
         uniform float uDqa;
         uniform float uDqb;
         uniform int   uFogCurve;
+        // 0100. Fog by the distance to the eye (GteDepth.RadialFog), as the world's.
+        uniform int   uRadialFog;
         // 0074. The area's fog colour and curve, as PrimFs takes them (the colour
         // 0..1 here), and the sky the frame is cleared to: fog turns a colour towards
         // the fog's rather than to black, and a cubemap miss reflects the sky.
@@ -1037,6 +1094,11 @@ internal static class GlShaders
             return clamp(1.0 - w / 4096.0, 0.0, 1.0);
         }
 
+        // 0100. The depth a surface at view position q is fogged at, and the depth of
+        // the image a ray from p that travels t further stands at.
+        float fogZ(vec3 q) { return uRadialFog != 0 ? length(q) : q.z; }
+        float fogImage(vec3 p, float t) { return uRadialFog != 0 ? length(p) + t : p.z * (length(p) + t) / length(p); }
+
         // A colour kept `keep` of by the fog, the rest the fog's colour.
         vec3 fogTo(vec3 c, float keep) {
             return uAtmosOn != 0 ? mix(uAtmosColour, c, keep) : c * keep;
@@ -1053,6 +1115,10 @@ internal static class GlShaders
         // Above 511 a see-through 2D box lies over the surface: 512 for one that
         // shows half of it (blend mode 0), 1024 for any other.
         bool overlayAt(vec2 uv) { float a = texture(uSurface, tc(uv)).a; return a > 511.5 || abs(a - OVERLAY) < 0.5; }
+        vec3 sceneAt(vec2 uv) {
+            if (uPreHudOn != 0 && texture(uSurface, tc(uv)).a > 511.5) return texture(uPreHud, tc(uv)).rgb;
+            return texture(uColor, tc(uv)).rgb;
+        }
         int surfId(float a) { return int(a + 0.5) & 511; }
         float veilShare(float a) { return (int(a + 0.5) >> 9) == 1 ? 0.5 : 1.0; }
         vec3 viewAt(vec2 uv, float z) { return vec3((uv - uCentre) * uSize * (z / uProjH), z); }
@@ -1096,7 +1162,7 @@ internal static class GlShaders
         // what it reflects and near-grey stone still reads as coloured.
         vec3 metalTint(float metal) {
             if (metal <= 0.0) return vec3(1.0);
-            vec3 sc = texture(uColor, tc(vUv)).rgb;
+            vec3 sc = sceneAt(vUv);
             vec3 hue = sc / max(max(sc.r, max(sc.g, sc.b)), 1e-3);
             hue = max(mix(vec3(luma(hue)), hue, 1.0 + 0.5 * metal), 0.0);
             hue /= max(max(hue.r, max(hue.g, hue.b)), 1e-3);
@@ -1142,9 +1208,9 @@ internal static class GlShaders
             vec2 muv = vec2(vUv.x, 2.0 * uCentre.y - vUv.y);
             if (uRipple > 0.0) {
                 vec2 px = 1.0 / uSize;
-                float l0 = luma(texture(uColor, tc(vUv)).rgb);
-                float lx = luma(texture(uColor, tc(vUv + vec2(px.x, 0.0))).rgb);
-                float ly = luma(texture(uColor, tc(vUv + vec2(0.0, px.y))).rgb);
+                float l0 = luma(sceneAt(vUv));
+                float lx = luma(sceneAt(vUv + vec2(px.x, 0.0)));
+                float ly = luma(sceneAt(vUv + vec2(0.0, px.y)));
                 muv += vec2(lx - l0, ly - l0) * uRipple * px;
             }
             muv = clamp(muv, vec2(0.0), vec2(1.0));
@@ -1183,9 +1249,9 @@ internal static class GlShaders
             vec2 muv = vUv;
             if (uRipple > 0.0) {
                 vec2 px = 1.0 / uSize;
-                float l0 = luma(texture(uColor, tc(vUv)).rgb);
-                float lx = luma(texture(uColor, tc(vUv + vec2(px.x, 0.0))).rgb);
-                float ly = luma(texture(uColor, tc(vUv + vec2(0.0, px.y))).rgb);
+                float l0 = luma(sceneAt(vUv));
+                float lx = luma(sceneAt(vUv + vec2(px.x, 0.0)));
+                float ly = luma(sceneAt(vUv + vec2(0.0, px.y)));
                 muv += vec2(lx - l0, ly - l0) * uRipple * px;
             }
             muv = clamp(muv, vec2(0.0), vec2(1.0));
@@ -1326,7 +1392,7 @@ internal static class GlShaders
                 }
                 float run = (d <= 0.0 || d >= 1.0) ? FAR : max(d * FAR - zs, 0.0) * length(p) / zs;
                 gMurk = 1.0 - exp(-run / uMurkDist);
-                gMurkCol = fogTo(uMurkColor, fogKeep(zs));
+                gMurkCol = fogTo(uMurkColor, fogKeep(fogZ(p)));
             }
             if (refl <= 0.0) { emit(vec3(0.0), 0.0); return; }
             vec3 n = octDecode(s.rg);
@@ -1371,7 +1437,7 @@ internal static class GlShaders
                     // (the wrong way round, for this one) as the control.
                     oInfo.a += 4.0 / 255.0;
                     if (cubeHit) {
-                        vec3 sc = fogTo(cc, fogKeep(p.z * (length(p) + ct) / length(p)));
+                        vec3 sc = fogTo(cc, fogKeep(fogImage(p, ct)));
                         oInfo.b = abs(luma(pc) - luma(sc));
                         oInfo.g = abs(luma(texture(uPlanar, tc(vec2(vUv.x, 2.0 * uCentre.y - vUv.y))).rgb) - luma(sc));
                         oInfo.a += 16.0 / 255.0;
@@ -1384,7 +1450,7 @@ internal static class GlShaders
                     else emit(vec3(0.0), 0.0);
                     return;
                 }
-                float zImage = p.z * (length(p) + ct) / length(p);
+                float zImage = fogImage(p, ct);
                 float keep = fogKeep(zImage);
                 w *= 1.0 - smoothstep(0.7, 1.0, ct / uMaxDist);
                 oInfo.a += 1.0 / 255.0;
@@ -1456,8 +1522,8 @@ internal static class GlShaders
                 oInfo.a += 4.0 / 255.0;
                 if (hit && !overlayAt(huv) && edgeFade(huv) > 0.99) {
                     vec3 sc = texture(uColor, tc(huv)).rgb;
-                    float zHit = viewAt(huv, depthAt(huv) * FAR).z;
-                    float zImage = p.z * (length(p) + ht) / length(p);
+                    float zHit = fogZ(viewAt(huv, depthAt(huv) * FAR));
+                    float zImage = fogImage(p, ht);
                     sc = refog(sc, clamp(fogKeep(zImage) / max(fogKeep(zHit), 1e-3), 0.0, 1.0));
                     oInfo.b = abs(luma(pc) - luma(sc));
                     oInfo.g = abs(luma(texture(uPlanar, tc(vUv)).rgb) - luma(sc));
@@ -1484,8 +1550,8 @@ internal static class GlShaders
                 // darkening, so a surface lost in it reflects black -- which is what
                 // the void past the draw distance reflects too, so nothing pops at
                 // the fog's edge.
-                float zHit = viewAt(huv, depthAt(huv) * FAR).z;
-                float zImage = p.z * (length(p) + ht) / length(p);
+                float zHit = fogZ(viewAt(huv, depthAt(huv) * FAR));
+                float zImage = fogImage(p, ht);
                 float keep = clamp(fogKeep(zImage) / max(fogKeep(zHit), 1e-3), 0.0, 1.0);
                 c = refog(c, keep);
                 oInfo.b = keep;
@@ -1774,6 +1840,7 @@ internal static class GlShaders
                     return;
                 }
             }
+            if (uModel != 0) vFade *= uModelKeep;
             if (uSwellOn != 0 && (flags & 0x8000000u) != 0u) w.y += swellDy(w);
             vFadeXZ = uModel != 0 && (uModelView != 0 || uModelSky != 0) ? uFade.xy : w.xz;
             gl_ClipDistance[0] = (uPlaneY - uPlaneBias) - w.y;
@@ -2043,6 +2110,10 @@ internal static class GlShaders
         // target's own pixels, and H).
         uniform int   uClipOn;
         uniform vec4  uClipPlane;
+        // 0100. Fog by the distance to the eye (GteDepth.RadialFog), from the view
+        // position taken back through uClipCentre and uClipH, which are sent for it
+        // outside a planar capture too, with uClipDq.
+        uniform int   uRadialFog;
         uniform vec2  uClipCentre;
         uniform float uClipH;
         // 0068, amended. The view's level forward in that space, and the frame's
@@ -2377,6 +2448,9 @@ internal static class GlShaders
         // 0088. A pixel some neighbour of whose half lights or fogs otherwise: its lit
         // colour (when the light blends) and its cue weight from the records around
         // it, at its own depth. Every other pixel is drawn as before.
+        // 0100. The depth the fog is taken at, in vDepth's units: the distance under
+        // RadialFog, the view depth everywhere else.
+        float fogDepth() { return uRadialFog != 0 ? vDepth / gCueScale : vDepth; }
         bool gNbOn = false, gNbLit = false;
         float gNbW = 0.0;
         vec3 gNbColor = vec3(0.0);
@@ -2385,7 +2459,7 @@ internal static class GlShaders
             ivec4 rec;
             vec4 k;
             nbAround(int((vNb.x >> 14) & 63u), int(vNb.x & 0x3FFFu), vNbXZ, rec, k);
-            float z = vDepth * 65536.0, w = 0.0;
+            float z = fogDepth() * 65536.0, w = 0.0;
             bool fogOn = (vNb.x & 0x40000000u) != 0u;
             bool fog = fogOn && (vNb.x & 0x20000000u) != 0u && nbFog(rec, k, z, w);
             gNbLit = (vNb.x & 0x10000000u) != 0u && nbLight(rec, k, ivec3(round(vNbDots)), vNb.y, gNbColor);
@@ -2400,17 +2474,22 @@ internal static class GlShaders
             gNbW = w;
         }
 
+        // The cue was taken at fogDepth() itself, so the level rescale is not wanted.
+        bool gFogAtDepth = false;
+
         float fogRaw() {
-            if (((vLight >> 24) & 7u) == 5u) return linearDepthCue(vDepth * 65536.0, vCue);
+            gFogAtDepth = false;
+            if (((vLight >> 24) & 7u) == 5u) return linearDepthCue(fogDepth() * 65536.0, vCue);
             if (uCueFromZ <= 0.0 || vDepth <= 0.0) return vFog;
-            float q = min(uCueFromZ / max(vDepth, 1.0 / 65536.0), 131071.0);
+            gFogAtDepth = uRadialFog != 0;
+            float q = min(uCueFromZ / max(fogDepth(), 1.0 / 65536.0), 131071.0);
             return (vCue.x * q + vCue.y) / 4096.0;
         }
 
         float cueWeight() {
             uint curve = (vLight >> 24) & 7u;
-            bool level = gCueScale < 1.0 && curve != 0u && curve != 5u;
             float fog = gNbOn ? gNbW : fogRaw();
+            bool level = gCueScale < 1.0 && curve != 0u && curve != 5u && !gFogAtDepth;
             float raw = level ? levelCue(fog, curve) : fog;
             float ir0 = clamp(raw, 0.0, 4096.0);
             float w = gNbOn ? fog
@@ -2511,15 +2590,17 @@ internal static class GlShaders
             dz = min(dz, uDepthCap);
             gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
             if (uFarPlane != 0) gl_FragDepth = 1.0;
-            if (uClipOn != 0 && vDepth > 0.0) {
+            if ((uClipOn != 0 || uRadialFog != 0) && vDepth > 0.0) {
                 float cz = vDepth * 65536.0;
                 vec3 cp = vec3((gl_FragCoord.xy / float(uScale) - uClipCentre) * (cz / uClipH), cz);
-                if (dot(uClipPlane.xyz, cp) + uClipPlane.w < 0.0) discard;
+                if (uClipOn != 0 && dot(uClipPlane.xyz, cp) + uClipPlane.w < 0.0) discard;
                 // The game's map is culled by a level cone and fogged by view depth,
                 // so the cone's far edge is black only to a level camera. The
                 // mirrored one looks up by the eye's pitch and saw it lit: fog at the
                 // larger of the two depths, which is the game's fog looking level.
-                float lz = dot(uClipLevel, cp);
+                // 0100. Radial: at the distance, which is never less than either (in a
+                // mirror, the path through the water to the reflected thing).
+                float lz = uRadialFog != 0 ? length(cp) : dot(uClipLevel, cp);
                 if (lz > cz) { gCueScale = cz / lz; gCueZ = cz; }
             }
             // 0072, amended. A half fading in or out of a reflection: an ordered
@@ -3226,6 +3307,23 @@ internal static class GlShaders
             return 0;
         }
         return sh;
+    }
+
+    /// <summary>
+    /// A program drawing into <c>NormalFs</c> must hand it each corner's texel, or a
+    /// textured face's transparent texels -- which drew no depth -- write its normal,
+    /// and AO shades the wall behind a billboard at the billboard's camera-facing
+    /// normal: a faint dark box round every sprite with AO on. It came back once,
+    /// when the retained map's <c>WorldNormalVs</c> wrote <c>vTex = 0</c>. An attribute
+    /// a program does not read is inactive after the link, so this throws at setup
+    /// rather than leave the box to be seen.
+    /// </summary>
+    public static void RequireTexel(GL gl, uint prog, string name, params string[] attribs)
+    {
+        foreach (var a in attribs)
+            if (gl.GetAttribLocation(prog, a) < 0)
+                throw new InvalidOperationException(
+                    $"{name}: '{a}' is unread, so NormalFs cannot drop transparent texels (a box round every billboard with AO on)");
     }
 
     public static uint Build(GL gl, string vsSrc, string fsSrc, string name, (uint Index, string Name)[]? attribs = null)
