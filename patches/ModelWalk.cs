@@ -773,6 +773,7 @@ public static class ModelWalk
         c.RA = ra;
         _callees![(int)Fn.SubmitWorld](c, mem);
         if (carried) ModelSmoothing.Leave();
+        if (_held) { _held = false; ItemEye.NoteMesh(mem, s1c); }
     }
 
     /// <summary><c>func_8003F304(mask, model, pos, rot, ...)</c>, the front-table
@@ -797,7 +798,12 @@ public static class ModelWalk
         c.RA = ra;
         _callees![(int)Fn.SubmitFront](c, mem);
         if (carried) ModelSmoothing.Leave();
+        if (_held) { _held = false; ItemEye.NoteMesh(mem, s1c); }
     }
+
+    /// <summary>The submit now running draws the item the pickup holds up: its mesh is
+    /// measured after it (ItemEye.NoteMesh), for the next frame's centring.</summary>
+    static bool _held;
 
     /// <summary>The record the next submit draws; the walk's own bookkeeping only.</summary>
     static void Record(int table, uint rec, uint baseAddr, uint stride, uint ident)
@@ -820,12 +826,14 @@ public static class ModelWalk
         _table = -1;
         bool carry = _carry && table >= 0;
         bool turn = table >= 0 && ItemTurn.Shows(_rec);
-        if (!carry && !turn) return false;
+        _held = table >= 0 && ItemEye.Holds(_rec);
+        if (!carry && !turn && !_held) return false;
 
         int x = (int)mem.ReadU32(pos), y = (int)mem.ReadU32(pos + 4u), z = (int)mem.ReadU32(pos + 8u);
         short p = (short)mem.ReadU16(rot), w = (short)mem.ReadU16(rot + 2u), r = (short)mem.ReadU16(rot + 4u);
         if (carry) ModelSmoothing.Carry(table, _slot, _ident, ref x, ref y, ref z, ref p, ref w, ref r);
         if (turn) ItemTurn.Present(mem, ref p, ref w, ref r);
+        if (_held) ItemEye.Place(mem, _rec, ref x, ref y, ref z, p, w, r);
 
         uint cp = sp + CarriedPos, cr = sp + CarriedRot;
         mem.WriteU32(cp, (uint)x);
