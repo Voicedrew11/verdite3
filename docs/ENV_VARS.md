@@ -116,11 +116,12 @@ kept.
 | `KF3_TANK` | `1`: 3D controls, one stick as tank controls: the left stick walks and turns, L1 and R1 strafe, L2 and R2 look, the right stick is not read; `0` or unset: 2D, the left stick walks and strafes (Settings ▸ Gameplay ▸ Controls, `kf3.controls`) | off |
 | `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
 | `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |
-| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.25, 1.25, 1.0 (2026-10-06) |
+| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move; above 1.0 is faster than the D-pad | 1.0, 1.0, 1.0 (2026-10-14) |
 | `KF3_ANALOG_DEADZONE`, `KF3_ANALOG_MOVEDEADZONE` | radial deadzones, look (and move unless the second is set) and move | 0.15 |
 | `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
-| `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look ramp: on, the peak multiplier and the seconds to reach it | 1 / 2.2 / 0.5 |
-| `KF3_ANALOG_INSTANTSTOP` | `0`: let a released look axis coast on the game's decay (movement is never stopped) | on |
+| `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look acceleration: on, the peak multiplier and the seconds to reach it; on turns past the D-pad's rate | 0 / 2.2 / 0.5 (2026-10-14) |
+| `KF3_ANALOG_INSTANTSTOP` | `1`: stop a released look axis dead instead of easing it out by the game's step (movement is never stopped) | off (2026-10-14) |
+| `KF3_ANALOG_EASE` | `0`: the right stick turns and looks at what its position asks at once, and stops dead on release, instead of easing in and out by the game's step; 2D only. Input ▸ Gamepad, kept as `kf3.analog.ease` (`docs/INPUT.md`, "The stick turns at the original's speed") | on |
 | `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis; `KF3_ANALOG_INVERTY` is Settings ▸ Gameplay ▸ Inverted camera, kept as `kf3.analog.invertpitch`, and the variable wins | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 | `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |

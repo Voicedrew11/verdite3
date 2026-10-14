@@ -40,11 +40,12 @@ public static class AnalogPage
 
         ImGui.Spacing();
         Slider("Turn sensitivity", Analog.TurnSensKey, ref Analog.TurnSens, 0.1f, 3f,
-               "Past 1.0 the camera is driven faster than any button on the pad can turn it: the " +
-               "game's own per-frame limit only exists in the branches that read a button. In 3D " +
-               "it is the left stick's turn.");
+               "1.0 is the original's speed: a full push turns as fast as the D-pad does, and eases " +
+               "in and out as it does. Past 1.0 the camera turns faster than the game ever let it, " +
+               "which changes how its fights play. In 3D it is the left stick's turn.");
         ImGui.BeginDisabled(tank);
-        Slider("Look sensitivity", Analog.PitchSensKey, ref Analog.PitchSens, 0.1f, 3f);
+        Slider("Look sensitivity", Analog.PitchSensKey, ref Analog.PitchSens, 0.1f, 3f,
+               "1.0 looks up and down as fast as L2 and R2 do. Past it is faster than the original.");
         ImGui.EndDisabled();
         Slider("Move sensitivity", Analog.MoveSensKey, ref Analog.MoveSens, 0.1f, 1.5f,
                "Walking is the game's own speed at full deflection. Above 1.0 would ask for a walk " +
@@ -69,19 +70,26 @@ public static class AnalogPage
             ImGui.BeginDisabled(tank);
             Check("Look acceleration", Analog.AccelKey, ref Analog.LookAccel,
                   "Holding the stick out keeps speeding the camera up for the first half second, " +
-                  "the way a modern shooter's does. Fine aim near centre is unaffected — the ramp " +
-                  "only starts past 80% deflection.");
+                  "the way a modern shooter's does, to past twice the original's turn. Fine aim " +
+                  "near centre is unaffected — the ramp only starts past 80% deflection.");
             ImGui.BeginDisabled(!Analog.LookAccel);
             Slider("Acceleration x", Analog.AccelMaxKey, ref Analog.LookAccelMax, 1f, 4f);
             Slider("Acceleration time (s)", Analog.AccelTimeKey, ref Analog.LookAccelTime, 0.1f, 2f);
             ImGui.EndDisabled();
 
             ImGui.Spacing();
+            Check("Stick eases in and out", Analog.EaseKey, ref Analog.StickEase,
+                  "On is the original: the view takes four or five ticks to reach full speed and " +
+                  "to stop, as it does on a held D-pad or L2/R2. Off is direct: the view turns at " +
+                  "the stick's speed at once and stops dead on release. The top speed is the " +
+                  "original's either way.");
+            ImGui.BeginDisabled(!Analog.StickEase);
             Check("Camera stops on release", Analog.StopKey, ref Analog.CameraInstantStop,
-                  "The game ramps a released look velocity down over about a third of a second, " +
-                  "which reads as inertia on a stick. Off restores that ramp. Walking momentum is " +
-                  "the game's own and is not affected either way. 3D's turn always ramps down as " +
-                  "the D-pad's does.");
+                  "Off is the original: the view eases to a stop over a fifth to half a second, as it " +
+                  "does when a D-pad or L2/R2 button is let go. On stops it dead, which can read better " +
+                  "on a stick. Walking momentum is the game's own and is not affected either way. " +
+                  "3D's turn always eases to a stop as the D-pad's does.");
+            ImGui.EndDisabled();
             ImGui.EndDisabled();
 
             ImGui.Spacing();
