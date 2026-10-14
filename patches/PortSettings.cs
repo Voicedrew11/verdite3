@@ -289,6 +289,12 @@ public static class PortSettings
         Gameplay, "COMPARE GEAR", () => GearCompare.Enabled, GearCompare.SetEnabled, true,
         tip: "Choosing equipment or browsing a shop shows every stat the item would change, now and after.");
 
+    /// <summary>Verdite Core's pause while the window is in the background; the
+    /// Settings window's Gameplay tab only.</summary>
+    public static readonly PortSetting FocusPauseOn = Switch(FocusPause.OnKey, "KF3_FOCUS_PAUSE", "Pause in the background",
+        null, null, () => FocusPause.Enabled, FocusPause.SetEnabled, true,
+        tip: "The game stops and goes quiet while its window is not the one in front.");
+
     public static readonly PortSetting MessageFade = new()
     {
         Key = Kf3.MenuWorld.FadeKey, Envs = ["KF3_MESSAGE_FADE"], Label = "Message fade length",
@@ -408,7 +414,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, Billboards, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, GearCompareOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
+        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, GearCompareOn, FocusPauseOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
         ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 

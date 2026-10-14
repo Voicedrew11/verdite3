@@ -134,6 +134,20 @@ Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
                           Environment.GetEnvironmentVariable("KF3_TICKRATE"),
                           Environment.GetEnvironmentVariable("KF3_FPS_PROBE"));
 Kf3.FramePacing.Install();
+
+// The window losing focus pauses the game and silences it, as a desktop game
+// does: Verdite Core's FocusPause decides when, and the stage gate held shut
+// (FramePacing.PauseWhen) is how. On by default; a run a program drives (the
+// shell, scripted input, autostart, the agent beacon) has no one to focus the
+// window, so there it is off unless asked for.
+//
+//     KF3_FOCUS_PAUSE=0   keep running in the background
+//
+// See "Pausing when the window loses focus" in docs/DEVELOPMENT.md.
+FocusPause.Configure(driven: new[] { "KF3_SHELL", "KF3_AUTOPAD", "KF3_AUTOSTART", "KF3_AGENT" }
+    .Any(v => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(v))));
+FocusPause.Install();
+Kf3.FramePacing.PauseWhen(() => FocusPause.Active);
 Kf3.RateCensus.Install();
 // Whether the full-screen tints are drawn between ticks: "The tints between
 // ticks" in docs/SMOOTHING.md.

@@ -27,6 +27,7 @@ kept.
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
 | `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |
 | `KF3_AUTORELOAD_DELAY` | seconds of the death sequence before the reload (0-10); not a setting | 2.5 |
+| `KF3_FOCUS_PAUSE` | `0`: keep running and sounding while the window has no focus; off for a run `KF3_SHELL`, `KF3_AUTOPAD`, `KF3_AUTOSTART` or `KF3_AGENT` drives, and `1` turns it back on there. Settings ▸ Gameplay ▸ Pause in the background, kept as `kf3.focuspause.on`; the variable wins (`docs/DEVELOPMENT.md`, "Pausing when the window loses focus") | on |
 | `KF3_GEARCOMPARE` | `0`: no stat comparison on the equipment and shop lists; `probe`: a line for each item compared. Settings ▸ Gameplay, kept as `kf3.gearcompare.enabled`; the variable wins | on |
 | `KF3_MAPKEY` | `0`: M and the pad's touchpad do nothing. On, they open the map of the area the player is in when its item is held (PIXY'S MAP, else MAP OF VERDITE in areas 0..11); `docs/GAME_INTERNALS.md`, "The maps" | on |
 | `KF3_MAPKEY_TEST` | `seconds`: open the map that long into the first area, as a press would; a test, not for play | none |
