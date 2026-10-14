@@ -86,6 +86,12 @@ public sealed class GameplaySection : ISettingsSection
         // Verdite2's GearCompare: every stat an equip or a purchase would change.
         PortSettings.Draw(PortSettings.GearCompareOn);
 
+        // Verdite2's EnemyTurnPage: the multiplier, and tracking dimmed under it at x1.
+        PortSettings.Draw(PortSettings.EnemyTurnSpeed);
+        ImGui.Indent();
+        PortSettings.Draw(PortSettings.EnemyTurnTrack);
+        ImGui.Unindent();
+
         // Verdite Core's FocusPause: the world held and the sound off in the background.
         PortSettings.Draw(PortSettings.FocusPauseOn);
 

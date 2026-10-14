@@ -112,6 +112,22 @@ Kf3.AutoReload.Install();
 Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
 Kf3.GearCompare.Install();
 
+// Verdite2's EnemyTurn: creatures turn at the player faster, a multiple of the
+// game's own (speed x k, acceleration x k^2); Gameplay ▸ Enemy turn speed, x1 by
+// default, and setup's turning page. The variables win over the saved value:
+//     KF3_ENEMYTURN=1..8      the multiplier
+//     KF3_ENEMYTURN_TRACK=0   no turning at the player while a creature stands (on;
+//                             inert at x1)
+//     KF3_ENEMYTURN_ALL=1     scale every turn, not only turns at the player -- comparison
+//     KF3_ENEMYTURN_PROBE=1   a census of the turn's callers every 5 s
+//     KF3_ENEMYTURN_PROBE=2   also a line a tick for each awake creature in reach
+// See "Enemies turn faster" in docs/GAME_INTERNALS.md.
+Kf3.EnemyTurn.Configure(Environment.GetEnvironmentVariable("KF3_ENEMYTURN"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_TRACK"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_ALL"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_PROBE"));
+Kf3.EnemyTurn.Install();
+
 // M, or the touchpad of a DualShock 4 or DualSense, opens the map of the area the
 // player is in when its map item is held: PIXY'S MAP, else MAP OF VERDITE in the
 // areas it covers. KF3_MAPKEY=0 off, KF3_MAPKEY_TEST=sec opens it once that long

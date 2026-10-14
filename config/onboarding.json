@@ -13,6 +13,7 @@
     "kf3.analog.on": "1",
     "kf3.controls": "0",
     "kf3.analog.accel": "0",
+    "kf3.enemyturn": "1",
     "kf3.rumble.on": "1",
     "kf3.rumble.hd": "1",
     "kf3.gyroaim.on": "1",
@@ -598,7 +599,8 @@
       "title": "kf3.setup.turning",
       "body": [
         "kf3.setup.turning.problem",
-        "kf3.setup.turning.port"
+        "kf3.setup.turning.port",
+        "kf3.setup.turning.solution"
       ],
       "label": "kf3.setup.turning.controls",
       "options": [
@@ -608,7 +610,8 @@
           "set": {
             "kf3.controls": "1",
             "kf3.analog.accel": null
-          }
+          },
+          "value": null
         },
         {
           "label": "kf3.setup.turning.2d",
@@ -616,7 +619,8 @@
           "set": {
             "kf3.controls": null,
             "kf3.analog.accel": null
-          }
+          },
+          "value": null
         },
         {
           "label": "kf3.setup.turning.2daccel",
@@ -624,18 +628,32 @@
           "set": {
             "kf3.controls": null,
             "kf3.analog.accel": "1"
-          }
+          },
+          "value": 2.2
         }
       ],
+      "slider": {
+        "key": "kf3.enemyturn",
+        "label": "kf3.setup.enemyturn",
+        "tip": "kf3.setup.enemyturn.tip",
+        "min": 1,
+        "max": 8,
+        "step": 0.25,
+        "format": "x%.2f",
+        "minLabel": "kf3.setup.enemyturn.original"
+      },
       "presets": [
         {
-          "option": 0
+          "option": 0,
+          "value": 1
         },
         {
-          "option": 0
+          "option": 0,
+          "value": 1
         },
         {
-          "option": 1
+          "option": 1,
+          "value": 1
         }
       ],
       "follows": "gameplay"
@@ -933,9 +951,9 @@
       "es-419": "La resolución a la que se dibuja la imagen 3D, antes de ajustarse a la ventana. 240p es la de la PlayStation."
     },
     "kf3.setup.turning": {
-      "en": "Turning",
-      "pt-BR": "Virada",
-      "es-419": "Giro"
+      "en": "Turning and difficulty",
+      "pt-BR": "Virada e dificuldade",
+      "es-419": "Giro y dificultad"
     },
     "kf3.setup.turning.2d": {
       "en": "Twin stick (2D)",
@@ -953,9 +971,24 @@
       "es-419": "Dos palancas (2D) con aceleración"
     },
     "kf3.setup.turning.2daccel.desc": {
-      "en": "As twin stick, but holding the right stick out speeds the turn up to 2.2 times. Creatures keep their original pace, so fights are easier.",
-      "pt-BR": "Como dois analógicos, mas manter o analógico direito inclinado acelera a virada em até 2,2 vezes. As criaturas mantêm o ritmo original, então as lutas ficam mais fáceis.",
-      "es-419": "Como dos palancas, pero mantener la palanca derecha inclinada acelera el giro hasta 2.2 veces. Las criaturas mantienen su ritmo original, así que los combates son más fáciles."
+      "en": "As twin stick, but holding the right stick out speeds the turn up to 2.2 times. Enemy turn speed rises to x2.2 to match.",
+      "pt-BR": "Como dois analógicos, mas manter o analógico direito inclinado acelera a virada em até 2,2 vezes. A velocidade de giro dos inimigos sobe para x2,2 para acompanhar.",
+      "es-419": "Como dos palancas, pero mantener la palanca derecha inclinada acelera el giro hasta 2.2 veces. La velocidad de giro de los enemigos sube a x2.2 para igualarla."
+    },
+    "kf3.setup.enemyturn": {
+      "en": "Enemy turn speed",
+      "pt-BR": "Velocidade de giro dos inimigos",
+      "es-419": "Velocidad de giro de los enemigos"
+    },
+    "kf3.setup.enemyturn.tip": {
+      "en": "How much faster a creature turns toward you. x1 is the original game.",
+      "pt-BR": "O quanto mais rápido uma criatura se vira para você. x1 é o jogo original.",
+      "es-419": "Qué tan rápido gira una criatura hacia ti. x1 es el juego original."
+    },
+    "kf3.setup.enemyturn.original": {
+      "en": "x1 (original)",
+      "pt-BR": "x1 (original)",
+      "es-419": "x1 (original)"
     },
     "kf3.setup.turning.controls": {
       "en": "Controls",
@@ -963,14 +996,19 @@
       "es-419": "Controles"
     },
     "kf3.setup.turning.port": {
-      "en": "The sticks turn you at that same rate. Look acceleration on the right stick speeds the turn up to 2.2 times while you hold it out, and a creature at its original pace can then be circled without landing a hit, so it is off unless you choose it.",
-      "pt-BR": "Os analógicos viram você nessa mesma velocidade. A aceleração de visão no analógico direito acelera a virada em até 2,2 vezes enquanto você o mantém inclinado, e uma criatura no ritmo original pode então ser contornada sem acertar um golpe; por isso ela fica desligada, a menos que você a escolha.",
-      "es-419": "Las palancas te giran a esa misma velocidad. La aceleración de vista en la palanca derecha acelera el giro hasta 2.2 veces mientras la mantienes inclinada, y una criatura a su ritmo original puede entonces rodearse sin que acierte un golpe; por eso está desactivada a menos que la elijas."
+      "en": "The sticks turn you at that same rate. Look acceleration on the right stick speeds the turn up to 2.2 times while you hold it out, and mouse look turns as fast as you move the mouse. A creature at its original pace can then be circled without landing a hit.",
+      "pt-BR": "Os analógicos viram você nessa mesma velocidade. A aceleração de visão no analógico direito acelera a virada em até 2,2 vezes enquanto você o mantém inclinado, e a visão com o mouse vira tão rápido quanto você move o mouse. Uma criatura no ritmo original pode então ser contornada sem acertar um golpe.",
+      "es-419": "Las palancas te giran a esa misma velocidad. La aceleración de vista en la palanca derecha acelera el giro hasta 2.2 veces mientras la mantienes inclinada, y la vista con mouse gira tan rápido como muevas el mouse. Una criatura a su ritmo original puede entonces rodearse sin que acierte un golpe."
     },
     "kf3.setup.turning.problem": {
       "en": "King's Field's fights are balanced around how fast you turn. On the PlayStation you turned at one fixed rate, and every creature was tuned to keep up with it.",
       "pt-BR": "As lutas de King's Field são equilibradas em torno da velocidade com que você vira. No PlayStation você virava em uma velocidade fixa, e cada criatura foi ajustada para acompanhá-la.",
       "es-419": "Los combates de King's Field están equilibrados en torno a la velocidad con que giras. En la PlayStation girabas a una velocidad fija, y cada criatura estaba ajustada para seguirla."
+    },
+    "kf3.setup.turning.solution": {
+      "en": "The answer is to let creatures turn faster when they turn toward you; their wandering keeps the game's pace. Choose how you will control the game, and the enemy turn speed below follows it. You can set it yourself.",
+      "pt-BR": "A resposta é deixar as criaturas virarem mais rápido quando se voltam para você; a perambulação delas mantém o ritmo do jogo. Escolha como você vai controlar o jogo, e a velocidade de giro dos inimigos abaixo acompanha a escolha. Você também pode defini-la por conta própria.",
+      "es-419": "La respuesta es dejar que las criaturas giren más rápido cuando se vuelven hacia ti; su deambular mantiene el ritmo del juego. Elige cómo vas a controlar el juego, y la velocidad de giro de los enemigos de abajo la sigue. También puedes ajustarla tú mismo."
     },
     "kf3.setup.turning.tank": {
       "en": "Tank controls (3D)",
