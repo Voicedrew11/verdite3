@@ -182,7 +182,7 @@ public static class GpuWorld
         }
         Console.WriteLine($"[KF3] retained scene: mode={Mode} frames={Frames} submitted={Submissions} retained={Retained} " +
             $"meshes={RetainedAssets.MeshBuilds}/{RetainedAssets.MeshHits} rigid={RetainedAssets.RigidBuilds}/{RetainedAssets.RigidHits} " +
-            $"poses={MoPose.PoseBuilds}/{MoPose.PoseHits} deferred/materialized={MoPose.Deferred}/{MoPose.Materialized} " +
+            $"poses={MoPose.PoseBuilds}/{MoPose.PoseHits} deferred/materialized/stale={MoPose.Deferred}/{MoPose.Materialized}/{MoPose.Stale} " +
             $"GPUdraws/missed={RetainedScene.MainDraws}/{RetainedScene.MainMissed} instances={RetainedScene.InstancesDrawn} " +
             $"map/blend/normal-triangles={RetainedScene.MainTriangles}/{RetainedScene.MainWaterTriangles}/{RetainedScene.MainNormalTriangles} " +
             $"mask={(RetainedScene.ModelMask ? "on" : "off")} frames/batches={RetainedScene.MaskFrames}/{RetainedScene.MaskBatches} " +
@@ -226,7 +226,7 @@ public static class GpuWorld
                 Assets = new
                 {
                     RetainedAssets.MeshBuilds, RetainedAssets.MeshHits, RetainedAssets.RigidBuilds, RetainedAssets.RigidHits,
-                    MoPose.PoseBuilds, MoPose.PoseHits, MoPose.Deferred, MoPose.Materialized,
+                    MoPose.PoseBuilds, MoPose.PoseHits, MoPose.Deferred, MoPose.Materialized, MoPose.Stale,
                     RetainedMap.ChunkBuilds, RetainedMap.MapUpdates, RetainedMap.RecordUpdates,
                 },
                 Neighbour = new

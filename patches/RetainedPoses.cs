@@ -5,9 +5,31 @@ namespace Kf3;
 
 public static partial class MoPose
 {
+    /// <summary>The last deferred call's pose, not yet in RAM. It stays pending past a
+    /// submit that does not consume it, so it is not a submit's pose unless
+    /// <see cref="PendingAt"/> says so.</summary>
     public static bool Pending { get; private set; }
+
+    /// <summary>
+    /// Whether a submit whose vertex base is <paramref name="verts"/> is drawn from the
+    /// pending pose: the blender deferred, and the base still names the posed buffer,
+    /// which only the blender sets. A rigid sub-model is submitted without calling the
+    /// blender, so the last MO model's pose can still be pending at it while its base
+    /// names its own vertices; taken on <see cref="Pending"/> alone, a rigid model with as
+    /// many vertices as that pose was drawn with it (Verdite2's #66). See "A rigid model
+    /// and a pending pose" in docs/GPU_RENDERER.md.
+    /// </summary>
+    public static bool PendingAt(uint verts)
+    {
+        if (!Pending) return false;
+        if (verts == Posed) return true;
+        Stale++;
+        return false;
+    }
     static uint _key, _stream, _weight, _count;
-    public static long Deferred, Materialized, PoseBuilds, PoseHits, PoseRefused;
+    /// <summary>Stale: submits that found a pose pending at a base other than the posed
+    /// buffer, each offered that pose before the fix.</summary>
+    public static long Deferred, Materialized, PoseBuilds, PoseHits, PoseRefused, Stale;
     readonly record struct PoseEntry(int Pose, uint Bytes, ulong Hash);
     static readonly Dictionary<(ulong Key, uint Stream, uint Count), PoseEntry> Poses = new();
     static int _poseGeneration = -1;
@@ -43,10 +65,10 @@ public static partial class MoPose
         }
     }
     /// <summary>The final retained key/delta representation, cached across weights.</summary>
-    public static int Store(PSMemory m, uint vertices, out int weight)
+    public static int Store(PSMemory m, uint verts, uint vertices, out int weight)
     {
         weight = (int)_weight;
-        if (!Pending || _count == 0 || _count != vertices || vertices > 8192
+        if (!PendingAt(verts) || _count == 0 || _count != vertices || vertices > 8192
             || !RetainedAssets.InRam(_key, vertices * 8) || !RetainedAssets.InRam(_stream, 2)) return 0;
         if (_poseGeneration != RetainedScene.MeshGeneration)
         { Poses.Clear(); _poseGeneration = RetainedScene.MeshGeneration; }
