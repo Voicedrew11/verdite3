@@ -9,7 +9,7 @@ namespace Verdite.Core;
 
 /// <summary>
 /// The first-run setup: a display step, then one of three tiers (Original,
-/// Original++, Modern) for each group of a game's settings. Nothing here knows a
+/// Original++, Modern) for each group of a game's settings, a page per category. Nothing here knows a
 /// game: the groups, the keys each tier writes and every word the player reads
 /// come from the game's <c>config/onboarding.json</c> (<see cref="OnboardingSpec"/>).
 /// See "Onboarding" in docs/SETTINGS.md in a port.
@@ -410,6 +410,10 @@ internal sealed class OnboardingSpec
     /// <summary>The welcome's text, a localisation key; the setup's own when absent.</summary>
     public string? Welcome { get; set; }
 
+    /// <summary>The welcome's text when the game runs setup again (<c>welcomeAgain</c> in the JSON,
+    /// read case-insensitively); the setup's own re-run text when absent.</summary>
+    public string? WelcomeAgain { get; set; }
+
     /// <summary>The display step, asked before the tiers and outside them.</summary>
     public List<SetupField> Display { get; set; } = [];
 
@@ -431,8 +435,6 @@ internal sealed class OnboardingSpec
 
         foreach (var c in Categories)
         {
-            if (c.Tiers.Count != OnboardingPopup.TierCount)
-                yield return $"{c.Id}: {c.Tiers.Count} tier descriptions, not {OnboardingPopup.TierCount}";
             foreach (var g in c.Groups)
             {
                 if (g.Tiers.Count != OnboardingPopup.TierCount)
@@ -498,10 +500,8 @@ internal sealed class SetupOption
 internal sealed class SetupCategory
 {
     public string Id { get; set; } = "";
+    /// <summary>A localisation key, the heading of the category's own tiers page.</summary>
     public string Label { get; set; } = "";
-
-    /// <summary>One line per tier, shown under the category's choice in Basic setup.</summary>
-    public List<string> Tiers { get; set; } = [];
 
     public List<SetupGroup> Groups { get; set; } = [];
 }
@@ -515,7 +515,14 @@ internal sealed class SetupGroup
 
 internal sealed class SetupTier
 {
+    /// <summary>A localisation key, the tier's short name on a tiers page's selector (Original, Balanced);
+    /// absent, the selector names the run of identical tiers by their names joined.</summary>
+    public string? Label { get; set; }
+
     public string Desc { get; set; } = "";
+
+    /// <summary>Shows the setup's higher-GPU-cost note after the description.</summary>
+    public bool Cost { get; set; }
 
     /// <summary>Every key the group owns, in every tier: null is the key removed,
     /// the feature's default.</summary>
