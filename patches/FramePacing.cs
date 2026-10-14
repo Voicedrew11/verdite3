@@ -105,10 +105,36 @@ public static class FramePacing
     public static double Measured { get; private set; }
 
     /// <summary>Whether the world advanced on the frame now being drawn.</summary>
-    public static bool TickedThisFrame => !Enabled || _tickThisFrame;
+    public static bool TickedThisFrame => Enabled ? _tickThisFrame : !_paused;
 
-    /// <summary>Whether the main-loop iteration now running ran its stages.</summary>
-    public static bool IterationTicked => !Frozen && (!Enabled || _iterationTicks);
+    /// <summary>Whether the main-loop iteration now running ran its stages. Off pacing,
+    /// <see cref="_iterationTicks"/> is false only while <see cref="Paused"/>.</summary>
+    public static bool IterationTicked => !Frozen && _iterationTicks;
+
+    static Func<bool>? _pauseWhen;
+    static bool _paused;
+
+    /// <summary>
+    /// Hold the world still while <paramref name="predicate"/> is true: no tick is
+    /// taken and stages 1-14 are skipped, as on any iteration the clock did not
+    /// tick, so the game goes on drawing the world as it stands. Several callers OR
+    /// together. Verdite Core's FocusPause is the one caller.
+    /// </summary>
+    public static void PauseWhen(Func<bool> predicate)
+    {
+        var prev = _pauseWhen;
+        _pauseWhen = prev == null ? predicate : () => prev() || predicate();
+    }
+
+    /// <summary>
+    /// Whether the world is standing still on the frame now being built. Latched
+    /// once a frame (at the boundary, or at stage 1 when there is none), not read
+    /// per stage: focus can change between two stages of one iteration, and half
+    /// an iteration run would step one stage against another that did not.
+    /// </summary>
+    public static bool Paused => _paused;
+
+    static void LatchPause() => _paused = _pauseWhen != null && _pauseWhen();
 
     /// <summary>
     /// The world is being drawn again as it stood at its last frame (MenuWorld's pass
@@ -147,7 +173,7 @@ public static class FramePacing
     public static bool FirstWalkOfTick(ref long seen)
     {
         if (Frozen) return false;
-        if (!Enabled) return true;
+        if (!Enabled) return !_paused;
         if (seen != Ticks) { seen = Ticks; return true; }
         return false;
     }
@@ -298,6 +324,7 @@ public static class FramePacing
 
         if (_probe) Probe(m, now);
 
+        LatchPause();
         AdvanceLogicClock(now);
         if (!Uncapped) Floor(1000.0 / TargetFps);
     }
@@ -307,6 +334,10 @@ public static class FramePacing
         bool first = _logicClockMs < 0.0;
         double dt = first ? 0.0 : nowMs - _logicClockMs;
         _logicClockMs = nowMs;
+
+        // Paused: no credit accrues, so the clock is carried forward and the tick
+        // fraction holds, and every smoother draws the picture it drew last.
+        if (_paused) { _tickThisFrame = false; return; }
 
         // Over a quarter second is the game not drawing (a disc read), not lateness.
         if (first || dt > 250.0) _logicCredit = 1.0;
@@ -319,14 +350,25 @@ public static class FramePacing
     /// <summary>Skip a main-loop stage on an iteration the world clock did not tick.</summary>
     public static bool BeforeStage(CpuContext c, IMemory m)
     {
-        if (!Enabled || !_sites.Contains(c.RA)) return true;
+        if (!_sites.Contains(c.RA)) return true;
         if (c.RA == FirstSite)
         {
-            double now = _clock.Elapsed.TotalMilliseconds;
-            bool live = _lastBoundaryMs >= 0.0 && now - _lastBoundaryMs <= BoundaryDeadMs;
-            _iterationTicks = live ? _tickThisFrame : FallbackTick(now);
+            if (Enabled)
+            {
+                double now = _clock.Elapsed.TotalMilliseconds;
+                bool live = _lastBoundaryMs >= 0.0 && now - _lastBoundaryMs <= BoundaryDeadMs;
+                _iterationTicks = live ? _tickThisFrame : FallbackTick(now);
+            }
+            else
+            {
+                // Unpaced, every iteration ticks unless the world is paused; the
+                // game's own frame gate still sets the pace.
+                LatchPause();
+                _iterationTicks = !_paused;
+            }
             if (!_iterationTicks) _arrivalFlag = m.ReadU8(ArrivalFlag);
         }
+        else if (!Enabled && _iterationTicks) return true;
         else if (c.RA == ClearSite && !_iterationTicks) m.WriteU8(ArrivalFlag, _arrivalFlag);
         if (_iterationTicks) _windowStageRuns++; else _windowStageSkips++;
         return _iterationTicks;
@@ -343,9 +385,12 @@ public static class FramePacing
             Console.Error.WriteLine($"[KF3] pacing: no frame boundary reached -- ticking at {LogicHz:0.#} Hz " +
                                     "from the wall clock at stage 1 instead. See \"Frame pacing\" in docs/DEVELOPMENT.md.");
         }
+        LatchPause();
         double period = 1000.0 / LogicHz;
         if (_fallbackNextMs < 0.0 || now - _fallbackNextMs > 4.0 * period) _fallbackNextMs = now;
-        bool tick = now >= _fallbackNextMs;
+        // Paused, the grid is held rather than run on, so resuming does not catch up.
+        if (_paused) _fallbackNextMs = now + period;
+        bool tick = !_paused && now >= _fallbackNextMs;
         if (tick) { _fallbackNextMs += period; _fallbackTicks++; Ticks++; }
         _tickThisFrame = tick;
         if (!Uncapped) Floor(1000.0 / TargetFps);

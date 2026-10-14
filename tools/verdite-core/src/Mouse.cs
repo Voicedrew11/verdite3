@@ -18,7 +18,10 @@ namespace Verdite.Core;
 /// frame clock the stale-motion test keys off; <paramref name="Paused"/> is a
 /// game that drops motion while its world is stopped;
 /// <paramref name="DefaultCaptureKey"/> is the key that captures and releases,
-/// <c>Key.Unknown</c> for none.
+/// <c>Key.Unknown</c> for none; <paramref name="OnIsSetting"/> and
+/// <paramref name="LeadIsSetting"/> false are a game whose mouse look, or instant
+/// mouse look, is always on, its saved key no longer read and its variable the only
+/// comparison.
 /// </summary>
 public sealed record MouseGame(
     float UnitsPerDegree,
@@ -34,7 +37,9 @@ public sealed record MouseGame(
     Func<long> Frames,
     Func<double> LogicHz,
     Func<bool>? Paused = null,
-    Key DefaultCaptureKey = Key.Escape);
+    Key DefaultCaptureKey = Key.Escape,
+    bool OnIsSetting = true,
+    bool LeadIsSetting = true);
 
 /// <summary>
 /// Mouse look, and the mouse buttons, as a third source the game's own control
@@ -224,11 +229,11 @@ public static class Mouse
     {
         Event.AddListener<RuntimeReadyEvent>(_ =>
         {
-            Kept.Saved(OnKey, ref Enabled, _fromEnv);
+            if (_game.OnIsSetting) Kept.Saved(OnKey, ref Enabled, _fromEnv);
             Kept.Saved(TurnKey, ref TurnSens, _fromEnv);
             Kept.Saved(LookKey, ref LookSens, _fromEnv);
             Kept.Saved(InvertKey, ref InvertY, _fromEnv);
-            Kept.Saved(LeadKey, ref Lead, _fromEnv);
+            if (_game.LeadIsSetting) Kept.Saved(LeadKey, ref Lead, _fromEnv);
             Kept.Saved(LeftKey, ref LeftButton, _fromEnv);
             Kept.Saved(RightKey, ref RightButton, _fromEnv);
             Kept.Saved(MiddleKey, ref MiddleButton, _fromEnv);

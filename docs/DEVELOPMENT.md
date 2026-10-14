@@ -315,6 +315,41 @@ still runs at the render rate" in `docs/GAME_INTERNALS.md`: billboard cels at
 least). Menus, the opening movie and loads present their own frames and are
 paced to `KF3_FPS` like any frame.
 
+## Pausing when the window loses focus
+
+Click away from the window and the game stands still and goes quiet, as a desktop
+game does; click back and it carries on from the same tick. Verdite Core's
+`FocusPause` (`tools/verdite-core/src/FocusPause.cs`) decides when (the switch,
+`HostWindow.FocusChanged`, and the sound) and the port decides how: `Program.cs`
+hands `FocusPause.Active` to `FramePacing.PauseWhen`, and frame pacing holds the
+world (Verdite2's #68, 2026-10-14). Nothing is written to game memory.
+
+- **Latched at the frame boundary.** `FramePacing.LatchPause` reads the predicates
+  in `AfterDrawOTag`, so a pause starts and ends between frames, never between
+  stages of one iteration. Paused, the world clock takes no tick and the next one
+  is due a whole period after the pause ends, not at once to catch up.
+- **Stages 1-14 are held, stage 15 still draws**, so the window keeps its picture
+  and the smoothers hold their last step. With pacing on this is the same gate
+  every untick frame goes through. With pacing off the gate is opened only for
+  the pause: stage 1 latches it and the iteration's other stages follow its
+  answer, so nothing the game itself runs changes while focus is held.
+- **The sound is the SPU's two gains**, set to nothing and put back from the
+  runtime's own audio settings, by Core; the player's volume is never what moves.
+- **What the stage gate does not hold is only muted**: `OPEN.EXE`, `END.EXE`, and
+  the menus and loads that present their own frames run on in silence.
+- **A run a program drives is not paused.** `KF3_SHELL`, `KF3_AUTOPAD`,
+  `KF3_AUTOSTART` or `KF3_AGENT` set means nobody is there to give the window
+  focus, so the pause is off for that run and the saved key is not read;
+  `KF3_FOCUS_PAUSE=1` turns it back on. The boot check then prints
+  `kf3.focuspause.on boots at 0, declared default 1`, as Verdite2's does.
+- On by default; Settings ▸ Gameplay ▸ *Pause in the background*
+  (`kf3.focuspause.on`), not a PORT SETTINGS row. `[KF3] focus lost: paused` and
+  `focus back: resumed` are printed as it happens.
+
+**Not yet seen**: the pause and the silence on an actual focus loss, which needs
+someone to click away, with pacing on and off. `KF3_FPS_PROBE=1` should read 0
+ticks/s while the window is in the background and 15.0 again after.
+
 ## Menus and loading screens wait for a vblank
 
 `patches/VBlankPacing.cs`, **on by default** (`KF3_VBLANKPACING=0` compares).

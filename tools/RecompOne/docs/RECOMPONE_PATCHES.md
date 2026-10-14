@@ -2036,6 +2036,18 @@ Four files in the directory have no entry below:
   `Shutdown` no longer calls OpenAL for a source and buffers that were never made
   when no device opened, and waits a second at most for the mixer. Not measured:
   nothing makes the mixer throw on purpose. **No recompile.**
+- `0110-keep-displayed-target.patch` — `PresentDisplay` destroyed any render
+  target not drawn for 300 frames, the one the display was showing included. A
+  game that holds a still and waits for a button without drawing (KF2's map item;
+  a sign before `MenuWorld` drew it) kept presenting, so five seconds in its only
+  wide target was reaped and every present after was the 4:3 VRAM fallback: black
+  bars outside the 4:3 area. A target containing the display rect is no longer
+  reaped; it is never staler than VRAM (writeback each present, `WriteVram` syncs
+  into it). Measured in KF2 with `KF2_MENUWORLD=0 KF2_MESSAGETEXT_TEST=3:0
+  KF2_PRESENT_PROBE=2`: before, `rt0 none ... idle 300` and `vram fallback 125`
+  every 2 s from five seconds into the message; after, `wide 125, vram fallback 0`
+  for the whole wait. The map item itself not reached by the shell; **not looked
+  at.** **No recompile.**
 
 ## Package bumps
 

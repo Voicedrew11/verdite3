@@ -245,6 +245,83 @@ kept in interface.ini, 0 default(s) wrong`. The `[RecompOne]` lines against the 
 No exception. **Not judged**: the page drawn with the new rows, and the window
 changing mode (the user's to look at).
 
+## Onboarding
+
+The first-run setup, Verdite Core's (`tools/verdite-core/src/Onboarding/`), brought
+over from Verdite2 (its #63 and #67) on 2026-10-14. The launcher shows it **while
+the game is being built** and holds the game back until both are done, and it runs
+again from the in-game page: RUN SETUP, the DISPLAY page's last row, not a setting.
+The welcome offers three presets (Original, Original++, Modern) and Custom; each is
+a starting point, and the player walks every page (the display, a page of tiers per
+category, the turning page) to a summary. How the popup behaves, and why, is in
+Verdite2's `docs/SETTINGS.md`; it is the same code.
+
+### Where setup lives
+
+* `tools/verdite-core/src/Onboarding/` (`Onboarding`, `OnboardingPopup`): the
+  game-agnostic half, compiled into the launcher and into the game.
+* `config/onboarding.json`: this game's half: the display fields, the categories,
+  groups and tiers, the turning page, `defaults` (what each key means when absent),
+  and every string in en, pt-BR and es-419. It ships in `content/config`
+  (`Launcher.targets` takes `config/**/*.json`), so it is part of the build key.
+* `patches/Setup.cs`: RUN SETUP, the live apply, the boot check and the shell's
+  `setup` verb (`setup`, `setup open`, `setup apply <tier> [two more]`,
+  `setup preset original|original++|recommended`).
+* `Launcher.cs` in Core: `Onboarding.Due` decides whether setup is shown;
+  `VERDITE3_SETUP=1` shows it regardless.
+
+### What this game's spec holds
+
+| page | group | Original | Original++ | Modern |
+|---|---|---|---|---|
+| display | window, resolution, aspect, frame rate | the window left alone, 240p, 4:3, 15 fps (`kf3.pacing` 0) | suggested from the monitor | suggested from the monitor |
+| controls | movement | D-pad only (`kf3.analog.on` 0) | sticks | sticks |
+| | haptics | no rumble, no gyro | plain rumble | HD rumble, gyro aim and item turn |
+| presentation | image | no perspective, sub-pixel or Z-buffer, dithered, unfiltered | the three on, no dither (`kf3.shading` 1), unfiltered | 24-bit, 16x, mipmaps |
+| | lighting | per-pixel, neighbour blend, fog and AO off (corners) | AO off | all on, AO medium |
+| | water | no waves, no reflections | the same | waves and planar reflections |
+| | motion | no smoothing | camera and models smoothed | the same |
+| | view | the game's distance (`kf3.renderdistance` 0) | the same | 16 tiles, faded over 3 |
+| gameplay | gear, death | as released | comparison, reload | the same |
+| turning | controls | tank (`kf3.controls` 1) | tank | twin stick, no acceleration |
+
+Modern is every key absent, so it is exactly the declared defaults. Bools are
+written `1` and `0`, as this game keeps them; the window keys keep the runtime's
+`True` and `False`. Not in it: sound (this game has no audio settings), murky
+water (off everywhere until it ships), the HUD at the edges (a choice of its own,
+off by default), and the mouse.
+
+**The turning page has no slider.** Verdite2's asks how fast creatures turn toward
+the player, because its acceleration needs faster creatures to stay fair. This game
+has no enemy turn speed, so the page only chooses the controls, and Modern picks
+twin stick *without* acceleration: the stick at the D-pad's rate ("The stick turns
+at the original's speed" in `docs/INPUT.md`). Acceleration is offered, and its
+description says fights get easier.
+
+**The frame rate's ORIGINAL** writes `kf3.pacing` 0 and removes `kf3.fps`; every
+other step removes `kf3.pacing` (on) and writes `kf3.fps`. `kf3.fps` is first in each
+option, so a rate matching no step (50, from the Settings window) is shown as "Keep
+current (50)".
+
+### What setup writes, and when
+
+The rules are Core's, as in Verdite2: setup is **due** while `verdite.setup` is below
+the spec's `version` (1) and the player has never seen it or has no `kf3.` key yet;
+a value equal to its default **removes** the key; `null` in a tier is the default;
+a group matching no tier is **Custom** and left alone unless a tier is chosen. In the
+game every changed key is applied live: the window keys by Core, `kf3.analog.on` and
+`kf3.analog.accel` by `Setup`'s own setters (the Settings window's), every other by
+its `PortSetting.Apply`.
+
+**The boot check** (`Setup.Check`) holds the spec to the code: each key it writes
+has a live setter, and each key not saved reads what `defaults` says. Measured
+2026-10-14 on the user's settings (28 kept): `[KF3] setup check: 28 key(s), 0
+problem(s)`. A fresh data folder, where every key is compared, is not measured yet.
+
+**Not yet seen**: the launcher's setup over a build, RUN SETUP on the in-game page,
+and whether `RUN SETUP` (the page's sixth row of six) fits the frame as the other
+rows do. All of it needs someone at the window.
+
 ## The defaults are the user's (2026-10-06)
 
 The user's own settings became every player's default: 16:9, pacing on at 144 fps
@@ -252,7 +329,8 @@ with the scrolling textures carried, smooth shading (24-bit, no dither),
 perspective, sub-pixel and the Z-buffer, per-pixel light, AO at medium, mipmaps
 with 16 taps, render distance ENHANCED (16 tiles faded over 3), all three
 water features (FULL; murk taken off again and out of FULL on 2026-10-08, not
-good enough to ship yet), and the sticks' turn and look at 1.25. Each is changed twice, where the feature starts up and in
+good enough to ship yet), and the sticks' turn and look at 1.25 (back to 1.0 on
+2026-10-14: "The stick turns at the original's speed" in `docs/INPUT.md`). Each is changed twice, where the feature starts up and in
 its declared `Default`, which the boot check holds equal. A variable still wins,
 and a `0` turns any one off.
 

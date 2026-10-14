@@ -20,6 +20,7 @@ namespace Kf3;
 ///     KF3_ANALOG_CURVE/MOVECURVE=1.35/1.0       response curves
 ///     KF3_ANALOG_ACCEL=1 ACCELMAX=2.2 ACCELTIME=0.5   the look ramp
 ///     KF3_ANALOG_INSTANTSTOP=1                  camera stops on release
+///     KF3_ANALOG_EASE=0                         the right stick neither eases in nor out
 ///     KF3_ANALOG_INVERTY/INVERTTURN/INVERTSTRAFE/INVERTFWD=1
 ///     KF3_ANALOG_PROBE=1        the control-state report; see AnalogProbe
 ///
@@ -160,6 +161,7 @@ public static class Analog
     public const string MoveKey        = "kf3.analog.move";
     public const string StopKey        = "kf3.analog.instantstop";
     public const string AccelKey       = "kf3.analog.accel";
+    public const string EaseKey        = "kf3.analog.ease";
     public const string AccelMaxKey    = "kf3.analog.accelmax";
     public const string AccelTimeKey   = "kf3.analog.acceltime";
     public const string TurnSensKey    = "kf3.analog.turn";
@@ -192,7 +194,11 @@ public static class Analog
     // a d-pad that is either down or not, has no notion of. Fine aim near centre
     // stays fine -- the ramp only starts past LookAccelThreshold -- and it falls
     // away three times faster than it builds, so easing off is immediate.
-    public static bool LookAccel = true;
+    //
+    // Off by default: it turns the view past the D-pad's rate, up to 2.2 times it,
+    // and the game's combat is built on how fast the player can turn. The default
+    // stick is the original's speed; faster is something a player asks for.
+    public static bool LookAccel = false;
     public static float LookAccelMax = 2.2f;
     public static float LookAccelTime = 0.5f;
     const float LookAccelThreshold = 0.8f;
@@ -212,8 +218,9 @@ public static class Analog
     // push corrects finely and a full one still turns at the full rate.
     const float TankDeadzone = 0.3f;
     const float TankTurnCurve = 2f;
-    public static float TurnSens = 1.25f;   // the user's, 2026-10-06
-    public static float PitchSens = 1.25f;
+    // 1.0 is the D-pad's rate and L2/R2's at full deflection (see Ramp).
+    public static float TurnSens = 1.0f;
+    public static float PitchSens = 1.0f;
     public static float MoveSens = 1.0f;
 
     public static bool InvertTurn;
@@ -231,7 +238,19 @@ public static class Analog
     // Movement is deliberately *not* included. Its ramp-down is the walking
     // momentum the game has always had, and stopping the player dead would be a
     // change to how the game plays rather than to how the stick reads.
-    public static bool CameraInstantStop = true;
+    //
+    // Off by default, for the same reason the stick ramps up (see Ramp): a stick
+    // that starts and stops the view dead turns it faster than the game ever did,
+    // and the original's ease in and out is how its turning feels.
+    public static bool CameraInstantStop = false;
+
+    // The right stick eased toward what it asks, by the game's own step (see Ramp).
+    // Off, it is direct: the turn and look are the stick's position at once, still
+    // capped at the D-pad's rate and L2/R2's, and a released stick stops dead, so
+    // CameraInstantStop says nothing. The speed is the original's either way; only
+    // the drag a held button has, four or five ticks in and out, is gone. 2D only:
+    // 3D's left-stick turn is the D-pad's, ease and all.
+    public static bool StickEase = true;
 
     // Which camera axes the sticks were driving last frame, so the release can be
     // handed back to the D-pad and L2/R2 after exactly one zeroing frame, and the
@@ -245,9 +264,19 @@ public static class Analog
     // not move.
     static float _turnCarry, _pitchCarry, _fwdCarry, _strafeCarry;
 
-    // 3D's turn as it ramps toward the stick's, and whether it was driven last tick.
-    static float _tankTurn;
-    static bool _tankLive;
+    // The sticks' turn and look as they ramp toward what the stick asks, and whether
+    // the stick drove each last tick: the game's own ease in and out, as a held D-pad
+    // and L2/R2 get it (see Ramp). One pair for both control schemes, since 3D's left
+    // stick and 2D's right stick never turn at once.
+    static float _rampTurn, _rampPitch;
+    static bool _rampTurnLive, _rampPitchLive;
+
+    /// <summary>Raised whenever the shipped defaults change in a way a saved value
+    /// should not survive. 2: the stick turns at the D-pad's rate, so look
+    /// acceleration and the instant stop went off and sensitivities above 1.0 were
+    /// put back to 1.0, once.</summary>
+    const int DefaultsVersion = 2;
+    const string DefaultsKey = "kf3.analog.defaults";
 
     /// <summary>Keys a KF3_ANALOG* variable set, which the saved settings must
     /// not overwrite -- the same precedence the other patches keep.</summary>
@@ -314,6 +343,7 @@ public static class Analog
         Env("KF3_ANALOG_MOVE", MoveSensKey, ref MoveSens);
         Env("KF3_ANALOG_INSTANTSTOP", StopKey, ref CameraInstantStop);
         Env("KF3_ANALOG_ACCEL", AccelKey, ref LookAccel);
+        Env("KF3_ANALOG_EASE", EaseKey, ref StickEase);
         Env("KF3_ANALOG_ACCELMAX", AccelMaxKey, ref LookAccelMax);
         Env("KF3_ANALOG_ACCELTIME", AccelTimeKey, ref LookAccelTime);
     }
@@ -330,12 +360,14 @@ public static class Analog
         // happens inside HostWindow.Initialize -- after Program.cs called Configure.
         Event.AddListener<RuntimeReadyEvent>(_ =>
         {
+            MigrateDefaults();
             Saved(OnKey, ref Enabled);
             Saved(LookKey, ref AnalogLook);
             Saved(MoveKey, ref AnalogMove);
             Saved(ControlsKey, ref Tank);
             Saved(StopKey, ref CameraInstantStop);
             Saved(AccelKey, ref LookAccel);
+            Saved(EaseKey, ref StickEase);
             Saved(AccelMaxKey, ref LookAccelMax);
             Saved(AccelTimeKey, ref LookAccelTime);
             Saved(TurnSensKey, ref TurnSens);
@@ -352,6 +384,30 @@ public static class Analog
         });
 
         HookAttach.OnOverlayLoad("analog", Attach);
+    }
+
+    /// <summary>
+    /// Bring a saved config to the current defaults once (<see cref="DefaultsVersion"/>):
+    /// a value saved under the old ones was chosen against a stick that already
+    /// turned faster than the D-pad, so it is reset, not kept. Run before the saved
+    /// values are read; a variable set in the environment still wins, as it never
+    /// touched the store. Booleans are kept as 1/0 here (AnalogPage.Set).
+    /// </summary>
+    static void MigrateDefaults()
+    {
+        var view = RecompOne.Runtime.Runtime.View;
+        if (view.GetInt(DefaultsKey, 0) >= DefaultsVersion) return;
+
+        int reset = 0;
+        if (view.Has(AccelKey) && view.GetInt(AccelKey, 0) != 0) { view.SetInt(AccelKey, 0); reset++; }
+        if (view.Has(StopKey) && view.GetInt(StopKey, 0) != 0) { view.SetInt(StopKey, 0); reset++; }
+        if (view.Has(TurnSensKey) && view.GetFloat(TurnSensKey, 1f) > 1f) { view.SetFloat(TurnSensKey, 1f); reset++; }
+        if (view.Has(PitchSensKey) && view.GetFloat(PitchSensKey, 1f) > 1f) { view.SetFloat(PitchSensKey, 1f); reset++; }
+        view.SetInt(DefaultsKey, DefaultsVersion);
+        RecompOne.Runtime.Runtime.SaveView();
+        if (reset > 0)
+            Console.WriteLine($"[KF3] analog: the stick now turns at the D-pad's rate; {reset} saved " +
+                              "setting(s) that turned it faster were reset (Input ▸ Gamepad to change them back)");
     }
 
     static bool Attach()
@@ -406,7 +462,7 @@ public static class Analog
         // here spends it; this early-out is the sticks-idle fast path.
         if (!right && !left && !gyro && yaw == 0 && look == 0 && !_mouseTurn && !_mousePitch)
         {
-            _tankLive = false;
+            _rampTurnLive = _rampPitchLive = false;
             return pad;
         }
 
@@ -432,15 +488,20 @@ public static class Analog
         // option; a mouse that has stopped moving has said nothing at all, and a
         // camera that carries on afterwards is simply wrong. Hence the separate
         // flags, which ignore CameraInstantStop.
-        bool releaseTurn  = (CameraInstantStop && _ownedTurn)  || _mouseTurn;
-        bool releasePitch = (CameraInstantStop && _ownedPitch) || _mousePitch;
+        // A direct stick (StickEase off) stops dead as well, having no ease to stop by.
+        bool direct = !StickEase && !Tank;
+        bool stopDead = CameraInstantStop || direct;
+        bool releaseTurn  = (stopDead && _ownedTurn)  || _mouseTurn;
+        bool releasePitch = (stopDead && _ownedPitch) || _mousePitch;
 
         if (x == 0f && y == 0f && !leftActive && yaw == 0 && look == 0 && !gyro &&
             !releaseTurn && !releasePitch)
         {
             _accelT = 0f;
             _accelTick = 0;
-            _tankLive = false;
+            // The game decays a released velocity itself while nothing is in the
+            // hook, so the next push starts from wherever that decay has got to.
+            _rampTurnLive = _rampPitchLive = false;
             return pad;
         }
 
@@ -448,10 +509,10 @@ public static class Analog
         float mult = right ? Accelerate(RawMag(Controller.RightX, Controller.RightY, LookDeadzone)) : 1f;
 
         int rate = (short)m.ReadU16(TurnRate);
-        if (rate <= 0) return pad;
+        if (rate <= 0) { _rampTurnLive = _rampPitchLive = false; return pad; }
 
-        // The stick's share of each step, so FrameSmoothing can tell how much of
-        // what the game turns by this tick was the mouse's (Mouse.NoteSpent).
+        // What the stick asks for: the game's own rate at full deflection times the
+        // sensitivity, as the D-pad turns, and 32 a tick for the look, L2/R2's limit.
         //
         // The yaw sign is read: stick right is +x and turning right is yaw
         // *decreasing* (Left 0x8008186C increases, Right 0x8008186E decreases),
@@ -462,30 +523,38 @@ public static class Analog
         // +y the same velocity word that stick-down (+y) does: the stick and the
         // mouse agree, and the R2-adding branch is what both select. Whether that
         // is "down on screen" is in the not-yet-judged list in docs/INPUT.md.
-        float stickTurn  = -x * rate * TurnSens * mult * (InvertTurn ? -1f : 1f);
-        float stickPitch =  y * PitchVelMax * PitchSens * mult * (InvertPitch ? -1f : 1f);
+        float turnWant  = -x * rate * TurnSens * mult * (InvertTurn ? -1f : 1f);
+        float pitchWant =  y * PitchVelMax * PitchSens * mult * (InvertPitch ? -1f : 1f);
         // 3D controls turn with the left stick's sideways deflection, at the game's
         // own rate at full deflection times the turn sensitivity, as the D-pad turns.
-        // No look ramp: that is the right stick's, for aiming. The turn moves toward
-        // the stick's by the game's own accel a tick (rate>>2, about four ticks to
-        // full), as a held D-pad's does, starting from wherever the velocity is, so a
-        // push during a D-pad turn's ramp-down carries on from it.
-        if (Tank && leftActive)
-        {
-            float want = -lx * rate * TurnSens * (InvertTurn ? -1f : 1f);
-            float from = _tankLive ? _tankTurn : (short)m.ReadU16(TurnVel);
-            int accel = rate >> 2;
-            _tankTurn = Math.Clamp(want, from - accel, from + accel);
-            stickTurn += _tankTurn;
-        }
-        _tankLive = Tank && leftActive;
+        // No look ramp: that is the right stick's, for aiming.
+        bool tankTurn = Tank && leftActive;
+        if (tankTurn) turnWant = -lx * rate * TurnSens * (InvertTurn ? -1f : 1f);
+
+        // The stick's share of each step, so FrameSmoothing can tell how much of
+        // what the game turns by this tick was the mouse's (Mouse.NoteSpent): the
+        // wanted speed eased toward by the game's own acceleration, as a held D-pad
+        // and L2/R2 are, so the stick neither starts nor stops faster than they do.
+        // A direct stick skips the ease and is the speed it asks for at once.
+        float stickTurn = direct ? (x != 0f ? turnWant : 0f)
+            : x != 0f || tankTurn || _rampTurnLive
+            ? Ramp(turnWant, ref _rampTurn, ref _rampTurnLive, m, TurnVel, rate >> 2, _mouseTurn)
+            : 0f;
+        float stickPitch = direct ? (y != 0f ? pitchWant : 0f)
+            : y != 0f || _rampPitchLive
+            ? Ramp(pitchWant, ref _rampPitch, ref _rampPitchLive, m, PitchVel, PitchAccel, _mousePitch)
+            : 0f;
+        if (direct) _rampTurnLive = _rampPitchLive = false;
+        // The instant stop asks for the opposite, and is the player's to choose.
+        if (CameraInstantStop && x == 0f && !Tank) { stickTurn = 0f; _rampTurnLive = false; }
+        if (CameraInstantStop && y == 0f) { stickPitch = 0f; _rampPitchLive = false; }
         stickTurn += gyroTurn;
         stickPitch += gyroPitch;
         Mouse.NoteSpent(m, yaw, stickTurn, look, stickPitch);
 
         // A gyro step is an amount, so it gets the mouse's ceiling and the mouse's
         // stop: a hand that has stopped turning the pad has asked for nothing more.
-        if (x != 0f || leftActive || yaw != 0 || gyroTurn != 0f || releaseTurn)
+        if (x != 0f || leftActive || yaw != 0 || gyroTurn != 0f || releaseTurn || _rampTurnLive)
         {
             int step = Step(stickTurn + yaw, ref _turnCarry,
                             Ceiling(rate * OverspeedCap, yaw != 0 || gyroTurn != 0f));
@@ -497,7 +566,7 @@ public static class Analog
             _mouseTurn = yaw != 0 || gyroTurn != 0f;
         }
 
-        if (y != 0f || look != 0 || gyroPitch != 0f || releasePitch)
+        if (y != 0f || look != 0 || gyroPitch != 0f || releasePitch || _rampPitchLive)
         {
             int step = Step(stickPitch + look, ref _pitchCarry,
                             Ceiling(PitchVelMax * OverspeedCap, look != 0 || gyroPitch != 0f));
@@ -557,6 +626,23 @@ public static class Analog
         MoveFrames++;
         orig(c, m);
         if (held != pad) m.WriteU16(Pad, pad);
+    }
+
+    /// <summary>
+    /// One tick of the game's own ease toward a velocity: the step moves toward
+    /// <paramref name="want"/> by at most <paramref name="accel"/> (the turn's
+    /// rate&gt;&gt;2, four or five ticks to full; the look's 3, eleven), up and down
+    /// alike, as the button branches and the released branch of func_8002F5C0 move
+    /// it. It carries on from the game's velocity when the stick takes over from a
+    /// D-pad turn or its decay, but not from a step the mouse or gyro drove, which
+    /// is an amount and not a speed. Live until it has come back to rest.
+    /// </summary>
+    static float Ramp(float want, ref float state, ref bool live, IMemory m, uint velAddr, int accel, bool wasMouse)
+    {
+        float from = live ? state : wasMouse ? 0f : (short)m.ReadU16(velAddr);
+        state = Math.Clamp(want, from - accel, from + accel);
+        live = state != 0f || want != 0f;
+        return state;
     }
 
     /// <summary>
