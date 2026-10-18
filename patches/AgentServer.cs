@@ -193,7 +193,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
+            case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "setup" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
                 or "renderdist" or "murk" or "waves" or "planar" or "scale" or "point":
                 Enqueue(_fast, cmd);
                 break;

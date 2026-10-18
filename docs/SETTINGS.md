@@ -280,7 +280,9 @@ Verdite2's `docs/SETTINGS.md`; it is the same code.
   (`Launcher.targets` takes `config/**/*.json`), so it is part of the build key.
 * `patches/Setup.cs`: RUN SETUP, the live apply, the boot check and the shell's
   `setup` verb (`setup`, `setup open`, `setup apply <tier> [two more]`,
-  `setup preset original|original++|recommended`).
+  `setup preset original|original++|recommended`). The verb was unreachable
+  until 2026-10-18: `AgentServer.Route` did not list it, so it answered "unknown
+  command".
 * `Launcher.cs` in Core: `Onboarding.Due` decides whether setup is shown;
   `VERDITE3_SETUP=1` shows it regardless.
 
@@ -322,7 +324,15 @@ current (50)".
 ### What setup writes, and when
 
 The rules are Core's, as in Verdite2: setup is **due** while `verdite.setup` is below
-the spec's `version` (1) and the player has never seen it or has no `kf3.` key yet;
+the spec's `version` (1), so everyone who has never finished or skipped it sees it
+once, a player with `kf3.` keys from 0.1.x included (Core `674e51c`; before it, any
+`kf3.` key skipped setup silently, which was every 0.1.x player). The `kf3.` prefix
+(`existing`) now decides only where the display step starts: a player with no
+`kf3.` key starts on what the monitor suggests, any other on what is set. Finishing
+or skipping writes `verdite.setup=1`; closing the window mid-setup writes nothing,
+so it is asked again. Measured 2026-10-18 through the shell's `setup` (`due`): no
+keys true, `kf3.` keys and no flag true, the flag false; `setup preset original`
+wrote the flag and `due` went false.
 a value equal to its default **removes** the key; `null` in a tier is the default;
 a group matching no tier is **Custom** and left alone unless a tier is chosen. In the
 game every changed key is applied live: the window keys by Core, `kf3.analog.on` and
