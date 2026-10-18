@@ -114,9 +114,8 @@ public static class Launcher
 
             // The first-run setup, shown while the game builds when there is a build
             // to wait for, and on its own when there is not (a spec raised past the
-            // one the player finished, or VERDITE2_SETUP=1). A player who already
-            // has settings is not asked (Onboarding.Due). Either way the game starts
-            // after it.
+            // one the player finished, never seen, or VERDITE2_SETUP=1; Onboarding.Due).
+            // Either way the game starts after it.
             var setup = Onboarding.Load(game.Name, Path.Combine(Paths.ContentConfig, "onboarding.json"));
             if (setup is not null && !Onboarding.Due(setup) && game.Env("SETUP") is not "1") setup = null;
 

@@ -97,17 +97,11 @@ internal static class Onboarding
     public static bool IsWindowKey(string key) => WindowKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Whether setup is shown: the player last finished it at an older spec, or has
-    /// never seen it and has not played either. A player who already has settings
-    /// (any stored key under the spec's <see cref="OnboardingSpec.Existing"/>
-    /// prefix, which the game writes on its first boot) is not asked: their
-    /// settings are theirs, and RUN SETUP is there if they want it.
+    /// Whether setup is shown: the player has never seen it, or last finished it at
+    /// an older spec. Having played (settings stored) does not excuse a player who
+    /// has never seen it; it only decides where the display starts (<see cref="FirstRun"/>).
     /// </summary>
-    public static bool Due(OnboardingSpec spec)
-    {
-        int seen = ConfigManager.View.GetInt(FlagKey, 0);
-        return seen < spec.Version && (seen > 0 || !Played(spec));
-    }
+    public static bool Due(OnboardingSpec spec) => ConfigManager.View.GetInt(FlagKey, 0) < spec.Version;
 
     /// <summary>A player with no setup flag and no settings of the game's: the only
     /// case in which the display starts on what the monitor suggests rather than on
