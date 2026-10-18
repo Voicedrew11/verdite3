@@ -33,6 +33,7 @@
     "kf3.smooth": "1",
     "kf3.smooth_models": "1",
     "kf3.renderdistance": "16",
+    "kf3.renderdistance.fade": "3",
     "kf3.gearcompare.enabled": "1",
     "kf3.autoreload.enabled": "1"
   },
@@ -511,21 +512,24 @@
               "label": "kf3.setup.view.0.name",
               "desc": "kf3.setup.view.0",
               "set": {
-                "kf3.renderdistance": "0"
+                "kf3.renderdistance": "0",
+                "kf3.renderdistance.fade": "0"
               }
             },
             {
               "label": "kf3.setup.view.0.name",
               "desc": "kf3.setup.view.1",
               "set": {
-                "kf3.renderdistance": "0"
+                "kf3.renderdistance": "0",
+                "kf3.renderdistance.fade": "0"
               }
             },
             {
               "label": "kf3.setup.view.2.name",
               "desc": "kf3.setup.view.2",
               "set": {
-                "kf3.renderdistance": null
+                "kf3.renderdistance": null,
+                "kf3.renderdistance.fade": null
               }
             }
           ]

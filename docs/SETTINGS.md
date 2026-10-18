@@ -295,7 +295,7 @@ Verdite2's `docs/SETTINGS.md`; it is the same code.
 | | lighting | per-pixel, neighbour blend, fog and AO off (corners) | AO off | all on, AO medium |
 | | water | no waves, no reflections | the same | waves and planar reflections |
 | | motion | no smoothing | camera and models smoothed | the same |
-| | view | the game's distance (`kf3.renderdistance` 0) | the same | 16 tiles, faded over 3 |
+| | view | the game's distance, no fade (`kf3.renderdistance` and `.fade` 0) | the same | 16 tiles, faded over 3 |
 | gameplay | gear, death | as released | comparison, reload | the same |
 | turning | controls, enemy turn speed | tank (`kf3.controls` 1), x1 | tank, x1 | twin stick, no acceleration, x1 |
 
