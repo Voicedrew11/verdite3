@@ -150,13 +150,27 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | GRAPHICS | TEXTURE FILTER | OFF, MIPMAPS, 2X … 16X | `kf3.mipmaps` and `kf3.aniso`: the taps walk the mip chain, so any turns the mipmaps on |
 | | PER-PIXEL LIGHT | ON, OFF | |
 | | AMB. OCCLUSION | OFF, LOW, MEDIUM, HIGH | `kf3.ao` and `kf3.ao.quality` |
+| | SHADING | DITHER, NONE, SMOOTH | `kf3.shading`: the console's crosshatch, the bands raw, or 24-bit |
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
+| | FOG | CORNERS, DEPTH, DISTANCE | `kf3.fog`: the game's, by pixel depth, or by distance from the eye |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
-| GAMEPLAY | CONTROLS | 2D, 3D | `kf3.controls`: 2D the twin sticks, 3D one stick as tank controls, the left stick walking and turning and the right stick unused (`docs/INPUT.md`, "2D and 3D controls") |
-| | INVERTED CAMERA | OFF, ON | `kf3.analog.invertpitch`: the right stick's up and down reversed, as a flight stick, dimmed in 3D (`docs/INPUT.md`, "Inverted camera"); Settings ▸ Gameplay, moved off Input ▸ Analog's "Invert look Y" |
-| | RELOAD ON DEATH | ON, OFF | |
+| GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
+| | COMPARE GEAR | ON, OFF | `kf3.gearcompare.enabled` |
+| | ENEMY TURN | ORIGINAL, X1.25 … X8 | `kf3.enemyturn` (GAME_INTERNALS, "Enemies turn faster"); tracking while standing stays in the Settings window |
+| CONTROLS | CONTROLS | 2D, 2D ACCEL, 3D | `kf3.controls` and `kf3.analog.accel`: setup's turning page as a row; 3D clears the acceleration, as setup's tank option does (`docs/INPUT.md`, "2D and 3D controls") |
+| | INVERTED CAMERA | OFF, ON | `kf3.analog.invertpitch`: the right stick's up and down reversed, as a flight stick, dimmed in 3D (`docs/INPUT.md`, "Inverted camera") |
+| | STICK SENS | X0.5 … X3 | `kf3.analog.turn` and `kf3.analog.pitch` together; X1 is the D-pad's rate; a pair set apart in the Settings window shows CUSTOM |
+| | MOUSE SENS | X0.25 … X5 | `kf3.mouse.turn` and `kf3.mouse.look` together, dimmed while mouse look is off |
 | | GYRO | ON, OFF | `kf3.itemturn.gyro` and `kf3.gyroaim.on`: the pad's gyroscope turns a picked-up item and aims a drawn bow (`docs/INPUT.md`) |
-| | RUMBLE | OFF, ON, HD | `kf3.rumble.on` and `kf3.rumble.hd`: the pad rumbles as a bow is drawn and loosed, ON on two motors, HD on a Switch Pro Controller, a single Joy-Con or a DualSense over USB (`docs/INPUT.md`, "Rumble"); OFF keeps the HD choice |
+| | RUMBLE | OFF, ON, HD | `kf3.rumble.on` and `kf3.rumble.hd`: the pad rumbles as a bow is drawn and loosed (`docs/INPUT.md`, "Rumble"); OFF keeps the HD choice |
+
+Verdite2's pages, matched on 2026-10-14: GAMEPLAY keeps the rules of play and the
+pad and mouse rows moved to a CONTROLS page of their own, as Verdite2's; SHADING and
+FOG joined GRAPHICS and WORLD. Verdite2's SOUND page (3D AUDIO) has no counterpart:
+this game has no audio settings. Measured through the shell's `settings` session
+(slot 1): `51 declared on 5 pages`, ENEMY TURN stepping ORIGINAL, X1.25, X1.5,
+MOUSE SENS moving both halves, CONTROLS stepping 3D to 2D ACCEL, and a discard
+writing 0 keys.
 
 Until 2026-10-07 the same rows filled two pages, PICTURE (DISPLAY to TEXTURE
 FILTER) and WORLD (the rest). The page shown is not kept between runs, so the
@@ -166,9 +180,9 @@ DISPLAY, R1 four times went GRAPHICS, WORLD, GAMEPLAY and back to DISPLAY, then
 Circle gave `left, nothing changed`, with `interface.ini` identical and 0 writes.
 
 Off the page, and kept in the Settings window with their variables: the smoothers
-(on whenever pacing is), mouse look and instant look, the menu pointer, fog from depth, blend tile
+(on whenever pacing is), mouse look and instant look, the menu pointer, blend tile
 edges (now **on by default**, the user having kept it on), the reload slot (last
-used), the message fade, and the renderer's own switches (shading, perspective,
+used), the message fade, tracking while standing, and the renderer's own switches (perspective,
 sub-pixel, the Z-buffer, the world behind menus, scrolling textures, the AO normals,
 the enhancement distance). A saved value of any of them still holds.
 
@@ -245,6 +259,95 @@ kept in interface.ini, 0 default(s) wrong`. The `[RecompOne]` lines against the 
 No exception. **Not judged**: the page drawn with the new rows, and the window
 changing mode (the user's to look at).
 
+## Onboarding
+
+The first-run setup, Verdite Core's (`tools/verdite-core/src/Onboarding/`), brought
+over from Verdite2 (its #63 and #67) on 2026-10-14. The launcher shows it **while
+the game is being built** and holds the game back until both are done, and it runs
+again from the in-game page: RUN SETUP, the DISPLAY page's last row, not a setting.
+The welcome offers three presets (Original, Original++, Modern) and Custom; each is
+a starting point, and the player walks every page (the display, a page of tiers per
+category, the turning page) to a summary. How the popup behaves, and why, is in
+Verdite2's `docs/SETTINGS.md`; it is the same code.
+
+### Where setup lives
+
+* `tools/verdite-core/src/Onboarding/` (`Onboarding`, `OnboardingPopup`): the
+  game-agnostic half, compiled into the launcher and into the game.
+* `config/onboarding.json`: this game's half: the display fields, the categories,
+  groups and tiers, the turning page, `defaults` (what each key means when absent),
+  and every string in en, pt-BR and es-419. It ships in `content/config`
+  (`Launcher.targets` takes `config/**/*.json`), so it is part of the build key.
+* `patches/Setup.cs`: RUN SETUP, the live apply, the boot check and the shell's
+  `setup` verb (`setup`, `setup open`, `setup apply <tier> [two more]`,
+  `setup preset original|original++|recommended`). The verb was unreachable
+  until 2026-10-18: `AgentServer.Route` did not list it, so it answered "unknown
+  command".
+* `Launcher.cs` in Core: `Onboarding.Due` decides whether setup is shown;
+  `VERDITE3_SETUP=1` shows it regardless.
+
+### What this game's spec holds
+
+| page | group | Original | Original++ | Modern |
+|---|---|---|---|---|
+| display | window, resolution, aspect, frame rate | the window left alone, 240p, 4:3, 15 fps (`kf3.pacing` 0) | suggested from the monitor | suggested from the monitor |
+| controls | movement | D-pad only (`kf3.analog.on` 0) | sticks | sticks |
+| | haptics | no rumble, no gyro | plain rumble | HD rumble, gyro aim and item turn |
+| presentation | image | no perspective, sub-pixel or Z-buffer, dithered, unfiltered | the three on, no dither (`kf3.shading` 1), unfiltered | 24-bit, 16x, mipmaps |
+| | lighting | per-pixel, neighbour blend, fog and AO off (corners) | AO off | all on, AO medium |
+| | water | no waves, no reflections | the same | waves and planar reflections |
+| | motion | no smoothing | camera and models smoothed | the same |
+| | view | the game's distance, no fade (`kf3.renderdistance` and `.fade` 0) | the same | 16 tiles, faded over 3 |
+| gameplay | gear, death | as released | comparison, reload | the same |
+| turning | controls, enemy turn speed | tank (`kf3.controls` 1), x1 | tank, x1 | twin stick, no acceleration, x1 |
+
+Modern is every key absent, so it is exactly the declared defaults. Bools are
+written `1` and `0`, as this game keeps them; the window keys keep the runtime's
+`True` and `False`. Not in it: sound (this game has no audio settings), murky
+water (off everywhere until it ships), the HUD at the edges (a choice of its own,
+off by default), and the mouse.
+
+**The turning page has Verdite2's slider**, Enemy turn speed (`kf3.enemyturn`,
+x1 to x8 in quarter steps, "x1 (original)" at its bottom), since 2026-10-14. Until
+then this section said the game had no enemy turn speed; it has the same one
+routine Verdite2 scales (`EnemyTurn`, "Enemies turn faster" in
+`docs/GAME_INTERNALS.md`). The accelerated option moves the slider to x2.2, as
+Verdite2's does, and its description says so. Modern still picks twin stick
+*without* acceleration, the stick at the D-pad's rate ("The stick turns at the
+original's speed" in `docs/INPUT.md`), so all three presets leave creatures at x1.
+
+**The frame rate's ORIGINAL** writes `kf3.pacing` 0 and removes `kf3.fps`; every
+other step removes `kf3.pacing` (on) and writes `kf3.fps`. `kf3.fps` is first in each
+option, so a rate matching no step (50, from the Settings window) is shown as "Keep
+current (50)".
+
+### What setup writes, and when
+
+The rules are Core's, as in Verdite2: setup is **due** while `verdite.setup` is below
+the spec's `version` (1), so everyone who has never finished or skipped it sees it
+once, a player with `kf3.` keys from 0.1.x included (Core `674e51c`; before it, any
+`kf3.` key skipped setup silently, which was every 0.1.x player). The `kf3.` prefix
+(`existing`) now decides only where the display step starts: a player with no
+`kf3.` key starts on what the monitor suggests, any other on what is set. Finishing
+or skipping writes `verdite.setup=1`; closing the window mid-setup writes nothing,
+so it is asked again. Measured 2026-10-18 through the shell's `setup` (`due`): no
+keys true, `kf3.` keys and no flag true, the flag false; `setup preset original`
+wrote the flag and `due` went false.
+a value equal to its default **removes** the key; `null` in a tier is the default;
+a group matching no tier is **Custom** and left alone unless a tier is chosen. In the
+game every changed key is applied live: the window keys by Core, `kf3.analog.on` and
+`kf3.analog.accel` by `Setup`'s own setters (the Settings window's), every other by
+its `PortSetting.Apply`.
+
+**The boot check** (`Setup.Check`) holds the spec to the code: each key it writes
+has a live setter, and each key not saved reads what `defaults` says. Measured
+2026-10-14 on the user's settings (28 kept): `[KF3] setup check: 28 key(s), 0
+problem(s)`. A fresh data folder, where every key is compared, is not measured yet.
+
+**Not yet seen**: the launcher's setup over a build, RUN SETUP on the in-game page,
+and whether `RUN SETUP` (the page's sixth row of six) fits the frame as the other
+rows do. All of it needs someone at the window.
+
 ## The defaults are the user's (2026-10-06)
 
 The user's own settings became every player's default: 16:9, pacing on at 144 fps
@@ -252,7 +355,8 @@ with the scrolling textures carried, smooth shading (24-bit, no dither),
 perspective, sub-pixel and the Z-buffer, per-pixel light, AO at medium, mipmaps
 with 16 taps, render distance ENHANCED (16 tiles faded over 3), all three
 water features (FULL; murk taken off again and out of FULL on 2026-10-08, not
-good enough to ship yet), and the sticks' turn and look at 1.25. Each is changed twice, where the feature starts up and in
+good enough to ship yet), and the sticks' turn and look at 1.25 (back to 1.0 on
+2026-10-14: "The stick turns at the original's speed" in `docs/INPUT.md`). Each is changed twice, where the feature starts up and in
 its declared `Default`, which the boot check holds equal. A variable still wins,
 and a `0` turns any one off.
 

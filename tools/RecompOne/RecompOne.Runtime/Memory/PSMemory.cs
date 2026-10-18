@@ -106,11 +106,18 @@ public sealed class PSMemory : IMemory
         Pgxp.PgxpMemory.Init(size);
 
         _dma = new Dma(this, _gpu, _spu, _mdec, () => Runtime.DispatchIrq(3));
+        PublishDevices();
+        Bios.KromFont.InstallInto(_bios);
+    }
+
+    //A hard reset's ResetForBoot clears these, but the memory that owns them
+    //outlives the reset, so SetContext publishes them again on the next boot.
+    internal void PublishDevices()
+    {
         Runtime.Gpu = _gpu;
         Runtime.Spu = _spu;
         Runtime.Mdec = _mdec;
         Runtime.Timers = _timers;
-        Bios.KromFont.InstallInto(_bios);
     }
 
     public void SetCd(CdController cd)

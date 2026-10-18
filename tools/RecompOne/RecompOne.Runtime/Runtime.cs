@@ -209,6 +209,7 @@ public static class Runtime
     {
         Cpu = c;
         Mem = m;
+        (m as PSMemory)?.PublishDevices();
     }
 
     private static volatile bool _hardResetPending;

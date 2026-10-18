@@ -34,9 +34,9 @@ public static class PortSettings
     /// <see cref="PortSetting.Parts"/>); declared after its parts, whose defaults it reads.</summary>
     static PortSetting Combine(string key, string page, string menu, PortSetting[] parts, double[] steps,
         Func<double, string> text, Func<Func<PortSetting, double>, double> join,
-        Func<double, Func<PortSetting, double>, double[]> split) => new()
+        Func<double, Func<PortSetting, double>, double[]> split, Func<bool>? usable = null) => new()
     {
-        Key = key, Envs = [.. parts.SelectMany(p => p.Envs).Distinct()], Label = menu,
+        Key = key, Envs = [.. parts.SelectMany(p => p.Envs).Distinct()], Label = menu, Usable = usable,
         Page = page, MenuLabel = menu, Steps = steps, MenuValue = text,
         Parts = parts, Join = join, Split = split,
         Default = join(p => p.Default), Live = () => join(p => p.Live()),
@@ -61,8 +61,9 @@ public static class PortSettings
     // Menu below. Everything else (the renderer's own switches, the smoothers, the
     // mouse, the fog, the parts of a combined row) stays in the Settings window:
     // a player who raises the frame rate wants the smoothing, and so on.
-    public const string DisplayPage = "DISPLAY", Graphics = "GRAPHICS", World = "WORLD", Gameplay = "GAMEPLAY";
-    public static readonly string[] Pages = [DisplayPage, Graphics, World, Gameplay];
+    public const string DisplayPage = "DISPLAY", Graphics = "GRAPHICS", World = "WORLD", Gameplay = "GAMEPLAY",
+        ControlsPage = "CONTROLS";
+    public static readonly string[] Pages = [DisplayPage, Graphics, World, Gameplay, ControlsPage];
 
     public static readonly PortSetting Display = new()
     {
@@ -106,7 +107,8 @@ public static class PortSettings
 
     public static readonly PortSetting Shading = new()
     {
-        Key = "kf3.shading", Envs = ["KF3_TRUECOLOR", "KF3_NODITHER"], Label = "Shading", Steps = [0, 1, 2], MenuValue = Named([0, 1, 2], "DITHER", "NONE", "SMOOTH"),
+        Key = "kf3.shading", Envs = ["KF3_TRUECOLOR", "KF3_NODITHER"], Label = "Shading",
+        Page = Graphics, MenuLabel = "SHADING", Steps = [0, 1, 2], MenuValue = Named([0, 1, 2], "DITHER", "NONE", "SMOOTH"),
         Default = 2, Live = () => TestingSection.Shading, Apply = v => TestingSection.SetShading((int)v), Ui = Ui.None,
     };
 
@@ -170,6 +172,7 @@ public static class PortSettings
     public static readonly PortSetting Fog = new()
     {
         Key = "kf3.fog", Envs = ["KF3_FOG", "KF3_FOG_DEPTH"], Label = "kf3scene.fog", Localized = true,
+        Page = World, MenuLabel = "FOG",
         Steps = [0, 1, 2], MenuValue = Named([0, 1, 2], "CORNERS", "DEPTH", "DISTANCE"),
         Names = ["kf3scene.fogcorners", "kf3scene.fogdepth", "kf3scene.fogdistance"],
         Default = 2, Live = () => SceneFeatures.Fog, Apply = v => SceneFeatures.SetFog((int)v), Ui = Ui.Combo,
@@ -247,14 +250,14 @@ public static class PortSettings
 
     /// <summary>2D is the twin sticks, the left one walking and strafing; 3D is one
     /// stick, as tank controls are: the left stick walking and turning as the D-pad
-    /// does, the right stick unused (Analog.Tank).</summary>
+    /// does, the right stick unused (Analog.Tank). A part of <see cref="ControlsRow"/>.</summary>
     public static readonly PortSetting Controls = new()
     {
         Key = Analog.ControlsKey, Envs = ["KF3_TANK"], Label = "Controls",
         Tip = "2D: the left stick walks and strafes, the right stick turns and looks.\n" +
               "3D: one stick, as tank controls. The left stick walks forward and back and turns;\n" +
               "L1 and R1 strafe, L2 and R2 look up and down, and the right stick is not used.",
-        Page = Gameplay, MenuLabel = "CONTROLS", Steps = [0, 1], MenuValue = Named([0, 1], "2D", "3D"),
+        Steps = [0, 1], MenuValue = Named([0, 1], "2D", "3D"),
         Names = ["2D (twin sticks)", "3D (one stick)"], Default = 0, Live = () => Analog.Tank ? 1 : 0, Apply = v => Analog.Tank = v != 0,
         Ui = Ui.Combo,
     };
@@ -263,7 +266,7 @@ public static class PortSettings
     /// push up to look down. The same key as the Input tab's old "Invert look Y"
     /// (Analog.InvertPitch), which a picked-up item's turning follows too.</summary>
     public static readonly PortSetting InvertedCamera = Switch(Analog.InvertPitchKey, "KF3_ANALOG_INVERTY", "Inverted camera",
-        Gameplay, "INVERTED CAMERA", () => Analog.InvertPitch, v => Analog.InvertPitch = v, false,
+        ControlsPage, "INVERTED CAMERA", () => Analog.InvertPitch, v => Analog.InvertPitch = v, false,
         tip: "Reverses the right stick's up and down, like a plane's flight stick: push up to look down, pull back to look up.\n" +
              "2D controls only: in 3D the right stick does not look.",
         usable: () => !Analog.Tank);
@@ -288,6 +291,34 @@ public static class PortSettings
     public static readonly PortSetting GearCompareOn = Switch(GearCompare.OnKey, "KF3_GEARCOMPARE", "Compare gear",
         Gameplay, "COMPARE GEAR", () => GearCompare.Enabled, GearCompare.SetEnabled, true,
         tip: "Choosing equipment or browsing a shop shows every stat the item would change, now and after.");
+
+    /// <summary>How fast a creature turns at the player, as a multiple of the game's own
+    /// (EnemyTurn); Verdite2's. A drag lands on a twentieth, so setup's x2.2 stays x2.2.
+    /// On the GAMEPLAY page as Verdite2's ENEMY TURN, and setup's turning page's slider.</summary>
+    public static readonly PortSetting EnemyTurnSpeed = new()
+    {
+        Key = EnemyTurn.Key, Envs = ["KF3_ENEMYTURN"], Label = "Enemy turn speed",
+        Tip = "How fast enemies turn to follow you, as a multiple of the game's own speed. Higher makes them harder to circle around.",
+        Page = Gameplay, MenuLabel = "ENEMY TURN", Steps = [1, 1.25, 1.5, 1.75, 2, 2.2, 2.5, 3, 4, 5, 6, 8],
+        MenuValue = v => v <= EnemyTurn.Min ? "ORIGINAL" : "X" + Number(v),
+        Default = EnemyTurn.Min, Live = () => EnemyTurn.Multiplier,
+        Apply = v => EnemyTurn.SetMultiplier((float)(Math.Round(v * 20) / 20)),
+        Stored = Stored.Float, Ui = Ui.SliderFloat, Min = EnemyTurn.Min, Max = EnemyTurn.Max,
+        SliderText = v => v <= EnemyTurn.Min ? "x1 (original)" : "x%.2f",
+    };
+
+    /// <summary>An engaged creature standing still keeps turning at the player
+    /// (EnemyTurn.Track); the Settings window only, dimmed at x1, where it does nothing.</summary>
+    public static readonly PortSetting EnemyTurnTrack = Switch(EnemyTurn.TrackKey, "KF3_ENEMYTURN_TRACK", "Track you while standing",
+        null, null, () => EnemyTurn.Track, EnemyTurn.SetTrack, true,
+        tip: "An enemy standing still keeps turning to face you, instead of only between moves.",
+        usable: () => EnemyTurn.Multiplier > EnemyTurn.Min);
+
+    /// <summary>Verdite Core's pause while the window is in the background; the
+    /// Settings window's Gameplay tab only.</summary>
+    public static readonly PortSetting FocusPauseOn = Switch(FocusPause.OnKey, "KF3_FOCUS_PAUSE", "Pause in the background",
+        null, null, () => FocusPause.Enabled, FocusPause.SetEnabled, true,
+        tip: "The game stops and goes quiet while its window is not the one in front.");
 
     public static readonly PortSetting MessageFade = new()
     {
@@ -375,9 +406,58 @@ public static class PortSettings
         },
         (v, _) => v >= 2 ? [0, 1, 1] : v >= 1 ? [0, 1, 0] : [0, 0, 0]);
 
+    /// <summary>The right stick's turn speeding up while held out (Analog.LookAccel), a
+    /// part of <see cref="ControlsRow"/>.</summary>
+    public static readonly PortSetting StickAccel = Switch(Analog.AccelKey, "KF3_ANALOG_ACCEL", "Look acceleration",
+        null, null, () => Analog.LookAccel, v => Analog.LookAccel = v, false, ui: Ui.None);
+
+    /// <summary>Verdite2's: setup's turning page as one row, 2D, 2D with the right
+    /// stick's acceleration, or 3D. 3D clears the acceleration, as setup's tank option does.</summary>
+    public static readonly PortSetting ControlsRow = Combine("row.controls", ControlsPage, "CONTROLS", [Controls, StickAccel],
+        [0, 1, 2], Named([0, 1, 2], "2D", "2D ACCEL", "3D"),
+        get => get(Controls) != 0 ? 2 : get(StickAccel) != 0 ? 1 : 0,
+        (v, _) => v >= 2 ? [1, 0] : v >= 1 ? [0, 1] : [0, 0]);
+
+    /// <summary>A sensitivity, a part of a SENS row: kept as a float, as the Settings
+    /// window's slider writes it.</summary>
+    static PortSetting Sensitivity(string key, string env, string label, Func<float> get, Action<float> set, double min, double max) => new()
+    {
+        Key = key, Envs = [env], Label = label, Steps = [1], MenuValue = Number,
+        Default = 1, Live = () => get(), Apply = v => set((float)Math.Clamp(v, min, max)),
+        Stored = Stored.Float, Ui = Ui.None, Min = min, Max = max,
+    };
+
+    /// <summary>One row for a turn and a look sensitivity, both to the step. A pair the
+    /// Settings window set apart shows as CUSTOM, below the first step.</summary>
+    static PortSetting SensRow(string key, string page, string menu, PortSetting turn, PortSetting look, double[] steps,
+        Func<bool>? usable = null) =>
+        Combine(key, page, menu, [turn, look], steps,
+            v => v < 0 ? "CUSTOM" : "X" + Number(v),
+            get => Math.Abs(get(turn) - get(look)) < 1e-4 ? get(turn) : -1,
+            (v, _) => [v, v], usable);
+
+    public static readonly PortSetting StickTurn = Sensitivity(Analog.TurnSensKey, "KF3_ANALOG_TURN", "Stick turn sensitivity",
+        () => Analog.TurnSens, v => Analog.TurnSens = v, 0.1, 3);
+    public static readonly PortSetting StickLook = Sensitivity(Analog.PitchSensKey, "KF3_ANALOG_PITCH", "Stick look sensitivity",
+        () => Analog.PitchSens, v => Analog.PitchSens = v, 0.1, 3);
+
+    /// <summary>The sticks' turn and look; X1 is the D-pad's speed. In 3D the look half
+    /// does nothing, and the turn is the left stick's.</summary>
+    public static readonly PortSetting StickSens = SensRow("row.sticksens", ControlsPage, "STICK SENS", StickTurn, StickLook,
+        [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3]);
+
+    public static readonly PortSetting MouseTurn = Sensitivity(Mouse.TurnKey, "KF3_MOUSE_TURN", "Mouse turn sensitivity",
+        () => Mouse.TurnSens, v => Mouse.TurnSens = v, 0.1, 5);
+    public static readonly PortSetting MouseLookSens = Sensitivity(Mouse.LookKey, "KF3_MOUSE_LOOK", "Mouse look sensitivity",
+        () => Mouse.LookSens, v => Mouse.LookSens = v, 0.1, 5);
+
+    /// <summary>The mouse's turn and look. Dimmed while mouse look is off.</summary>
+    public static readonly PortSetting MouseSens = SensRow("row.mousesens", ControlsPage, "MOUSE SENS", MouseTurn, MouseLookSens,
+        [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5], usable: () => Mouse.Enabled);
+
     /// <summary>Both readers of the pad's gyroscope at once: turning a picked-up item
     /// and aiming a drawn bow. The item's needs item turning on, which it is by default.</summary>
-    public static readonly PortSetting Gyro = Combine("row.gyro", Gameplay, "GYRO", [ItemTurnGyro, GyroAimOn],
+    public static readonly PortSetting Gyro = Combine("row.gyro", ControlsPage, "GYRO", [ItemTurnGyro, GyroAimOn],
         [0, 1], v => v == 0 ? "OFF" : v == 1 ? "ON" : "CUSTOM",
         get => (get(ItemTurnGyro), get(GyroAimOn)) switch
         {
@@ -388,7 +468,7 @@ public static class PortSettings
         (v, _) => v >= 1 ? [1, 1] : [0, 0]);
 
     /// <summary>OFF, ON (two motors) or HD; OFF leaves the kept HD choice.</summary>
-    public static readonly PortSetting RumbleRow = Combine("row.rumble", Gameplay, "RUMBLE", [RumbleOn, RumbleHd],
+    public static readonly PortSetting RumbleRow = Combine("row.rumble", ControlsPage, "RUMBLE", [RumbleOn, RumbleHd],
         [0, 1, 2], v => v == 0 ? "OFF" : v == 1 ? "ON" : "HD",
         get => get(RumbleOn) == 0 ? 0 : get(RumbleHd) == 0 ? 1 : 2,
         (v, _) => v <= 0 ? [0, Unchanged] : v >= 2 ? [1, 1] : [1, 0]);
@@ -397,9 +477,10 @@ public static class PortSettings
     public static readonly PortSetting[] Menu =
     [
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
-        TextureFilter, PerPixel, AmbientOcclusion,
-        RenderDistanceRow, Water,
-        Controls, InvertedCamera, AutoReloadOn, GearCompareOn, Gyro, RumbleRow,
+        TextureFilter, PerPixel, AmbientOcclusion, Shading,
+        RenderDistanceRow, Fog, Water,
+        AutoReloadOn, GearCompareOn, EnemyTurnSpeed,
+        ControlsRow, InvertedCamera, StickSens, MouseSens, Gyro, RumbleRow,
     ];
 
     /// <summary>Every kept setting; the combined rows keep nothing of their own.</summary>
@@ -408,7 +489,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, Anisotropy, Mipmaps, PerPixel, Ao, NeighbourBlend, Shading, Perspective, Subpixel, ZBuffer, Billboards, MenuWorld,
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
-        Controls, InvertedCamera, AutoReloadOn, AutoReloadSlot, GearCompareOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
+        Controls, StickAccel, InvertedCamera, StickTurn, StickLook, MouseTurn, MouseLookSens, AutoReloadOn, AutoReloadSlot, GearCompareOn, EnemyTurnSpeed, EnemyTurnTrack, FocusPauseOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
         ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
     ];
 

@@ -325,7 +325,7 @@ internal static class GlShaders
                 // so weighting on the flat direction would leave every floor in the
                 // game unshaded.
                 vec3 hdir = normalize(vec3(dir.x, best, dir.y));
-                occ += max(0.0, dot(nUp, hdir)) * (best / sqrt(1.0 + best * best));
+                occ += max(0.0, dot(nUp, hdir)) * (best / sqrt(1.0 + best * best)); // domain-ok: 1 + best^2 >= 1
             }
             return occ / 8.0;
         }
@@ -418,7 +418,7 @@ internal static class GlShaders
             for (int i = 0; i < uSamples; i++) {
                 float t = (float(i) + 0.5) / float(uSamples);
                 float ang = a0 + float(i) * GOLDEN;
-                vec2 off = vec2(cos(ang), sin(ang)) * sqrt(t) * rUv;
+                vec2 off = vec2(cos(ang), sin(ang)) * sqrt(t) * rUv; // domain-ok: t = (i + 0.5) / uSamples > 0
 
                 float sd = depthAt(vUv + off);
                 // The far plane is the absence of a surface, not a surface a long
@@ -629,7 +629,14 @@ internal static class GlShaders
         void main() {
             float z = vDepth * 65536.0;
             // Taken here, in uniform control flow, for a surface's texel below.
+            // Every derivative is: past a discard or a return they are undefined,
+            // and at a polygon's edge the 2x2 quad's helper pixels read texels
+            // past the polygon and may discard. Mesa answered anyway; a Windows
+            // driver gave every edge pixel a wrong normal, and the occlusion
+            // pass drew a dark line along every edge.
             vec2 dUvx = dFdx(vUv), dUvy = dFdy(vUv);
+            vec3 p = vec3((gl_FragCoord.xy / uScale - uCentre) * (z / uProjH), z);
+            vec3 dpx = dFdx(p), dpy = dFdy(p);
             // 0089. A pixel the colour pass dithers away by distance is no surface.
             if (fadeDropped(vKeep * distanceFade(vFadeXZ, z))) discard;
             // A veil, a see-through 2D box: where it is see-through, both buffers
@@ -671,9 +678,6 @@ internal static class GlShaders
             }
             if (z <= 0.0) { oColor = vec4(0.0); oSurface = vec4(0.0); return; }
             if (uZSlice.y > 0.0 && (z <= uZSlice.x || z > uZSlice.y)) discard;
-            vec2 s = gl_FragCoord.xy / uScale;
-            vec3 p = vec3((s - uCentre) * (z / uProjH), z);
-            vec3 dpx = dFdx(p), dpy = dFdy(p);
             if (uDepthCull != 0) {
                 float d = texelFetch(uFrameDepth, ivec2(gl_FragCoord.xy * uDepthStep), 0).r;
                 float dz = d * 65536.0;
@@ -1090,7 +1094,7 @@ internal static class GlShaders
                     : uFogCurve == 3 ? ir0 * 0.5
                     : ir0;
             if (uAtmosOn != 0 && uAtmosShape != vec2(1.0) && w > 0.0)
-                w = 4096.0 * min(pow(min(w / 4096.0, 1.0), uAtmosShape.x), uAtmosShape.y);
+                w = 4096.0 * min(pow(min(w / 4096.0, 1.0), uAtmosShape.x), uAtmosShape.y); // domain-ok: w > 0 is tested, so the base is in (0, 1]
             return clamp(1.0 - w / 4096.0, 0.0, 1.0);
         }
 
@@ -1406,7 +1410,7 @@ internal static class GlShaders
             gMetalDark = 0.5 * mat.a;
             // Schlick, running from F0 looking straight down to the material's
             // reflectivity at a grazing angle.
-            float w = f0 + (max(refl, f0) - f0) * pow(1.0 - cosv, 5.0);
+            float w = f0 + (max(refl, f0) - f0) * pow(1.0 - cosv, 5.0); // domain-ok: cosv is clamped to [0, 1]
 
             vec3 pc;
             bool planarHit = planarAt(p, rough, pc) || retPlanarAt(p, rough, pc);
@@ -2285,7 +2289,7 @@ internal static class GlShaders
         // One directional wave's slope. Deep water: a wave's period goes as the root
         // of its length.
         vec2 waveTerm(vec2 p, vec2 dir, float len, float amp) {
-            float w = 6.2831853 / (2.4 * sqrt(len / 700.0));
+            float w = 6.2831853 / (2.4 * sqrt(len / 700.0)); // domain-ok: uWaveParams.y is uploaded as max(16, Scale)
             return dir * (amp * cos(6.2831853 / len * dot(dir, p) - w * uWaveTime));
         }
 
@@ -2384,11 +2388,15 @@ internal static class GlShaders
             return v * 0.2;
         }
 
+        // Set at the top of main, before any discard (see there).
+        vec3 gLightN;
+        vec2 gUVdx, gUVdy, gWx, gWy;
+
         vec3 authored(float spec, float rough, out vec3 hi) {
             hi = vec3(0.0);
             float z = vDepth * 65536.0;
             vec3 p = vec3((gl_FragCoord.xy / float(uScale) - uLightCentre) * (z / uLightH), z);
-            vec3 n = cross(dFdx(p), dFdy(p));
+            vec3 n = gLightN;
             if (vDepth <= 0.0 || vLight == 0u || !(dot(n, n) > 1e-12)) return vec3(0.0);
             n = normalize(n);
             if (dot(n, p) > 0.0) n = -n;
@@ -2409,14 +2417,14 @@ internal static class GlShaders
                 float r2 = uLightPos[i].w * uLightPos[i].w;
                 float d2 = dot(l, l);
                 if (d2 >= r2) continue;
-                vec3 dir = d2 > 0.0 ? l * inversesqrt(d2) : -n;
+                vec3 dir = d2 > 0.0 ? l * inversesqrt(d2) : -n; // domain-ok: d2 > 0 is tested
                 float q = 1.0 - d2 / r2;
-                float spot = smoothstep(uLightDir[i].w, uLightCol[i].w, dot(-dir, uLightDir[i].xyz));
+                float spot = smoothstep(uLightDir[i].w, uLightCol[i].w, dot(-dir, uLightDir[i].xyz)); // domain-ok: Lights.cs keeps outer < inner, and a point is (-2, -1)
                 float ndl = max(dot(n, dir), 0.0);
-                if (ndl > 0.0 && uLightShadow[i] >= 0) ndl *= shadowAt(uLightShadow[i], -l, n, sqrt(d2));
+                if (ndl > 0.0 && uLightShadow[i] >= 0) ndl *= shadowAt(uLightShadow[i], -l, n, sqrt(d2)); // domain-ok: d2 = dot(l, l) >= 0
                 sum += uLightCol[i].rgb * (ndl * q * q * spot);
                 if (spec > 0.0 && ndl > 0.0)
-                    hi += uLightCol[i].rgb * (spec * norm * pow(max(dot(n, normalize(dir + eye)), 0.0), shin) * ndl * q * q * spot);
+                    hi += uLightCol[i].rgb * (spec * norm * pow(max(dot(n, normalize(dir + eye)), 1e-6), shin) * ndl * q * q * spot);
             }
             return sum;
         }
@@ -2501,7 +2509,7 @@ internal static class GlShaders
                  : 0.0;
             // 0074. The authored curve over the game's.
             if (uAtmosOn != 0 && uAtmosShape != vec2(1.0) && w > 0.0)
-                w = 4096.0 * min(pow(min(w / 4096.0, 1.0), uAtmosShape.x), uAtmosShape.y);
+                w = 4096.0 * min(pow(min(w / 4096.0, 1.0), uAtmosShape.x), uAtmosShape.y); // domain-ok: w > 0 is tested, so the base is in (0, 1]
             return w;
         }
 
@@ -2581,6 +2589,19 @@ internal static class GlShaders
             // punch-through discard cannot occlude whatever is behind the hole.
             // 0051. The tolerance is on the test only; GlCore draws the true depth first.
             float dz = uDepthBias + uDepthSlope * max(abs(dFdx(vDepth)), abs(dFdy(vDepth)));
+            // Every derivative the shader uses is taken here: past a discard or a
+            // return they are undefined, and at a polygon's edge the 2x2 quad's
+            // helper pixels may discard (a clip plane, a dither, a mask). Mesa
+            // answered anyway; a Windows driver did not, along every edge.
+            gUVdx = dFdx(vUV); gUVdy = dFdy(vUV);
+            {
+                float lz = vDepth * 65536.0;
+                vec3 lp = vec3((gl_FragCoord.xy / float(uScale) - uLightCentre) * (lz / uLightH), lz);
+                gLightN = cross(dFdx(lp), dFdy(lp));
+                vec3 vp = vec3((gl_FragCoord.xy / float(uScale) - uWaveCentre) * (lz / uWaveH), lz);
+                vec2 wxz = (transpose(uWaveR) * (vp - uWaveT) + uWaveCam).xz;
+                gWx = dFdx(wxz); gWy = dFdy(wxz);
+            }
             // The slope term grows without bound on a face seen edge-on, where half a
             // pixel spans the face's whole depth: a model's silhouette then drew over a
             // surface hundreds of units in front of it. A coplanar partner's offset is a
@@ -2622,7 +2643,7 @@ internal static class GlShaders
                 if (uCheckMask != 0 && texelFetch(uDest, ivec2(gl_FragCoord.xy), 0).a >= 0.5) discard;
                 if (texMode == 4) { if (uOpaqueDepth == 1) discard; return; }
                 if (texMode == 5) { if (texture(uExtTex, vUV).a < 0.5 || uOpaqueDepth == 1) discard; return; }
-                vec2 ddx = dFdx(vUV), ddy = dFdy(vUV);
+                vec2 ddx = gUVdx, ddy = gUVdy;
                 if (texMode == 6) {
                     vec2 fuv = mod(vUV, vec2(uTexWindow.xy) + 1.0) + vec2(uTexWindow.zw);
                     vec2 t = (fuv - uRepRect.xy) / uRepRect.zw;
@@ -2691,8 +2712,8 @@ internal static class GlShaders
             // pixel's footprint in texture space. They already decided which way
             // the console's truncation rounds; the kernel below reads the same
             // pair as the shape of the area this pixel actually covers.
-            vec2 dUVdx = dFdx(vUV);
-            vec2 dUVdy = dFdy(vUV);
+            vec2 dUVdx = gUVdx;
+            vec2 dUVdy = gUVdy;
 
             // 0078. Water: the texel is read from where the wave field's slope pushes
             // it, a push in the world taken into texture space through the polygon's
@@ -2706,13 +2727,13 @@ internal static class GlShaders
                 float z = vDepth * 65536.0;
                 vec3 vp = vec3((gl_FragCoord.xy / float(uScale) - uWaveCentre) * (z / uWaveH), z);
                 vec3 wp = transpose(uWaveR) * (vp - uWaveT) + uWaveCam;
-                vec2 wx = dFdx(wp.xz), wy = dFdy(wp.xz);
+                vec2 wx = gWx, wy = gWy;
                 float det = wx.x * wy.y - wx.y * wy.x;
                 waveRectOf(vUV);
                 if (vDepth > 0.0 && gWave.z > 0 && abs(det) > 1e-6) {
                     float len = uWaveParams.y;
                     float fw = max(length(wx), length(wy));
-                    float fade = 1.0 - smoothstep(len * 0.03, len * 0.09, fw);
+                    float fade = 1.0 - smoothstep(len * 0.03, len * 0.09, fw); // domain-ok: len >= 16, so the edges are ordered
                     vec2 sl = waveSlope(wp.xz, len) * fade * (1.0 - gPlain);
                     // The inverse of [wx wy], then the UV's own derivatives.
                     vec2 push = sl * uWaveParams.x;
@@ -2769,7 +2790,7 @@ internal static class GlShaders
                 if (major > 0.0 && uMipOn > 0.5 && vRepClut == 0 && (vTex.y & 0x40000000u) != 0u) {
                     float n = clamp(ceil(major / max(minor, 1e-4)), 1.0, max(uAniso, 1.0));
                     float maxLod = float((vTex.y >> 16) & 15u);
-                    float lod = min(log2(max(major / n, minor)), maxLod);
+                    float lod = min(log2(max(major / n, minor)), maxLod); // domain-ok: major > 0 is tested and n >= 1
                     if (lod > 0.0) {
                         vec4 acc = mipFootprint(axis, n, lod, rMin, rMax,
                             vec2(float(vTex.y & 255u), float((vTex.y >> 8) & 255u)) * 8.0,
@@ -3099,6 +3120,20 @@ internal static class GlShaders
             // 0051. The tolerance is on the test only; GlCore draws the true depth first.
             float dz = uDepthBias + uDepthSlope * max(abs(dFdx(vDepth)), abs(dFdy(vDepth)));
             gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
+            // Before any discard: past one, a derivative is undefined.
+            vec2 dUVdx = dFdx(vUV);
+            vec2 dUVdy = dFdy(vUV);
+            // A replacement texture has a mip chain (0073), so its implicit-LOD
+            // lookup is a derivative too: read here, before the mask's discard.
+            // The mode is the primitive's, so the quad agrees on it.
+            vec4 repImg = vec4(0.0);
+            if (vTexMode > 5.5) {
+                vec2 rwin = uTexWindow.xy + 1.0;
+                vec2 rfuv = vec2(mod(vUV.x, rwin.x), mod(vUV.y, rwin.y)) + uTexWindow.zw;
+                vec2 t = (rfuv - uRepRect.xy) / uRepRect.zw;
+                if (uRepScroll >= 0.0) t.y = fract(t.y - uRepScroll / uRepRect.w);
+                repImg = texture2D(uRepTex, t);
+            }
             vec2 destUv = gl_FragCoord.xy / uDestSize;
             vec4 dstTexel = texture2D(uDest, destUv);
             if (uCheckMask > 0.5 && dstTexel.a >= 0.5) discard;
@@ -3121,16 +3156,12 @@ internal static class GlShaders
                 vec2 win = uTexWindow.xy + 1.0;
                 vec2 fuv = vec2(mod(vUV.x, win.x), mod(vUV.y, win.y)) + uTexWindow.zw;
 
-        
-                vec2 dUVdx = dFdx(vUV);
-                vec2 dUVdy = dFdy(vUV);
+
                 float rawU = dUVdx.x < 0.0 ? ceil(vUV.x - 0.0001) : floor(vUV.x + 0.0001);
                 float rawV = dUVdy.y < 0.0 ? ceil(vUV.y - 0.0001) : floor(vUV.y + 0.0001);
 
                 if (vTexMode > 5.5) {
-                    vec2 t = (fuv - uRepRect.xy) / uRepRect.zw;
-                    if (uRepScroll >= 0.0) t.y = fract(t.y - uRepScroll / uRepRect.w);
-                    vec4 img = texture2D(uRepTex, t);
+                    vec4 img = repImg;
                     if (img.a < 0.5) discard;
                     rgb = floor(img.rgb * 255.0 + 0.5) * floor(vColor.rgb * 255.0 + 0.5) / 128.0;
                     stp = img.a < 0.95 ? 1.0 : 0.0;

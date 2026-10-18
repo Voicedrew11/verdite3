@@ -384,6 +384,10 @@ public static class ItemTurn
     /// <summary><c>func_800166F4</c>: <c>Ry'(y) Rx(x) Rz(z)</c>.</summary>
     static double[,] Euler(double y, double x, double z) => Mul(Mul(RyP(y), Rx(x)), Rz(z));
 
+    /// <summary>The model's rotation from its record's angles, as <see cref="Present"/>
+    /// composes it (ItemEye turns the mesh's middle by it).</summary>
+    internal static double[,] Rotation(short pitch, short yaw, short roll) => Euler(yaw, pitch, roll);
+
     static double[,] Mul(double[,] a, double[,] b)
     {
         var r = new double[3, 3];

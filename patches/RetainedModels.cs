@@ -38,8 +38,9 @@ public static class RetainedModels
         if (count == 0 || count > 8192 || mesh.MaxVertex >= count)
         { GpuWorld.Fallback(routine, caller, "vertex-range"); MoPose.Materialize(m); return false; }
         int weight = 0;
-        int pose = MoPose.Pending ? MoPose.Store(m, count, out weight) : RetainedAssets.StoreRigid(m, vertices, (int)count);
-        bool morph = MoPose.Pending && pose != 0;
+        bool posed = MoPose.PendingAt(vertices);
+        int pose = posed ? MoPose.Store(m, vertices, count, out weight) : RetainedAssets.StoreRigid(m, vertices, (int)count);
+        bool morph = posed && pose != 0;
         if (pose == 0) { GpuWorld.Fallback(routine, caller, "pose-not-expressible"); MoPose.Materialize(m); return false; }
         // The submitter tests 0x40 first: such a model goes to the near path, whose
         // libgte division keeps a face reaching past the eye. A Tile instance is that

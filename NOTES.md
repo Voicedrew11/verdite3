@@ -53,13 +53,19 @@ near path in C# (`docs/PICTURE.md`; all measured, judged by the user and on by d
 drawn live behind menus and full-screen messages instead of the frozen 320-wide
 copy (`KF3_MENUWORLD`, Verdite2's `MenuWorld`, on; measured, not judged;
 `docs/WIDESCREEN.md`); the HUD at the screen edges, Verdite2's, moved by its
-records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); every
+records (`KF3_WIDESCREEN_HUD`, DISPLAY ▸ HUD AT EDGES, off; measured, not judged); the
+sticks at the D-pad's rate with the game's ease, a picked-up item centred on its
+mesh, the pause while the window is in the background (`KF3_FOCUS_PAUSE`), and
+Verdite Core's first-run setup (`config/onboarding.json`, DISPLAY ▸ RUN SETUP),
+all from Verdite2 on 2026-10-14 (built and boot-checked, nothing run past boot;
+`docs/INPUT.md`, `docs/DEVELOPMENT.md`, `docs/SETTINGS.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
-of the shared fork `Voicedrew11/verdite-recompone` at `09f3f09` (this repo's
+of the shared fork `Voicedrew11/verdite-recompone` at `c79d32f` (this repo's
 retained-scene work through `0109` and the `0045` amendment pushed, merged with the
-fork's `0090`-`0093`; Verdite2 pinned `f02f484`), with
+fork's `0090`-`0093`, then Verdite2's shader-derivative fixes and
+`scripts/shader_lint.py`, which CI runs; Verdite2 pinned `f02f484`), with
 retained-runtime checkpoints on the fork's `checkpoint/retained-depth-probes`,
-and `tools/verdite-core` of Verdite Core at `91f4a4a`, which Verdite2 pins too.
+and `tools/verdite-core` of Verdite Core at `674e51c` (setup shown to everyone who has not seen it).
 **A release can be built** (2026-10-05): `Verdite3.Launcher/` is Verdite Core's
 launcher under this port's names, building the game from the player's disc at
 first run and checking GitHub for a newer release; the AppImage measured from an

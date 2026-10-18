@@ -777,16 +777,36 @@ public static class HostWindow
         while (StartupNoticePopup.NeedsAck)
             HandOverFrame();
 
+        // OnLoad registers the picker and opens it when there is no valid path, and
+        // that can come after this wait starts, so the picker is only watched once
+        // it has been seen open.
+        var pickerShown = false;
+
         while (true)
         {
-            var path = ConfigManager.Game.CdPath;
-            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path) && Runtime.ValidateDisc(path) == null)
-                return;
+            if (HasValidDisc()) return;
+
+            if (PopupManager.Get<DiscPickerPopup>() is { IsOpen: true }) pickerShown = true;
 
             HandOverFrame();
+
+            // During the boot wait, Cancel means quit: there is nothing to run
+            // without a disc, and the picker is the only way to reopen it. Confirm
+            // closes it too, having saved a valid path, which is not a cancel.
+            if (pickerShown && PopupManager.Get<DiscPickerPopup>() is not { IsOpen: true } && !HasValidDisc())
+            {
+                Runtime.Shutdown();
+                Environment.Exit(0);
+            }
         }
     }
     
+    private static bool HasValidDisc()
+    {
+        var path = ConfigManager.Game.CdPath;
+        return !string.IsNullOrWhiteSpace(path) && File.Exists(path) && Runtime.ValidateDisc(path) == null;
+    }
+
     private static void HandOverFrame()
     {
         var closing = false;

@@ -112,6 +112,22 @@ Kf3.AutoReload.Install();
 Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
 Kf3.GearCompare.Install();
 
+// Verdite2's EnemyTurn: creatures turn at the player faster, a multiple of the
+// game's own (speed x k, acceleration x k^2); Gameplay ▸ Enemy turn speed, x1 by
+// default, and setup's turning page. The variables win over the saved value:
+//     KF3_ENEMYTURN=1..8      the multiplier
+//     KF3_ENEMYTURN_TRACK=0   no turning at the player while a creature stands (on;
+//                             inert at x1)
+//     KF3_ENEMYTURN_ALL=1     scale every turn, not only turns at the player -- comparison
+//     KF3_ENEMYTURN_PROBE=1   a census of the turn's callers every 5 s
+//     KF3_ENEMYTURN_PROBE=2   also a line a tick for each awake creature in reach
+// See "Enemies turn faster" in docs/GAME_INTERNALS.md.
+Kf3.EnemyTurn.Configure(Environment.GetEnvironmentVariable("KF3_ENEMYTURN"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_TRACK"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_ALL"),
+                        Environment.GetEnvironmentVariable("KF3_ENEMYTURN_PROBE"));
+Kf3.EnemyTurn.Install();
+
 // M, or the touchpad of a DualShock 4 or DualSense, opens the map of the area the
 // player is in when its map item is held: PIXY'S MAP, else MAP OF VERDITE in the
 // areas it covers. KF3_MAPKEY=0 off, KF3_MAPKEY_TEST=sec opens it once that long
@@ -134,6 +150,20 @@ Kf3.FramePacing.Configure(Environment.GetEnvironmentVariable("KF3_FPS"),
                           Environment.GetEnvironmentVariable("KF3_TICKRATE"),
                           Environment.GetEnvironmentVariable("KF3_FPS_PROBE"));
 Kf3.FramePacing.Install();
+
+// The window losing focus pauses the game and silences it, as a desktop game
+// does: Verdite Core's FocusPause decides when, and the stage gate held shut
+// (FramePacing.PauseWhen) is how. On by default; a run a program drives (the
+// shell, scripted input, autostart, the agent beacon) has no one to focus the
+// window, so there it is off unless asked for.
+//
+//     KF3_FOCUS_PAUSE=0   keep running in the background
+//
+// See "Pausing when the window loses focus" in docs/DEVELOPMENT.md.
+FocusPause.Configure(driven: new[] { "KF3_SHELL", "KF3_AUTOPAD", "KF3_AUTOSTART", "KF3_AGENT" }
+    .Any(v => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(v))));
+FocusPause.Install();
+Kf3.FramePacing.PauseWhen(() => FocusPause.Active);
 Kf3.RateCensus.Install();
 // Whether the full-screen tints are drawn between ticks: "The tints between
 // ticks" in docs/SMOOTHING.md.
@@ -338,6 +368,11 @@ Kf3.TestingSection.Install();
 // docs/GAME_INTERNALS.md.
 Kf3.SettingsPage.Configure(Environment.GetEnvironmentVariable("KF3_SETTINGSPAGE_PROBE"));
 Kf3.SettingsPage.Install();
+
+// The first-run setup run again from that page (RUN SETUP, on DISPLAY), its
+// choices applied live where a setter exists. The launcher shows the same setup
+// at first run, from config/onboarding.json. See "Onboarding" in docs/SETTINGS.md.
+Kf3.Setup.Install();
 
 // The port settings both screens draw from, and the one writer of interface.ini's
 // kf3.* keys (docs/SETTINGS.md). Last, so its boot check follows every start-up.

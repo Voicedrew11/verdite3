@@ -417,6 +417,40 @@ the same creature with a poke hung the game thread (100% CPU, no reply), with th
 switch off; that is the teleport, not the switch, and the routine it spins in was
 not read.
 
+### Enemies turn faster
+
+Read 2026-10-14 from `GAME.EXE`. As with the think, this is Verdite2's creature
+turn under other addresses, instruction for instruction, so `patches/EnemyTurn.cs`
+is Verdite2's patch on this game's addresses.
+
+- **One routine turns every creature**: `func_8004E928(rec, target, maxSpeed,
+  accel)` (Verdite2's `func_8003C8D8`). The turn velocity `s16 rec+0x58` gains
+  `accel` toward the target (the side from `func_80016A68`: `(a - b) & 0xFFF <
+  0x801`), is clamped to `±maxSpeed` and is added to the yaw `rec+0x42`; a step
+  that carries the yaw past the target puts it on the target (`func_80016A78`). A
+  target already reached (`func_80016A98`, the signed difference, is 0) zeroes the
+  velocity.
+- **Its callers**: the creature tick `func_800500A8` twice, at `0x80051A6C`
+  (target the heading of the record's velocity `+0x50/+0x54`, speed `def+0x16`)
+  and `0x80052724` (target `rec+0x20`, speed `def+0x10`), both with the type's
+  acceleration `u8 def+0x4` (the definition at `[0x8018FAB0]`, `0x8018C7E8 + type ·
+  120`); and two wrappers, `func_8004EA7C` and `func_8004ED50`. No area module
+  calls it in the generated code.
+- **The chase heading** is `rec+0x64 = func_80016AB8(playerX − x, playerZ − z)`
+  (`0x80051774`), `-atan2(dx, dz)` in a turn of 4096 (Verdite2's `func_80015394`,
+  the same code); the wander heading is `rand >> 3` (`0x800520B0`). So a target
+  within a few units of the player's bearing is a chase.
+- **The record's other fields the patch reads**: HP `u16 +0x1A` (copied from
+  `def+0x1A` by `func_8004B624`, and read by the hit resolution `func_8004C668`),
+  the action `u8 +0xE` (the tick's jump table at `0x800128F0`, 0xF1 entries), the
+  rule `+0x60`. Stage 5's run count, bumped once at the end of each run, is
+  `0x8018FACC`.
+
+Boot measured 2026-10-14 (`KF3_ENEMYTURN=2`, slot 1): `[KF3] enemy turn: x2,
+turns at the player, tracking while standing`, and the setup check 29 keys, 0
+problems. **Not measured**: the census against live creatures, and anything in a
+fight.
+
 ### Damage and death
 
 `func_8002A6F4(sourcePos, amount, flags)` is the take-damage routine. It returns

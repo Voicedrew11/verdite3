@@ -26,6 +26,14 @@ jobs:
       # RecompOne is a git subtree of the fork; this builds it, and clones nothing.
       - run: bash scripts/setup_tools.sh
 
+      # The runtime's GLSL: no derivative after a discard or a return (undefined,
+      # and a Windows driver drew a dark line along every polygon edge on it),
+      # and every stage through the reference compiler. Needs no GPU and no disc.
+      - name: Lint the shaders
+        run: |
+          sudo apt-get install -y -qq glslang-tools >/dev/null
+          python3 tools/RecompOne/scripts/shader_lint.py --glslang
+
       # The version is the newest vMAJOR.MINOR.PATCH tag, and five things read it.
       # This catches the two ways that stops being true: a VERSION file coming
       # back (Verdite Core reads one ahead of the tags) and a literal <Version>

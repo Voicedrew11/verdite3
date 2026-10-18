@@ -60,6 +60,7 @@ public static class AgentServer
         "dump <file> - write the 2 MB of guest RAM to a file",
         "vram <file> - write the 1024x512 16-bit VRAM shadow to a file, row by row",
         "settings [open|save|discard|step <key> <-1|1>|reset <key>] - the game menu's settings session without its page; alone, every setting",
+        "setup [open|apply <original|original++|modern> [two more]|preset original|original++|recommended] - the first-run setup: each group's tier now, opened as RUN SETUP does, or tiers or a preset applied live",
         "view [<x> <y> <z> <pitch> <yaw> <roll> | off] - the camera stage 15 drew with; with one, draw from it",
         "renderdist <tiles> [fadeTiles] - the retained render distance and its fade (0 the game's, none)",
         "aspect [4:3|16:9|16:10|21:9|<ratio>] - the widescreen aspect, or the current one",
@@ -192,7 +193,7 @@ public static class AgentServer
 
         switch (cmd.Name)
         {
-            case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
+            case "state" or "press" or "help" or "peek" or "dump" or "vram" or "settings" or "setup" or "view" or "aspect" or "warp" or "scene-yaw" or "gpu" or "kill" or "hurt" or "poke"
                 or "renderdist" or "murk" or "waves" or "planar" or "scale" or "point":
                 Enqueue(_fast, cmd);
                 break;
@@ -235,6 +236,7 @@ public static class AgentServer
         "dump" => DoDump(cmd.Arg1),
         "vram" => DoVram(cmd.Arg1),
         "settings" => DoSettings(cmd.Args),
+        "setup" => Setup.Shell(cmd.Args),
         "view" => DoView(cmd.Args),
         "aspect" => Widescreen.Shell(cmd.Arg1),
         "kill" => "{\"ok\":true,\"cmd\":\"kill\",\"status\":" + Q(AutoReload.Simulate()) + "}",

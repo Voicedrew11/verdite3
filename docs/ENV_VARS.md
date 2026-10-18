@@ -27,7 +27,12 @@ kept.
 | `KF3_AUTORELOAD` | `0`: leave a death to the game. Settings ▸ Gameplay, kept as `kf3.autoreload.enabled`; the variable wins | on |
 | `KF3_AUTORELOAD_SLOT` | `0` the last used slot, `1`..`5` pins one. Gameplay ▸ Save slot, kept as `kf3.autoreload.slot` | 0 |
 | `KF3_AUTORELOAD_DELAY` | seconds of the death sequence before the reload (0-10); not a setting | 2.5 |
+| `KF3_FOCUS_PAUSE` | `0`: keep running and sounding while the window has no focus; off for a run `KF3_SHELL`, `KF3_AUTOPAD`, `KF3_AUTOSTART` or `KF3_AGENT` drives, and `1` turns it back on there. Settings ▸ Gameplay ▸ Pause in the background, kept as `kf3.focuspause.on`; the variable wins (`docs/DEVELOPMENT.md`, "Pausing when the window loses focus") | on |
 | `KF3_GEARCOMPARE` | `0`: no stat comparison on the equipment and shop lists; `probe`: a line for each item compared. Settings ▸ Gameplay, kept as `kf3.gearcompare.enabled`; the variable wins | on |
+| `KF3_ENEMYTURN` | `1`..`8`: how fast creatures turn at the player, a multiple of the game's own (speed x k, acceleration x k²). Settings ▸ Gameplay ▸ Enemy turn speed and setup's turning page, kept as `kf3.enemyturn`; the variable wins | 1 |
+| `KF3_ENEMYTURN_TRACK` | `0`: an engaged creature standing still is not turned at the player each tick; inert at x1. Gameplay ▸ Track you while standing, kept as `kf3.enemyturn.track` | on |
+| `KF3_ENEMYTURN_ALL` | `1`: scale every creature turn, wandering too; a comparison only | off |
+| `KF3_ENEMYTURN_PROBE` | `1`: every 5 s, a census of `func_8004E928`'s callers; `2`: also a line a tick for each awake creature within 12000 (action, rule, HP, facing off the player, turned / tracked / standing) | off |
 | `KF3_MAPKEY` | `0`: M and the pad's touchpad do nothing. On, they open the map of the area the player is in when its item is held (PIXY'S MAP, else MAP OF VERDITE in areas 0..11); `docs/GAME_INTERNALS.md`, "The maps" | on |
 | `KF3_MAPKEY_TEST` | `seconds`: open the map that long into the first area, as a press would; a test, not for play | none |
 | `KF3_FPS` | frame pacing: the picture's rate, or `off` for uncapped; unset is the kept rate (`kf3.fps`), else 144. Pacing is turned off only in Settings ▸ Testing (kept as `kf3.pacing=0`) | 144 (2026-10-06) |
@@ -116,11 +121,12 @@ kept.
 | `KF3_TANK` | `1`: 3D controls, one stick as tank controls: the left stick walks and turns, L1 and R1 strafe, L2 and R2 look, the right stick is not read; `0` or unset: 2D, the left stick walks and strafes (Settings ▸ Gameplay ▸ Controls, `kf3.controls`) | off |
 | `KF3_ANALOG_LOOK` | `0`: the right stick stops turning and looking | on |
 | `KF3_ANALOG_MOVE_ENABLE` | `0`: the left stick stops walking and strafing | on |
-| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move | 1.25, 1.25, 1.0 (2026-10-06) |
+| `KF3_ANALOG_TURN`, `KF3_ANALOG_PITCH`, `KF3_ANALOG_MOVE` | stick sensitivities, turn, pitch and move; above 1.0 is faster than the D-pad | 1.0, 1.0, 1.0 (2026-10-14) |
 | `KF3_ANALOG_DEADZONE`, `KF3_ANALOG_MOVEDEADZONE` | radial deadzones, look (and move unless the second is set) and move | 0.15 |
 | `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
-| `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look ramp: on, the peak multiplier and the seconds to reach it | 1 / 2.2 / 0.5 |
-| `KF3_ANALOG_INSTANTSTOP` | `0`: let a released look axis coast on the game's decay (movement is never stopped) | on |
+| `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look acceleration: on, the peak multiplier and the seconds to reach it; on turns past the D-pad's rate | 0 / 2.2 / 0.5 (2026-10-14) |
+| `KF3_ANALOG_INSTANTSTOP` | `1`: stop a released look axis dead instead of easing it out by the game's step (movement is never stopped) | off (2026-10-14) |
+| `KF3_ANALOG_EASE` | `1`: the right stick eases in and out by the game's step instead of turning and looking at what its position asks at once and stopping dead on release; 2D only. Input ▸ Gamepad, kept as `kf3.analog.ease` (`docs/INPUT.md`, "The stick turns at the original's speed") | off (2026-10-18) |
 | `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis; `KF3_ANALOG_INVERTY` is Settings ▸ Gameplay ▸ Inverted camera, kept as `kf3.analog.invertpitch`, and the variable wins | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 | `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |
@@ -151,6 +157,7 @@ See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
 | `KF3_ICON` | the port's icon: `off` (or `none`) no icon, `0`/`1`/`2` a frame of the fourth save slot's card icon | frame 2 |
 | `KF3_ICON_INSTALL` | `0`: write nothing into `~/.local/share/icons` or `applications` (the copy a Wayland compositor reads), and point no Windows shortcut at `icon.ico` | on |
 | `VERDITE3_DATA` | the launcher's data directory: saves, settings, the built game | `~/.local/share/verdite3`, `%LOCALAPPDATA%\Verdite3` |
+| `VERDITE3_SETUP` | `1`: show the first-run setup even when it is not due (`docs/SETTINGS.md`, "Onboarding") | off |
 | `VERDITE3_UPDATE_CHECK` | `0`: never ask GitHub for a newer release; `force`: ask past the once-an-hour limit | on, hourly |
 | `VERDITE3_BUILD` | the commit a launcher build says it is, for a build made outside a git checkout | the checkout's `HEAD` |
 

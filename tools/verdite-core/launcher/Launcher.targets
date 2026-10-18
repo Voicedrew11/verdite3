@@ -125,6 +125,9 @@
     <!-- The shared shell. The game's project directory adds its Program.cs by the default glob. -->
     <ItemGroup>
         <Compile Include="$(VerditeCore)launcher/**/*.cs" />
+        <!-- The first-run setup, which the game's settings page runs again: one copy
+             of its source, compiled here and (as payload) into the game. -->
+        <Compile Include="$(VerditeCore)src/Onboarding/**/*.cs" />
     </ItemGroup>
 
     <!--

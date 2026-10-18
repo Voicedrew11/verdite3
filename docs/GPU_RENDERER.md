@@ -914,3 +914,35 @@ unchanged by every run.
 passages while turning against them, and the fog on the maze as it is approached.
 The fog on the maze is not separately explained: the mix of packet fog and
 retained fog on neighbouring halves is the likely cause, and is gone with this.
+
+## A rigid model and a pending pose (2026-10-14)
+
+**From Verdite2** (its #66), where it was a reported vertex explosion: a rigid
+object model drawn every frame with the previous MO object's keyframe and deltas.
+When `GpuWorld.DeferPose` is on, the blender (`MoPose`, `func_800431E8`) leaves the
+pose undecoded, points scratchpad `+0x4C` at the posed buffer `0x801ACB98` and sets
+`MoPose.Pending`. The pose stays pending until a submit consumes it or something
+materialises it. A rigid sub-model is submitted without calling the blender, so if
+a deferred pose was never consumed (its model not submitted, or a submit that
+retains without drawing returns before `Consume`), the next rigid submit found it
+pending. `RetainedModels.Submit` took it on `Pending` alone, and `MoPose.Store`
+refused it only on the vertex count. A rigid model with as many vertices as the
+stale pose would have been drawn with that pose.
+
+**Fix.** `MoPose.PendingAt(verts)`: a submit is drawn from the pending pose only
+while its vertex base (`+0x4C`) still names the posed buffer, which only the
+blender sets. `Store` takes the base and refuses otherwise. A rigid model after an
+MO one goes to `StoreRigid` on its own vertices. Each submit that finds a pose
+pending at another base is counted as `MoPose.Stale` (`stale` in the retained
+scene line, `Assets.Stale` in the census file).
+
+### Measured
+
+`KF3_AUTOSTART=1`, `KF3_SCENE_DRIVER=1`, a warp to each of areas 0-20 held about
+9 s, 144 fps: 2,767,004 submissions, **`stale` 0**, and deferred poses 57,493 =
+pose builds 191 + hits 57,302, so every deferred pose was consumed by its own
+submit. On this disc the case Verdite2 hit was not reached in that tour: the
+change is a guard, with no difference in the census. A temporary count of stale
+poses with a matching vertex count, the exact Verdite2 case, was also 0. Areas
+21-27 were not run. No `unmapped call`. **Not checked by eye**, since nothing was
+reported here.
