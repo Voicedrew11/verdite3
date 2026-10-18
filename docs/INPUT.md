@@ -412,7 +412,7 @@ So by default a stick now turns as the D-pad does, and looks as L2/R2 do:
 * **The speed at full deflection is the game's own**: the turn rate at
   `0x801B2668` (32 walking, 40 standing), and 32 a tick for the look. A partial
   push asks for a share of it, through the deadzone and the curve.
-* **It eases in and out by the game's own step** (`Analog.Ramp`): `rate >> 2` a
+* **With the ease on (off by default since 2026-10-18, below), it eases in and out by the game's own step** (`Analog.Ramp`): `rate >> 2` a
   tick for the turn and 3 for the look, up and down, as the button branches and the
   released branch do to a held and a let-go button. It carries on from the game's
   velocity (`0x801B264C`, `0x801B264E`) when the stick takes over from a D-pad turn
@@ -425,12 +425,16 @@ So by default a stick now turns as the D-pad does, and looks as L2/R2 do:
   sensitivity above 1.0 put back to 1.0, and a console line saying how many were
   reset. A variable still wins; it never touched the store.
 
-*Stick eases in and out* (`StickEase`, `kf3.analog.ease`, `KF3_ANALOG_EASE=0`;
-Input ▸ Gamepad) turns the ease off: the stick's turn and look are what its
-position asks at once, through the same deadzone, curve and cap, and a released
-stick stops dead the tick after, as the instant stop does (whose checkbox is
-dimmed then, having nothing to add). 2D's right stick only: 3D's left-stick turn
-keeps its ease.
+**2D's stick does not ease, by default** (2026-10-18, the user: easing disabled in
+2D). *Stick eases in and out* (`StickEase`, `kf3.analog.ease`, `KF3_ANALOG_EASE=1`;
+Input ▸ Gamepad) is off: the stick's turn and look are what its position asks at
+once, through the same deadzone, curve and cap, and a released stick stops dead the
+tick after, as the instant stop does (whose checkbox is dimmed then, having nothing
+to add). On brings the ramp above back. 2D's right stick only: 3D's left-stick turn
+keeps its ease. A config that saved the ease on is turned off once
+(`kf3.analog.defaults` = 3), with a console line. The mouse and the gyro never
+eased; the D-pad, keyboard and L2/R2 keep the game's own ramp, which is the game's,
+not the port's, and so does 2D's walk and strafe momentum.
 
 **Not measured here**: the game does not get past boot in the sandbox this was
 built in, so the steps above are Verdite2's measurement of the same code, not

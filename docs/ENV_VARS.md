@@ -126,7 +126,7 @@ kept.
 | `KF3_ANALOG_CURVE`, `KF3_ANALOG_MOVECURVE` | response curves | 1.35 / 1.0 |
 | `KF3_ANALOG_ACCEL`, `KF3_ANALOG_ACCELMAX`, `KF3_ANALOG_ACCELTIME` | the look acceleration: on, the peak multiplier and the seconds to reach it; on turns past the D-pad's rate | 0 / 2.2 / 0.5 (2026-10-14) |
 | `KF3_ANALOG_INSTANTSTOP` | `1`: stop a released look axis dead instead of easing it out by the game's step (movement is never stopped) | off (2026-10-14) |
-| `KF3_ANALOG_EASE` | `0`: the right stick turns and looks at what its position asks at once, and stops dead on release, instead of easing in and out by the game's step; 2D only. Input ▸ Gamepad, kept as `kf3.analog.ease` (`docs/INPUT.md`, "The stick turns at the original's speed") | on |
+| `KF3_ANALOG_EASE` | `1`: the right stick eases in and out by the game's step instead of turning and looking at what its position asks at once and stopping dead on release; 2D only. Input ▸ Gamepad, kept as `kf3.analog.ease` (`docs/INPUT.md`, "The stick turns at the original's speed") | off (2026-10-18) |
 | `KF3_ANALOG_INVERTY`, `KF3_ANALOG_INVERTTURN`, `KF3_ANALOG_INVERTSTRAFE`, `KF3_ANALOG_INVERTFWD` | `1`: flip that axis; `KF3_ANALOG_INVERTY` is Settings ▸ Gameplay ▸ Inverted camera, kept as `kf3.analog.invertpitch`, and the variable wins | off |
 | `KF3_ANALOG_PROBE` | `1`: a report of what the sticks drove, written by `AnalogProbe` | off |
 | `KF3_ITEMTURN` | `0`: a picked-up item held up spins as the game spins it; on, the mouse and the right stick turn it (`docs/INPUT.md`, "Turning a picked-up item") | on |

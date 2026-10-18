@@ -20,7 +20,7 @@ namespace Kf3;
 ///     KF3_ANALOG_CURVE/MOVECURVE=1.35/1.0       response curves
 ///     KF3_ANALOG_ACCEL=1 ACCELMAX=2.2 ACCELTIME=0.5   the look ramp
 ///     KF3_ANALOG_INSTANTSTOP=1                  camera stops on release
-///     KF3_ANALOG_EASE=0                         the right stick neither eases in nor out
+///     KF3_ANALOG_EASE=1                         the right stick eases in and out (2D; off)
 ///     KF3_ANALOG_INVERTY/INVERTTURN/INVERTSTRAFE/INVERTFWD=1
 ///     KF3_ANALOG_PROBE=1        the control-state report; see AnalogProbe
 ///
@@ -250,7 +250,9 @@ public static class Analog
     // CameraInstantStop says nothing. The speed is the original's either way; only
     // the drag a held button has, four or five ticks in and out, is gone. 2D only:
     // 3D's left-stick turn is the D-pad's, ease and all.
-    public static bool StickEase = true;
+    //
+    // Off by default: 2D is a stick's controls, and the ease is a button's.
+    public static bool StickEase = false;
 
     // Which camera axes the sticks were driving last frame, so the release can be
     // handed back to the D-pad and L2/R2 after exactly one zeroing frame, and the
@@ -274,8 +276,8 @@ public static class Analog
     /// <summary>Raised whenever the shipped defaults change in a way a saved value
     /// should not survive. 2: the stick turns at the D-pad's rate, so look
     /// acceleration and the instant stop went off and sensitivities above 1.0 were
-    /// put back to 1.0, once.</summary>
-    const int DefaultsVersion = 2;
+    /// put back to 1.0, once. 3: 2D's stick is direct, so a saved ease went off.</summary>
+    const int DefaultsVersion = 3;
     const string DefaultsKey = "kf3.analog.defaults";
 
     /// <summary>Keys a KF3_ANALOG* variable set, which the saved settings must
@@ -396,18 +398,27 @@ public static class Analog
     static void MigrateDefaults()
     {
         var view = RecompOne.Runtime.Runtime.View;
-        if (view.GetInt(DefaultsKey, 0) >= DefaultsVersion) return;
+        int from = view.GetInt(DefaultsKey, 0);
+        if (from >= DefaultsVersion) return;
 
         int reset = 0;
-        if (view.Has(AccelKey) && view.GetInt(AccelKey, 0) != 0) { view.SetInt(AccelKey, 0); reset++; }
-        if (view.Has(StopKey) && view.GetInt(StopKey, 0) != 0) { view.SetInt(StopKey, 0); reset++; }
-        if (view.Has(TurnSensKey) && view.GetFloat(TurnSensKey, 1f) > 1f) { view.SetFloat(TurnSensKey, 1f); reset++; }
-        if (view.Has(PitchSensKey) && view.GetFloat(PitchSensKey, 1f) > 1f) { view.SetFloat(PitchSensKey, 1f); reset++; }
+        if (from < 2)
+        {
+            if (view.Has(AccelKey) && view.GetInt(AccelKey, 0) != 0) { view.SetInt(AccelKey, 0); reset++; }
+            if (view.Has(StopKey) && view.GetInt(StopKey, 0) != 0) { view.SetInt(StopKey, 0); reset++; }
+            if (view.Has(TurnSensKey) && view.GetFloat(TurnSensKey, 1f) > 1f) { view.SetFloat(TurnSensKey, 1f); reset++; }
+            if (view.Has(PitchSensKey) && view.GetFloat(PitchSensKey, 1f) > 1f) { view.SetFloat(PitchSensKey, 1f); reset++; }
+        }
+        bool eased = view.Has(EaseKey) && view.GetInt(EaseKey, 0) != 0;
+        if (eased) view.SetInt(EaseKey, 0);
         view.SetInt(DefaultsKey, DefaultsVersion);
         RecompOne.Runtime.Runtime.SaveView();
         if (reset > 0)
             Console.WriteLine($"[KF3] analog: the stick now turns at the D-pad's rate; {reset} saved " +
                               "setting(s) that turned it faster were reset (Input ▸ Gamepad to change them back)");
+        if (eased)
+            Console.WriteLine("[KF3] analog: 2D's stick no longer eases in and out; the saved ease was " +
+                              "turned off (Input ▸ Gamepad to turn it back on)");
     }
 
     static bool Attach()

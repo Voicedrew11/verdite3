@@ -40,8 +40,7 @@ public static class AnalogPage
 
         ImGui.Spacing();
         Slider("Turn sensitivity", Analog.TurnSensKey, ref Analog.TurnSens, 0.1f, 3f,
-               "1.0 is the original's speed: a full push turns as fast as the D-pad does, and eases " +
-               "in and out as it does. Past 1.0 the camera turns faster than the game ever let it, " +
+               "1.0 is the original's speed: a full push turns as fast as the D-pad does. Past 1.0 the camera turns faster than the game ever let it, " +
                "which changes how its fights play. In 3D it is the left stick's turn.");
         ImGui.BeginDisabled(tank);
         Slider("Look sensitivity", Analog.PitchSensKey, ref Analog.PitchSens, 0.1f, 3f,
@@ -79,10 +78,10 @@ public static class AnalogPage
 
             ImGui.Spacing();
             Check("Stick eases in and out", Analog.EaseKey, ref Analog.StickEase,
-                  "On is the original: the view takes four or five ticks to reach full speed and " +
-                  "to stop, as it does on a held D-pad or L2/R2. Off is direct: the view turns at " +
-                  "the stick's speed at once and stops dead on release. The top speed is the " +
-                  "original's either way.");
+                  "Off, the default, is direct: the view turns at the stick's speed at once and " +
+                  "stops dead on release. On is the original's button feel: the view takes four or " +
+                  "five ticks to reach full speed and to stop, as it does on a held D-pad or L2/R2. " +
+                  "The top speed is the original's either way. 2D only.");
             ImGui.BeginDisabled(!Analog.StickEase);
             Check("Camera stops on release", Analog.StopKey, ref Analog.CameraInstantStop,
                   "Off is the original: the view eases to a stop over a fifth to half a second, as it " +
