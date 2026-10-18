@@ -27,6 +27,16 @@ functions. Anything else from the first line is a name that started binding (see
 fetches the PSY-Q bank `--autoconfigure` reads; `--pull-fork`/`--push-fork` and
 `--pull-core`/`--push-core` move the two subtrees.
 
+CI (`.github/workflows/ci.yml`) also lints the runtime's shaders, with no GPU and
+no disc: `python3 tools/RecompOne/scripts/shader_lint.py --glslang` pulls every
+stage out of `GlShaders.cs` as the runtime compiles it and fails on a derivative
+or an implicit-LOD mip lookup after a `discard` or `return` (undefined; a Windows
+driver drew a dark line along every polygon edge on one), then compiles each
+stage with `glslangValidator` (`glslang` on Fedora, `glslang-tools` on Ubuntu). A reviewed
+exception carries `// derivatives-ok: <why>` on its line. The script and its rules
+live in the fork; this game adds no GLSL of its own. At `c79d32f`: 22 stages, 15
+programs, 0 findings.
+
 Run it from the repository root: the runtime writes `carda.sav`, `cardb.sav`,
 `settings.json` and `interface.ini` into the working directory (all gitignored).
 **The disc comes from `settings.json`'s `CdPath`, not the command line**: in a

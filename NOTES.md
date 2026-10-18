@@ -60,9 +60,10 @@ Verdite Core's first-run setup (`config/onboarding.json`, DISPLAY ▸ RUN SETUP)
 all from Verdite2 on 2026-10-14 (built and boot-checked, nothing run past boot;
 `docs/INPUT.md`, `docs/DEVELOPMENT.md`, `docs/SETTINGS.md`); every
 switch is live in Settings ▸ Testing. `tools/RecompOne` is a `git subtree`
-of the shared fork `Voicedrew11/verdite-recompone` at `09f3f09` (this repo's
+of the shared fork `Voicedrew11/verdite-recompone` at `c79d32f` (this repo's
 retained-scene work through `0109` and the `0045` amendment pushed, merged with the
-fork's `0090`-`0093`; Verdite2 pinned `f02f484`), with
+fork's `0090`-`0093`, then Verdite2's shader-derivative fixes and
+`scripts/shader_lint.py`, which CI runs; Verdite2 pinned `f02f484`), with
 retained-runtime checkpoints on the fork's `checkpoint/retained-depth-probes`,
 and `tools/verdite-core` of Verdite Core at `91f4a4a`, which Verdite2 pins too.
 **A release can be built** (2026-10-05): `Verdite3.Launcher/` is Verdite Core's
