@@ -32,6 +32,7 @@ public sealed partial class GlCore
         _uwCueFromZ = _gl.GetUniformLocation(_progWorld, "uCueFromZ");
         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
         _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
+        _uwDepthPull = L("uDepthPull");
         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
@@ -60,7 +61,7 @@ public sealed partial class GlCore
     bool _wMips;
     // The view depth the normal pass's last water slice reached.
     float _wDone;
-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1;
+    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1;
     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
     // The world normal program is set up for this pass's frame (DrawWorldNormals).
@@ -119,7 +120,9 @@ public sealed partial class GlCore
         }
         if (inst >= 0 && RetainedScene.MainModelsShown)
         {
+            _pullAllowed = true;
             DrawInstances(f.Instances, inst);
+            _pullAllowed = false;
             RetainedScene.InstancesDrawn += f.Instances.Count;
         }
         _maskModels = false;
@@ -379,6 +382,12 @@ public sealed partial class GlCore
         {
             slack = Count(RetainedScene.MapSlacks[i], GteDepth.DepthSlope);
             RetainedScene.ModelUnderSlack[i] += slack - tolerant;
+        }
+        if (_pullProbe)
+        {
+            _pullOn = true;
+            RetainedScene.ModelUnderPulled += Count(GteDepth.DepthBias, GteDepth.DepthSlope) - tolerant;
+            _pullOn = false;
         }
         _gl.Uniform1(_uwDepthBias, 0f);
         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);

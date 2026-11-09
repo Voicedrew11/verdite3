@@ -112,7 +112,7 @@ def main():
                                "camera": [cx, y + eye, cz],
                                **{k: after[k] - before[k] for k in
                                   ("mainDraws", "instances", "maskFrames", "maskBatches", "maskSamples", "maskBehind", "maskAhead",
-                                   "modelSamples", "modelUnderMap")},
+                                   "modelSamples", "modelUnderMap", "modelUnderPulled")},
                                "underSlack": [a - b for a, b in zip(after["modelUnderSlack"], before["modelUnderSlack"])]}
                         rows.append(row)
             ar = [r for r in rows if r.get("area") == area and "dist" in r]
@@ -120,7 +120,7 @@ def main():
             under = [sum(r["underSlack"][i] for r in ar) for i in range(5)]
             worst = max(ar, key=lambda r: r["maskBehind"], default=None)
             print(f"area {area:02d}: {len(ts)} things, {len(ar)} views, model samples {tot('modelSamples')}, "
-                  f"under map by slack 8/32/128/512/960 {under}, packets behind {tot('maskBehind')}, "
+                  f"under map by slack 8/32/128/512/960 {under}, own allowance {tot('modelUnderPulled')}, packets behind {tot('maskBehind')}, "
                   f"blended ahead {tot('maskAhead')}; most behind {worst and (worst['kind'], worst['index'], worst['dist'], worst['yaw'], worst['maskBehind'])}",
                   flush=True)
         except (OSError, RuntimeError) as e:

@@ -516,3 +516,52 @@ and the eye's direction to it, and the view's forward:
 **Not judged by eye.** For the user, modes 0 and 2 compared: the flames from the side
 (fdat74 has the most), the trees at the edge of the picture while turning, and close
 up while walking past one, where a sprite turned to the eye turns quickly.
+
+## Objects sunk into the map (2026-11-05)
+
+**The report** (the user): with the Z-buffer, objects and items placed a little
+inside a bumpy floor or a wall are cut by it, or hidden. Under the ordering table
+the map's faces were linked 0xF0 slots (960 units of depth) behind their mean, so a
+model sunk less than that drew whole and the placement never showed. No single
+rule is right for every case; this is the one that copies the console the closest.
+
+**The rule** (`patches/ObjectDepthPull.cs`, runtime `0111`): each model the walk
+submits gets an allowance, its size (the furthest vertex from its origin, times the
+matrix's longest column) capped at the table's 960. The retained renderer tests the
+model against the map pulled that far towards the camera, and against the other
+models at the true depth, then writes the true depth back so water and blended
+faces after it test against where it really is. Not the sky, the arm, the HUD's
+models or the packet Z-buffer (`KF3_GPU_WORLD=0`). Switch: `KF3_OBJECT_PULL=1`,
+Testing ▸ "Objects sunk into the floor still draw", under the Z-buffer; **off until
+judged**.
+
+**Sizes** (`KF3_OBJECT_PULL_PROBE=1`, areas 0, 1, 5, 7, 9, 10, 17): median 700-2,600
+units, a tenth under 340-1,200, the largest 6,843. A full size uncapped would let
+the large ones through walls a room away, hence the ceiling (`KF3_OBJECT_PULL_MAX`).
+
+**Measured** (`model_mask_tour.py`, three things an area, 24 views each,
+`KF3_GPU_MASK_PROBE=1`): model samples the map hid, and of those the ones the
+allowance brings back (`modelUnderPulled`):
+
+| area | hidden within 960 | brought back |
+|---|---|---|
+| 0 | 1,598,359 | 1,598,359 |
+| 1 | 17,668,329 | 17,672,934 |
+| 5 | 138,382 | 106,354 (things smaller than 960) |
+| 7 | 48,575 | 46,266 |
+| 9 | 1,539 | 1,539 |
+| 10 | 581 | 581 |
+| 17 | 11,408,974 | 11,406,474 |
+
+Out of 0.2-3.5e9 model samples an area. 164-165 fps at a 165 cap with it on; no
+exception; the shader lint passes.
+
+**Costs, by construction**: an object just behind a thin wall or a door's edge, within
+its allowance, shows through it; two models within each other's allowances sort by
+their pulled depths; a model's blended faces are tested after the restore and stay
+cut. The planar mirror and the normal pass test as before.
+
+**Not judged by eye.** For the user, on and off: objects on uneven ground (area 1 and
+17 have the most), items against walls, the item held up at pickup against a wall
+(the TODO entry), creatures in water (the restore), and things behind thin walls
+and doors.

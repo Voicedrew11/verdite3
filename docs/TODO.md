@@ -116,6 +116,10 @@ recompiled and running, following Verdite2's method but applied to this disc.
   only while it is held (`ItemTurn` knows the phase), not on the flight in and out,
   where the world should still cover it. The menu's preview is done ("Not recorded"
   in `docs/PICTURE.md`).
+- **Objects sunk into the map** (built 2026-11-05, off): `KF3_OBJECT_PULL=1` lets a
+  model sink into the floor or a wall by up to its size (at most 960) and still draw,
+  as the table drew it. Measured; **awaiting the user's check by eye**, then on by
+  default or out. "Objects sunk into the map" in `docs/PICTURE.md`.
 - ~~**Carrying the view between ticks**~~ (chosen 2026-10-02, ahead of the near
   path). Done 2026-10-02: units 1-3, the camera, the HUD and the creatures with
   their clip times, verified and judged, on under pacing; every switch is live in

@@ -514,7 +514,9 @@ surface made transparent to models against none: the share of model samples hidd
 by the map within 128 units was unchanged in areas 0, 7 and 9 (it is walls and
 door frames), fell from 2.8e-3 to 1.3e-3 in area 1, and was under 4e-6 in 10 and
 17. Bases in the floor are not the effect reported, and the rule would also show
-models through the top of a low step, so it was taken out.
+models through the top of a low step, so it was taken out. Reported after all (2026-11-05):
+a per-model allowance, behind a switch, is "Objects sunk into the map" in
+`docs/PICTURE.md` (runtime `0111`).
 
 ## Sign lettering under its plate (2026-10-05)
 
