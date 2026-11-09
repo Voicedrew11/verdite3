@@ -61,6 +61,13 @@ public static class JapaneseMenu
     /// <summary>The return address of the list routine's title label, a copy of a list group's record.</summary>
     const uint ListTitleReturn = 0x800254E0;
 
+    /// <summary>func_80027530: submits the sprite the caller built to the ordering table.</summary>
+    const uint SubmitSprite = 0x80027530;
+
+    /// <summary>The return addresses of status page 1's five submits of a magic attribute's icon. The Japanese
+    /// status page (0x800229EC) draws a kanji at those places instead and has no icon.</summary>
+    static readonly HashSet<uint> AttributeIconReturns = [0x80022CA0, 0x80022D54, 0x80022E14, 0x80022EC8, 0x80022F84];
+
     /// <summary>List kinds (func_80025468's a1 &amp; 0xFFF, live in s4) filled from the spell table.</summary>
     static readonly HashSet<uint> SpellListKinds = [2, 4, 0x10];
 
@@ -123,7 +130,7 @@ public static class JapaneseMenu
     static (uint Record0, uint Record1, uint Call)? _choice;
     static uint _greyCall;
     static long _vblank;
-    static int _japaneseDraws, _englishDraws, _reportedDraws;
+    static int _japaneseDraws, _englishDraws, _reportedDraws, _iconsLeftOut;
     static double _nextReportMs;
     static readonly HashSet<string> _untranslated = new(StringComparer.Ordinal);
     static readonly HashSet<string> _translated = new(StringComparer.Ordinal);
@@ -146,6 +153,7 @@ public static class JapaneseMenu
         {
             (GreyLabelRoutine, nameof(GreyLabel)),
             (ChoiceRoutine, nameof(Choice)),
+            (SubmitSprite, nameof(Sprite)),
             (JapaneseMenuText.UsWindowA, nameof(WindowA)),
             (JapaneseMenuText.UsWindowB, nameof(WindowB)),
         };
@@ -213,6 +221,17 @@ public static class JapaneseMenu
         _choice = (c.A0, c.A1, c.RA - 8);
         orig(c, m);
         _choice = previous;
+    }
+
+    /// <summary>func_80027530: leaves out the status page's attribute icons when their places hold the Japanese kanji.</summary>
+    public static void Sprite(Action<CpuContext, IMemory> orig, CpuContext c, IMemory m)
+    {
+        if (AttributeIconReturns.Contains(c.RA) && JapaneseDisc.Active && Ready())
+        {
+            _iconsLeftOut++;
+            return;
+        }
+        orig(c, m);
     }
 
     /// <summary>func_8001EB3C: the card window with its records in a1.</summary>
@@ -519,6 +538,6 @@ public static class JapaneseMenu
         _nextReportMs = now + ReportEveryMs;
         _reportedDraws = _japaneseDraws;
         Console.WriteLine($"[KF3] japanese menu: {_japaneseDraws} label(s) drawn in Japanese, {_englishDraws} through the original, " +
-                          $"{_atlas?.Writes} atlas cell write(s), {_atlas?.ForcedEvictions} forced, {_untranslated.Count} distinct without Japanese");
+                          $"{_atlas?.Writes} atlas cell write(s), {_atlas?.ForcedEvictions} forced, {_untranslated.Count} distinct without Japanese, {_iconsLeftOut} attribute icon(s) left out");
     }
 }

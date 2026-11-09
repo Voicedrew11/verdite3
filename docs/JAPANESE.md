@@ -188,6 +188,9 @@ instruction by instruction on 2026-11-08:
 - Japan draws different words, moves a few (the three columns of the item action row,
   the card question), and adds labels of its own (six on the status page where the US
   has one line, two on the format question).
+  Five of those six are the magic attributes, written as kanji at the very places the US
+  program draws its icons (HOLY, FIRE, EARTH, WIND, WATER), and the Japanese page has no
+  icons, so a Japanese run leaves the five US icons out (`func_80027530`, by return address).
 - Card messages differ most: other line breaks, so other line counts and window sizes.
 - Japan fixes the confirm and cancel buttons where the US reads them from gp+0x38 and
   gp+0x3C. That is control, not text, and `patches/JapaneseButtons.cs` gives a Japanese
