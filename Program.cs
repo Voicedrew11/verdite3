@@ -288,6 +288,8 @@ Kf3.Subpixel.Install();
 Kf3.ZBuffer.Configure(Environment.GetEnvironmentVariable("KF3_ZBUFFER"),
                       Environment.GetEnvironmentVariable("KF3_ZBUFFER_PROBE"));
 Kf3.ZBuffer.Install();
+Kf3.ObjectDepthPull.Configure(Environment.GetEnvironmentVariable("KF3_OBJECT_PULL"),
+    Environment.GetEnvironmentVariable("KF3_OBJECT_PULL_MAX"), Environment.GetEnvironmentVariable("KF3_OBJECT_PULL_PROBE"));
 Kf3.MapCoverage.Configure(Environment.GetEnvironmentVariable("KF3_MAPCOVERAGE"));
 Kf3.MapCoverage.Install();
 

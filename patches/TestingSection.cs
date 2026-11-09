@@ -75,6 +75,7 @@ public sealed class TestingSection : ISettingsSection
         new("kf3.subpixel", "KF3_SUBPIXEL", () => Subpixel.Enabled, v => Subpixel.Enabled = v, () => Subpixel.Mod),
         new("kf3.subpixel_cull", "KF3_SUBPIXEL_CULL", () => Subpixel.Cull, v => Subpixel.Cull = v, () => Subpixel.Mod),
         new("kf3.zbuffer", "KF3_ZBUFFER", () => ZBuffer.Enabled, v => ZBuffer.Enabled = v, () => ZBuffer.Mod),
+        new("kf3.object_pull", "KF3_OBJECT_PULL", () => ObjectDepthPull.Enabled, v => ObjectDepthPull.Enabled = v, () => ZBuffer.Mod),
         new(Mouse.OnKey, "KF3_MOUSE", () => Mouse.Enabled, v => Mouse.Enabled = v, () => MouseLook.Mod),
         new(Mouse.LeadKey, "KF3_MOUSE_LEAD", () => Mouse.Lead, v => Mouse.Lead = v, () => MouseLook.Mod),
     ];
@@ -370,6 +371,13 @@ public sealed class TestingSection : ISettingsSection
             Note("Needs the polygon assemblers in C#.");
         else if (ZBuffer.Enabled && NearPath.Setting != 1)
             Note("The geometry nearest the eye keeps painter's order: set the near path to C# below.");
+        if (!ZBuffer.Enabled) ImGui.BeginDisabled();
+        ImGui.Indent();
+        Toggle("Objects sunk into the floor still draw", K("kf3.object_pull"),
+            "An object or creature may sink into the floor or a wall by up to its own size and still draw whole, " +
+            "as on the console. Retained GPU only.");
+        ImGui.Unindent();
+        if (!ZBuffer.Enabled) ImGui.EndDisabled();
 
         ImGui.SeparatorText("Mouse");
         Toggle("Mouse look", K(Mouse.OnKey),

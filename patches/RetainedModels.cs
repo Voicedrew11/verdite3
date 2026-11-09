@@ -65,6 +65,7 @@ public static class RetainedModels
         };
         ReadMatrix(ref instance);
         Place(ref instance, frame.View);
+        if (!sky && !arm) instance.DepthPull = ObjectDepthPull.For(instance, pose, (int)count, morph);
         if (FacingProbe && caller is 0x800419ECu or 0x800414A4u) Facing(instance, caller, frame.View);
         ReadLight(ref instance);
         if (ClipProbe && !sky && !arm && !instance.Tile) CountClips(mesh, instance, bias, caller == 0x800419ECu);
