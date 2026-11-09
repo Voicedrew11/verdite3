@@ -70,7 +70,7 @@ The modal menus do their own `PadRead_game` rather than reading `0x801B265C`
 directly), which is why the port injects input through `PadReadEvent` and not
 through the globals: the menus have to see it too.
 
-## Japanese menu buttons
+## Japanese buttons
 
 `patches/JapaneseButtons.cs`, off by default, `KF3_JP_BUTTONS` or Settings ▸ Gameplay
 (`kf3.japanesebuttons.on`), with or without the Japanese language.
@@ -83,15 +83,23 @@ are Cross confirm (`0x40`, `0x20`, icons 3, 1). The Japanese program has no such
 it tests the buttons directly, and read from its code Circle plays the confirm sound
 `0xD` and Cross the cancel sound `0xE`, and its hints are always icons 1 and 3.
 
-With the switch on, a post on the entry writes the Circle-confirm words, and a pre on
-the menu's pad read `func_800279A4` writes them again, which also catches a change made
-on the settings page and the control-config screen's rewrite. Turned off, the pad read
-puts the preset's words back. Play's own buttons (the mask table above) are not touched.
-The port's menu pointer and settings page read the same words, so they follow.
+In play the same choice lives in the mask table: `func_8001F4C0` puts examine (entry 7)
+on the confirm button and the in-game menu (entry 5) on the cancel button, Circle and
+Cross for presets 0 and 1, the other way round for 2 and 3. Every test of those two
+actions reads the table; no gameplay routine tests Cross or Circle directly.
 
-Keys are bound to pad buttons, so with the switch on the layout's Tab (Circle) confirms
-and F (Cross) cancels. Escape keeps backing out: inside a menu `KeyLayout` presses
-Cross for it instead of Circle.
+With the switch on, a post on the entry writes the Circle-confirm words, and a pre on
+the menu's pad read `func_800279A4` and on the player's tick `func_80030FCC` writes the
+words and entries 5 and 7, which also catches a change made on the settings page and
+`func_8001F4C0`'s rewrite on a New Game, a load and the control-config screen. Turned
+off, the next of those puts the preset's values back. Attack and magic (entries 4 and 6)
+stay the preset's, and the control-config screen still draws the preset it holds. The
+port's menu pointer and settings page read the same words, so they follow.
+
+Only a real pad moves. A key or mouse button bound to Cross or Circle presses the other
+inside `PAD_dr`, so F still examines and confirms and Tab still opens the menu and cancels,
+and Escape presses Cross. The listener re-adds itself when the mouse captures, because the
+mouse attaches its own listener then and this one must run after it.
 
 ## The turn and look routine
 

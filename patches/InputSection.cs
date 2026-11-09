@@ -219,7 +219,8 @@ public sealed class InputSection : ISettingsSection
     static void ActionNote() =>
         Note("That middle column is what the buttons do in a New Game. King's Field has a control " +
              "configuration screen of its own: it swaps attack with magic and the menu with examine, " +
-             "and its direction presets rewrite the movement buttons.");
+             "and its direction presets rewrite the movement buttons. Japanese buttons, under Gameplay, " +
+             "also swaps a pad's examine and menu buttons; keys and mouse buttons keep what they do.");
 
     /// <summary>A dimmed, wrapped line under a control: TextDisabled does not wrap
     /// and unwrapped prose runs out of the settings window.</summary>

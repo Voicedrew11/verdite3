@@ -112,7 +112,7 @@ Kf3.AutoReload.Install();
 // compared. See "Comparing gear" in docs/GAME_INTERNALS.md.
 Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
 Kf3.GearCompare.Install();
-Kf3.JapaneseButtons.Install(); // Circle confirms and Cross cancels in the menus, when switched on
+Kf3.JapaneseButtons.Install(); // Circle confirms and examines, Cross cancels and opens the menu, when switched on
 Kf3.JapaneseTitle.Install(); // KF3_LANGUAGE=ja: the Japanese title screen
 Kf3.JapaneseMenu.Install(); // KF3_LANGUAGE=ja: the menu's labels in Japanese from the Japanese disc, the rest unchanged
 

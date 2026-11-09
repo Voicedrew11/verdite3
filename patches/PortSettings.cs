@@ -283,12 +283,12 @@ public static class PortSettings
         Keys = v => [(JapaneseDisc.LanguageKey, v is > 0.5 ? "ja" : null)], Ui = Ui.Combo,
     };
 
-    /// <summary>The Japanese release's menu buttons (patches/JapaneseButtons.cs). Live, and
+    /// <summary>The Japanese release's buttons (patches/JapaneseButtons.cs). Live, and
     /// independent of the language.</summary>
-    public static readonly PortSetting JapaneseButtonsOn = Switch(JapaneseButtons.OnKey, "KF3_JP_BUTTONS", "Japanese menu buttons",
+    public static readonly PortSetting JapaneseButtonsOn = Switch(JapaneseButtons.OnKey, "KF3_JP_BUTTONS", "Japanese buttons",
         Gameplay, "JAPANESE BUTTONS", () => JapaneseButtons.Enabled, JapaneseButtons.SetEnabled, false,
-        tip: "Circle confirms and Cross cancels in the menus, as in the Japanese release, and the button hints follow.\n" +
-             "Your buttons while walking around stay as they are.");
+        tip: "As in the Japanese release: Circle confirms and examines, and Cross cancels and opens the menu. The button hints follow.\n" +
+             "Keyboard keys and mouse buttons keep what they do, and the game's control configuration screen still shows its own layout.");
 
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
