@@ -94,7 +94,7 @@ kept.
 | `KF3_FACING_PROBE` | `1`: every 4 s, for the flames (`0x800419EC`) and the objects (`0x800414A4`) on the retained path, by matrix argument: submits, upright ones, and the largest angle of their +Z from the eye and from the view's forward | off |
 | `KF3_ZBUFFER` | `0`: the ordering table alone, not per-pixel occlusion from the C# assemblers' depth records (`GteDepth.ZBuffer`, `GtePacketDepth`); a packet with no record keeps painter's order | on (2026-10-06) |
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
-| `KF3_OBJECT_PULL` | `1`: under Retained GPU and the Z-buffer, a model the walk submits may sink into the map by up to its own size and still draw (runtime `0111`); a number scales the size. Testing ▸ "Objects sunk into the floor still draw" | off |
+| `KF3_OBJECT_PULL` | Under Retained GPU, while the Z-buffer is on, a model the walk submits may sink into the map by up to its own size and still draw (runtime `0111`); `0` turns it off to compare, a number scales the size. No setting of its own: it follows the Z-buffer | follows `KF3_ZBUFFER`, scale 1 |
 | `KF3_OBJECT_PULL_MAX` | the most any model's allowance may be, in units of depth; `0` no ceiling | 960 (the table's 0xF0 slots) |
 | `KF3_OBJECT_PULL_PROBE` | `1`: every 4 s, models given an allowance and their sizes (p10/p50/p90/max) | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |

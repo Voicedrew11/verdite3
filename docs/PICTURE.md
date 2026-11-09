@@ -531,9 +531,9 @@ matrix's longest column) capped at the table's 960. The retained renderer tests 
 model against the map pulled that far towards the camera, and against the other
 models at the true depth, then writes the true depth back so water and blended
 faces after it test against where it really is. Not the sky, the arm, the HUD's
-models or the packet Z-buffer (`KF3_GPU_WORLD=0`). Switch: `KF3_OBJECT_PULL=1`,
-Testing ▸ "Objects sunk into the floor still draw", under the Z-buffer; **off until
-judged**.
+models or the packet Z-buffer (`KF3_GPU_WORLD=0`). It has no setting of its own: on
+whenever the Z-buffer is (since 2026-11-09). `KF3_OBJECT_PULL=0` turns it off to
+compare.
 
 **Sizes** (`KF3_OBJECT_PULL_PROBE=1`, areas 0, 1, 5, 7, 9, 10, 17): median 700-2,600
 units, a tenth under 340-1,200, the largest 6,843. A full size uncapped would let

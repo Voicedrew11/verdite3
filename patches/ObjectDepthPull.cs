@@ -8,19 +8,22 @@ namespace Kf3;
 /// The retained renderer tests it against the map pulled that far towards the camera
 /// and against other models at its true depth (runtime 0111).
 ///
-///     KF3_OBJECT_PULL=1         on; 0 or unset off. A number is a scale on the size.
+///     KF3_OBJECT_PULL=0         off, to compare. A number is a scale on the size;
+///                               unset is 1. Otherwise it follows the Z-buffer.
 ///     KF3_OBJECT_PULL_MAX=N     no model's allowance past N units of depth; 960 by
 ///                               default, the console's own (0: no ceiling)
 ///     KF3_OBJECT_PULL_PROBE=1   a line every 4 s: models given one, and their sizes
 ///
-/// Off until judged. See "Objects sunk into the map" in docs/PICTURE.md.
+/// See "Objects sunk into the map" in docs/PICTURE.md.
 /// </summary>
 public static class ObjectDepthPull
 {
-    public static bool Enabled { get; set; }
+    /// <summary>Live: on exactly while the Z-buffer is, since without the depth test
+    /// nothing cuts a sunk object off.</summary>
+    public static bool Enabled => _scale > 0f && ZBuffer.Enabled;
 
     /// <summary>The allowance as a share of the model's size (its furthest vertex from
-    /// its own origin).</summary>
+    /// its own origin); 0 is off.</summary>
     static float _scale = 1f;
 
     /// <summary>The ordering table linked a map tile 0xF0 slots (of four units of depth)
@@ -35,9 +38,7 @@ public static class ObjectDepthPull
 
     public static void Configure(string? on, string? max, string? probe)
     {
-        float? scale = ParseFloat(on);
-        Enabled = scale is > 0f;
-        if (scale is > 0f) _scale = scale.Value;
+        _scale = string.IsNullOrWhiteSpace(on) ? 1f : ParseFloat(on) ?? 0f;
         _max = ParseFloat(max) ?? TableAllowance;
         ProbeOn = probe?.Trim() == "1";
     }
