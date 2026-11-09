@@ -9,7 +9,7 @@ namespace Kf3;
 /// disc (the player's own, SLPS-00377) supplies the parts that are words and pictures.
 ///
 ///     KF3_LANGUAGE=ja        the layer on; en does nothing at all
-///     KF3_LANGUAGE unset     the stored kf3.language decides (Settings ▸ Gameplay ▸ Language)
+///     KF3_LANGUAGE unset     the stored verdite.language decides (Settings ▸ Gameplay ▸ Language)
 ///     KF3_JP_DISC=path       the Japanese .cue or .chd; else the US disc's folder and
 ///                            its "Japanese discs" subfolder are searched for one
 ///     KF3_JP_PROBE=1         log each file's plan, and a served-sector count every 5 s
@@ -40,8 +40,14 @@ public static class JapaneseDisc
     const int VolumeIdBytes = 32;
     const int SectorBytes = 2048;
 
-    /// <summary>The settings key the page and the Settings window keep: "ja" or "en".</summary>
-    public const string LanguageKey = "kf3.language";
+    /// <summary>The settings key the page, the Settings window and the launcher's first-run
+    /// step keep: "ja", or none for English. Not under "kf3.": the launcher's step writes it
+    /// before setup, and onboarding.json's "existing" prefix would then take a new player for
+    /// one who has played.</summary>
+    public const string LanguageKey = "verdite.language";
+
+    /// <summary>The Japanese disc the launcher's first-run step was pointed at.</summary>
+    const string JapaneseDiscKey = "verdite.language.jpdisc";
 
     static readonly object Gate = new();
     static string? _jpDiscPath;
@@ -115,7 +121,7 @@ public static class JapaneseDisc
         DiscImage.Decorate = Wrap;
     }
 
-    /// <summary>KF3_LANGUAGE when set, else the stored kf3.language, else en. Only
+    /// <summary>KF3_LANGUAGE when set, else the stored verdite.language, else en. Only
     /// valid once the settings store is loaded (after RuntimeReadyEvent).</summary>
     static string StartLanguage()
     {
@@ -222,7 +228,7 @@ public static class JapaneseDisc
         return null;
     }
 
-    /// <summary>KF3_JP_DISC alone when it is set; otherwise every disc file in the US disc's folder and in its Japanese subfolder.</summary>
+    /// <summary>KF3_JP_DISC alone when it is set; otherwise the disc the first-run step was pointed at, then every disc file in the US disc's folder and in its Japanese subfolder.</summary>
     static IEnumerable<string> Candidates(string usPath)
     {
         if (!string.IsNullOrWhiteSpace(_jpDiscPath))
@@ -230,6 +236,9 @@ public static class JapaneseDisc
             yield return _jpDiscPath;
             yield break;
         }
+
+        if (RecompOne.Runtime.Config.ConfigManager.View.Values.TryGetValue(JapaneseDiscKey, out var stored))
+            yield return stored;
 
         var folder = Path.GetDirectoryName(Path.GetFullPath(usPath)) ?? ".";
         foreach (var dir in new[] { folder, Path.Combine(folder, JapaneseFolder) })

@@ -154,7 +154,7 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | FOG | CORNERS, DEPTH, DISTANCE | `kf3.fog`: the game's, by pixel depth, or by distance from the eye |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
-| GAMEPLAY | LANGUAGE | ENGLISH, JAPANESE, RESTART | `kf3.language` (`ja`, or no key for English): the Japanese text and videos from the player's own Japanese disc, at the next start (`docs/JAPANESE.md`); locked by `KF3_LANGUAGE` |
+| GAMEPLAY | LANGUAGE | ENGLISH, JAPANESE, RESTART | `verdite.language` (`ja`, or no key for English): the Japanese text and videos from the player's own Japanese disc, at the next start (`docs/JAPANESE.md`); locked by `KF3_LANGUAGE` |
 | | JAPANESE BUTTONS | OFF, ON | `kf3.japanesebuttons.on`: Circle confirms and examines, Cross cancels and opens the menu (`docs/INPUT.md`) |
 | | RELOAD ON DEATH | ON, OFF | |
 | | COMPARE GEAR | ON, OFF | `kf3.gearcompare.enabled` |

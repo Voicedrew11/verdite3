@@ -9,7 +9,7 @@ to disk, and the player's Japanese disc is never copied into the repo.
 
 ## What it does and does not do
 
-- Language: `KF3_LANGUAGE=ja` or `en`; with no variable, the stored `kf3.language`
+- Language: `KF3_LANGUAGE=ja` or `en`; with no variable, the stored `verdite.language`
   (Settings ▸ Gameplay ▸ Language, or the game's PORT SETTINGS ▸ GAMEPLAY); with
   neither, English.
 - The stored value is read at `RuntimeReadyEvent`. The settings store is loaded by
@@ -23,6 +23,25 @@ to disk, and the player's Japanese disc is never copied into the repo.
   subfolder, as `.cue` or `.chd`; `KF3_JP_DISC` names one directly. The first file
   in ordinal order wins, so `King's Field III (Japan) (Rev 1).cue` is taken before
   `King's Field III (Japan).cue` when both are there.
+
+## The first-run language step
+
+The shipped launcher asks before the US disc: English only, or English + Japanese
+(`Verdite3.Launcher/LanguageStep.cs`, through Core's `LauncherGame.BeforeDisc`).
+Japanese then asks for the Japanese disc, accepts only volume id `SLPS-00377` (the
+game's own test), and saves `verdite.language=ja` and `verdite.language.jpdisc`.
+
+- Asked once (`verdite.language.asked`), and only when the launcher is about to ask
+  for the disc, so a player with a working game is not asked. `VERDITE3_SETUP=1` asks again.
+- The window opens the disc picker as it loads, so the step closes it and opens it
+  again afterwards.
+- The keys are not under `kf3.`: they are written before setup, whose `existing`
+  prefix in `config/onboarding.json` would otherwise take a new player for a returning
+  one and start the display page on what is set, not on what suits the monitor.
+- The game looks for the disc in this order: `KF3_JP_DISC`, the saved path, then the
+  US disc's folder and its `Japanese discs` subfolder. Under `KF3_LANGUAGE=ja` the
+  first open can come before the settings are loaded, so the saved path may not be
+  seen in a developer run without the launcher.
 
 ## What stays US
 

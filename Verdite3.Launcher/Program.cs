@@ -32,6 +32,8 @@ return Launcher.Run(new LauncherGame
             "the Japanese language in Settings.",
     },
 
+    BeforeDisc = Verdite3.Launcher.LanguageStep.Run,
+
     RecompilerConfig = "kf3.json",
     GameAssembly = "KingsField3",
     UpdateRepository = "Voicedrew11/verdite3",
