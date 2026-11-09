@@ -6,7 +6,6 @@ using RecompOne.Runtime.Host;
 using RecompOne.Runtime.Memory;
 using RecompOne.Runtime.Modding;
 using Silk.NET.Input;
-using Rt = RecompOne.Runtime.Runtime;
 
 namespace Kf3;
 
@@ -17,14 +16,10 @@ namespace Kf3;
 /// reads four words the menu's entry sets from the face preset, the same four the hint at
 /// the bottom of a menu draws its icons from, and two entries of the action-mask table.
 /// Attack and magic stay the preset's. Keys and mouse buttons keep their verbs, so F still
-/// examines and Tab still opens the menu. Independent of the language. See "Japanese
-/// buttons" in docs/INPUT.md.
-///
-///     KF3_JP_BUTTONS=1|0     on or off; a set variable wins over the stored setting
-///
-/// A change takes effect at the next player tick or read of the menu's pad, so a change
-/// made on the settings page applies on that page. Everything but
-/// <see cref="SetEnabled"/> runs on the game thread.
+/// examines and Tab still opens the menu. There is no setting of its own: they are on
+/// exactly when the Japanese layer is (<see cref="JapaneseDisc.Active"/>), so a Japanese
+/// language with no Japanese disc, which plays in English, keeps the English buttons. See
+/// "Japanese buttons" in docs/INPUT.md. Everything here runs on the game thread.
 /// </summary>
 public static class JapaneseButtons
 {
@@ -45,15 +40,8 @@ public static class JapaneseButtons
     const uint ConfirmIcon = 0x8009C254;   // gp+0x40, beside "select"
     const uint CancelIcon = 0x8009C258;    // gp+0x44, beside "return"
 
-    /// <summary>The save's face preset; the game gives presets below 2 the Circle-confirm words.</summary>
-    const uint FacePreset = 0x801B25E2;
-    const byte FirstCrossConfirmPreset = 2;
-
     const uint PadCircle = 0x20, PadCross = 0x40;
     const uint IconCircle = 1, IconCross = 3;
-
-    /// <summary>interface.ini key, read and written by the Gameplay tab and the game's page.</summary>
-    public const string OnKey = "kf3.japanesebuttons.on";
 
     static readonly ModInfo _self = new()
     {
@@ -63,29 +51,13 @@ public static class JapaneseButtons
         Description = "Circle confirms and examines, and Cross cancels and opens the menu, as in the Japanese release.",
     };
 
-    static volatile bool _on;
-    static bool _fromEnv, _queued;
-    static bool _written;                  // the words hold ours, so turning off must put the preset's back
+    static bool _queued;
     static bool _mouseWasCaptured;
 
-    public static bool Enabled => _on;
-
-    /// <summary>Any thread: the words are written by the game thread at its next menu pad read.</summary>
-    public static void SetEnabled(bool on) => _on = on;
+    public static bool Enabled => JapaneseDisc.Active;
 
     public static void Install()
     {
-        string? env = Verdite.Core.Game.Env("JP_BUTTONS");
-        if (env is "0" or "1")
-        {
-            _on = env == "1";
-            _fromEnv = true;
-        }
-
-        Event.AddListener<RuntimeReadyEvent>(_ =>
-        {
-            if (!_fromEnv) _on = Rt.View.GetInt(OnKey, 0) != 0;
-        });
         Event.AddListener(_keepDeviceVerbs);
         HookAttach.OnOverlayLoad("japanese buttons", Attach, "The game keeps the save's confirm and examine buttons.");
     }
@@ -114,37 +86,24 @@ public static class JapaneseButtons
     /// <summary>The entry has just set the words from the preset: ours go over them before the first hint is drawn.</summary>
     public static void AfterMenuEnter(CpuContext c, IMemory m)
     {
-        if (_on) WriteJapanese(m);
+        if (Enabled) WriteWords(m);
     }
 
-    /// <summary>Catches a change of the switch, and func_8001F4C0's rewrite of the words and
-    /// the masks on a New Game, a load and the control-config screen.</summary>
+    /// <summary>Catches func_8001F4C0's rewrite of the words and the masks on a New Game,
+    /// a load and the control-config screen.</summary>
     public static void BeforePadTest(CpuContext c, IMemory m)
     {
-        if (_on)
-        {
-            WriteJapanese(m);
-            return;
-        }
-        if (!_written) return;
-        _written = false;
-        WriteWords(m, circleConfirms: m.ReadU8(FacePreset) < FirstCrossConfirmPreset);
+        if (Enabled) WriteWords(m);
     }
 
-    static void WriteJapanese(IMemory m)
+    static void WriteWords(IMemory m)
     {
-        _written = true;
-        WriteWords(m, circleConfirms: true);
-    }
-
-    static void WriteWords(IMemory m, bool circleConfirms)
-    {
-        m.WriteU32(ConfirmMask, circleConfirms ? PadCircle : PadCross);
-        m.WriteU32(CancelMask, circleConfirms ? PadCross : PadCircle);
-        m.WriteU32(ConfirmIcon, circleConfirms ? IconCircle : IconCross);
-        m.WriteU32(CancelIcon, circleConfirms ? IconCross : IconCircle);
-        m.WriteU16(ExamineActionMask, (ushort)(circleConfirms ? PadCircle : PadCross));
-        m.WriteU16(MenuActionMask, (ushort)(circleConfirms ? PadCross : PadCircle));
+        m.WriteU32(ConfirmMask, PadCircle);
+        m.WriteU32(CancelMask, PadCross);
+        m.WriteU32(ConfirmIcon, IconCircle);
+        m.WriteU32(CancelIcon, IconCross);
+        m.WriteU16(ExamineActionMask, (ushort)PadCircle);
+        m.WriteU16(MenuActionMask, (ushort)PadCross);
     }
 
     /// <summary>
@@ -160,7 +119,7 @@ public static class JapaneseButtons
             Event.RemoveListener(_keepDeviceVerbs);
             Event.AddListener(_keepDeviceVerbs);
         }
-        if (e.Port != 0 || !_on) return;
+        if (e.Port != 0 || !Enabled) return;
 
         bool cross = DeviceHolds(Controller.Cross, Key.F) && Pressed(e.Buttons, Controller.Cross);
         bool circle = DeviceHolds(Controller.Circle, Key.Tab) && Pressed(e.Buttons, Controller.Circle);

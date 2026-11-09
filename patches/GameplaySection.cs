@@ -65,11 +65,8 @@ public sealed class GameplaySection : ISettingsSection
 
     public void Draw()
     {
-        // The Japanese text and videos (JapaneseDisc): takes effect at the next start.
+        // The Japanese text, videos and buttons (JapaneseDisc): takes effect at the next start.
         PortSettings.Draw(PortSettings.Language);
-
-        // Circle confirms and examines, Cross cancels and opens the menu (JapaneseButtons).
-        PortSettings.Draw(PortSettings.JapaneseButtonsOn);
 
         // 2D or 3D controls (Analog.Tank): twin sticks, or one stick that turns.
         PortSettings.Draw(PortSettings.Controls);

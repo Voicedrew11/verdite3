@@ -72,8 +72,10 @@ through the globals: the menus have to see it too.
 
 ## Japanese buttons
 
-`patches/JapaneseButtons.cs`, off by default, `KF3_JP_BUTTONS` or Settings ▸ Gameplay
-(`kf3.japanesebuttons.on`), with or without the Japanese language.
+`patches/JapaneseButtons.cs`. There is no setting of its own: the buttons are on exactly
+when the Japanese layer is (`JapaneseDisc.Active`, `docs/JAPANESE.md`). A Japanese language
+with no Japanese disc plays in English and keeps the English buttons, and a change of
+language reaches them at the next start, as it does the text.
 
 Every US menu takes confirm and cancel from `gp+0x38` and `gp+0x3C`, and draws the
 icons beside `select` and `return` from `gp+0x40` and `gp+0x44`. The menu's entry
@@ -88,11 +90,10 @@ on the confirm button and the in-game menu (entry 5) on the cancel button, Circl
 Cross for presets 0 and 1, the other way round for 2 and 3. Every test of those two
 actions reads the table; no gameplay routine tests Cross or Circle directly.
 
-With the switch on, a post on the entry writes the Circle-confirm words, and a pre on
+In a Japanese run, a post on the entry writes the Circle-confirm words, and a pre on
 the menu's pad read `func_800279A4` and on the player's tick `func_80030FCC` writes the
-words and entries 5 and 7, which also catches a change made on the settings page and
-`func_8001F4C0`'s rewrite on a New Game, a load and the control-config screen. Turned
-off, the next of those puts the preset's values back. Attack and magic (entries 4 and 6)
+words and entries 5 and 7, which also catches `func_8001F4C0`'s rewrite on a New Game,
+a load and the control-config screen. Attack and magic (entries 4 and 6)
 stay the preset's, and the control-config screen still draws the preset it holds. The
 port's menu pointer and settings page read the same words, so they follow.
 

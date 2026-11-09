@@ -190,8 +190,8 @@ instruction by instruction on 2026-11-08:
   has one line, two on the format question).
 - Card messages differ most: other line breaks, so other line counts and window sizes.
 - Japan fixes the confirm and cancel buttons where the US reads them from gp+0x38 and
-  gp+0x3C. That is control, not text, and stays US unless the player turns on the
-  separate Japanese buttons (`docs/INPUT.md`).
+  gp+0x3C. That is control, not text, and `patches/JapaneseButtons.cs` gives a Japanese
+  run the Japanese buttons (`docs/INPUT.md`).
 
 **Where the words come from.** Nothing from the discs is in the code.
 `patches/JapaneseProgram.cs` is a small MIPS reader that tracks constants through a
