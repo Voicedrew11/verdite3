@@ -6,7 +6,7 @@ namespace Kf3;
 /// Objects sunk into the map: each model the walk submits may sink into the map by up
 /// to its own size and still draw, as the ordering table drew it whole at one slot.
 /// The retained renderer tests it against the map pulled that far towards the camera
-/// and against other models at its true depth (runtime 0111).
+/// and against other models at its true depth (runtime 0116).
 ///
 ///     KF3_OBJECT_PULL=0         off, to compare. A number is a scale on the size;
 ///                               unset is 1. Otherwise it follows the Z-buffer.

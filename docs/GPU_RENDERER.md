@@ -516,7 +516,7 @@ door frames), fell from 2.8e-3 to 1.3e-3 in area 1, and was under 4e-6 in 10 and
 17. Bases in the floor are not the effect reported, and the rule would also show
 models through the top of a low step, so it was taken out. Reported after all (2026-11-05):
 a per-model allowance, behind a switch, is "Objects sunk into the map" in
-`docs/PICTURE.md` (runtime `0111`).
+`docs/PICTURE.md` (runtime `0116`).
 
 ## Sign lettering under its plate (2026-10-05)
 

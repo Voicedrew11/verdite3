@@ -525,7 +525,7 @@ the map's faces were linked 0xF0 slots (960 units of depth) behind their mean, s
 model sunk less than that drew whole and the placement never showed. No single
 rule is right for every case; this is the one that copies the console the closest.
 
-**The rule** (`patches/ObjectDepthPull.cs`, runtime `0111`): each model the walk
+**The rule** (`patches/ObjectDepthPull.cs`, runtime `0116`): each model the walk
 submits gets an allowance, its size (the furthest vertex from its origin, times the
 matrix's longest column) capped at the table's 960. The retained renderer tests the
 model against the map pulled that far towards the camera, and against the other
