@@ -84,6 +84,8 @@ public static class Launcher
                 break;
             }
 
+            game.BeforeDisc?.Invoke();
+
             // The runtime's own picker: it opens a native file dialog, refuses
             // anything DiscValidator rejects, saves the accepted path, and pumps the
             // window while it waits. A player who has already chosen passes straight
