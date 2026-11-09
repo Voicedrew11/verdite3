@@ -2048,6 +2048,26 @@ Four files in the directory have no entry below:
   every 2 s from five seconds into the message; after, `wide 125, vram fallback 0`
   for the whole wait. The map item itself not reached by the shell; **not looked
   at.** **No recompile.**
+- `0111-model-depth-pull.patch` — a model placed a little into the floor or a wall
+  (a chest's base under a bump in the ground) drew whole under the ordering table,
+  whose map faces were linked 0xF0 slots behind their mean; the retained renderer's
+  per-pixel test cut it. `RetainedScene.ModelInstance.DepthPull` is a per-instance
+  allowance in view-depth units, 0 by default. In the main view (`_pullAllowed`),
+  when the Z-buffer and `0051`'s tolerance are on and an instance has one,
+  `DrawInstances` pulls both of its passes towards the camera by it (`uDepthPull`,
+  added to the fragment's tolerance after both caps): the depth pass sets stencil
+  bit 2 where an instance passes against the map, and afterwards
+  `RestoreTrueDepth` sets the depth under that bit to the far plane through the
+  instances' own coverage (`uFarPlane`) and draws their true depth into it, so
+  water, blended faces and packets drawn later test against where the models
+  really are. A model is pulled by the same amount over all its faces, so its own
+  faces still sort among themselves; two models within each other's allowances
+  sort by their pulled depths. The mask probe (`0086`) also counts
+  `ModelUnderPulled`, the samples the allowance passes that the tolerance alone
+  fails. The planar mirror, the normal pass and the captured posed models
+  (`DrawWorldModels`) are unchanged. Measured in Verdite3 (`KF3_OBJECT_PULL`, "Objects
+  sunk into the map" in its `docs/PICTURE.md`). **No recompile.** Nothing changes
+  for a game that leaves `DepthPull` at 0.
 
 ## Package bumps
 

@@ -2079,6 +2079,9 @@ internal static class GlShaders
         // RetainedScene.DepthCapPixels over H: the main view's ceiling on the slope term,
         // per unit of depth. 0 is none.
         uniform float uDepthCapZ;
+        // 0111. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
+        // added past the caps: it is no slope term.
+        uniform float uDepthPull;
         uniform int   uScale;
         uniform vec2  uPosBias;
         uniform float uAniso;
@@ -2608,7 +2611,7 @@ internal static class GlShaders
             // unit or two of world, which at depth z moves the depth by at most a few
             // game pixels' width there (z / H each), so the term stops at that.
             if (uDepthCapZ > 0.0) dz = min(dz, uDepthBias + vDepth * uDepthCapZ);
-            dz = min(dz, uDepthCap);
+            dz = min(dz, uDepthCap) + uDepthPull;
             gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
             if (uFarPlane != 0) gl_FragDepth = 1.0;
             if ((uClipOn != 0 || uRadialFog != 0) && vDepth > 0.0) {

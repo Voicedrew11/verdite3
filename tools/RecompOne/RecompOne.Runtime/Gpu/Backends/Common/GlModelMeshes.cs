@@ -345,6 +345,7 @@ public sealed partial class GlCore
             return;
         }
         _gl.Uniform1(_uwModelBase, m.VertBase);
+        if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, _pullOn ? m.DepthPull / 65536f : 0f);
         if (_uwModelSky >= 0) _gl.Uniform1(_uwModelSky, m.Sky ? 1 : 0);
         if (_uwModelTile >= 0) _gl.Uniform1(_uwModelTile, m.Tile ? 1 : 0);
         if (_uwModelClip >= 0) _gl.Uniform1(_uwModelClip, RetainedScene.ModelNearClip ? 1 : 0);
@@ -371,46 +372,31 @@ public sealed partial class GlCore
     /// A view's instances after the map, as <see cref="DrawWorldModels"/> draws the
     /// captured models: 0051's true depth first with colour off, then colour against
     /// it pulled towards the camera. Not culled by GL: the shader keeps the faces the
-    /// lit assembler keeps.
+    /// lit assembler keeps. With 0111's allowances (<see cref="PullsAgainstMap"/>) both
+    /// passes are pulled by each instance's own, and the true depth is put back after.
     /// </summary>
     void DrawInstances(List<RetainedScene.ModelInstance> list, int slot)
     {
         _gl.Disable(EnableCap.CullFace);
         BeginInstances(slot, true);
         bool bias = GteDepth.ZBuffer && (GteDepth.DepthBias > 0f || GteDepth.DepthSlope > 0f);
-        ProbeModelsUnderMap(() =>
-        {
-            foreach (var m in list)
-            {
-                if (m.MeshGen != _meshGen) continue;
-                SendInstance(m, true);
-                _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
-            }
-        });
+        bool pull = bias && PullsAgainstMap(list);
+        _pullProbe = pull;
+        ProbeModelsUnderMap(() => DrawEach(list));
+        _pullProbe = false;
+        _pullOn = pull;
         if (bias)
         {
+            if (pull) MarkPulled();
             DepthOnly(true);
-            foreach (var m in list)
-            {
-                if (m.MeshGen != _meshGen) continue;
-                SendInstance(m, true);
-                _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
-            }
+            DrawEach(list);
             DepthOnly(false);
+            if (pull) EndStencil();
             _gl.DepthMask(false);
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
         }
-        if (bias)
-            ProbeTolerance(2, () =>
-            {
-                foreach (var m in list)
-                {
-                    if (m.MeshGen != _meshGen) continue;
-                    SendInstance(m, true);
-                    _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
-                }
-            });
+        if (bias) ProbeTolerance(2, () => DrawEach(list));
         MarkModels(true);
         foreach (var m in list)
         {
@@ -427,7 +413,85 @@ public sealed partial class GlCore
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
             _gl.DepthMask(true);
         }
+        _pullOn = false;
+        if (pull) RestoreTrueDepth(list);
+        if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, 0f);
         EndInstances(true);
+    }
+
+    /// <summary>Each current instance through the bound program, its uniforms sent.</summary>
+    void DrawEach(List<RetainedScene.ModelInstance> list)
+    {
+        foreach (var m in list)
+        {
+            if (m.MeshGen != _meshGen) continue;
+            SendInstance(m, true);
+            _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
+        }
+    }
+
+    // 0111. The main view's instances are drawing (the display target, whose stencil
+    // 0086 already uses; the planar mirror's is not relied on), the instance uniforms
+    // carry their allowance, and the mask probe counts what it brings back.
+    bool _pullAllowed, _pullOn, _pullProbe;
+
+    /// <summary>0111. The stencil bit that marks where a pulled instance passed.
+    /// 0086's model mask is bit 0.</summary>
+    const int PulledBit = 2;
+
+    bool PullsAgainstMap(List<RetainedScene.ModelInstance> list)
+    {
+        if (_uwFarPlane < 0) _uwFarPlane = _gl.GetUniformLocation(_progWorld, "uFarPlane");
+        if (!_pullAllowed || _uwDepthPull < 0 || _uwFarPlane < 0) return false;
+        foreach (var m in list)
+            if (m.DepthPull > 0f && m.MeshGen == _meshGen) return true;
+        return false;
+    }
+
+    /// <summary>0111. The pulled bit cleared, then set by the depth pass where an
+    /// instance passes against the map.</summary>
+    void MarkPulled()
+    {
+        bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.StencilMask(PulledBit);
+        _gl.ClearStencil(0);
+        _gl.Clear(ClearBufferMask.StencilBufferBit);
+        if (scissor) _gl.Enable(EnableCap.ScissorTest);
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilFunc(StencilFunction.Always, PulledBit, PulledBit);
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+    }
+
+    void EndStencil()
+    {
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
+        _gl.StencilMask(0xFF);
+        _gl.Disable(EnableCap.StencilTest);
+    }
+
+    /// <summary>
+    /// 0111. The pulled depth the instances left, replaced by their true depth, so what
+    /// draws after them (water, blended faces, packets) is tested against where they
+    /// are: under the marked pixels, the depth set to the far plane through the
+    /// instances' own coverage, then their true depth drawn into it. The map's depth
+    /// there is given up, which the instance in front of it already hid.
+    /// </summary>
+    void RestoreTrueDepth(List<RetainedScene.ModelInstance> list)
+    {
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilMask(0);
+        _gl.StencilFunc(StencilFunction.Equal, PulledBit, PulledBit);
+        _gl.DepthMask(true);
+        DepthOnly(true);
+        _gl.DepthFunc(DepthFunction.Always);
+        _gl.Uniform1(_uwFarPlane, 1);
+        DrawEach(list);
+        _gl.Uniform1(_uwFarPlane, 0);
+        _gl.DepthFunc(DepthFunction.Lequal);
+        DrawEach(list);
+        DepthOnly(false);
+        EndStencil();
     }
 
     int _uwFarPlane = -1;
