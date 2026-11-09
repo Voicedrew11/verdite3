@@ -7,6 +7,7 @@ using Recompiled;
 
 Verdite.Core.Game.Configure(tag: "KF3");
 Verdite.Core.Kept.BoolsAsInts = true;
+Kf3.JapaneseDisc.Install(); // KF3_LANGUAGE=ja: the Japanese text and videos over the US disc, before anything reads it
 
 // What a crash, a hook's fault or a hang leaves in crashes/: the runtime's report
 // with this port's version, place and switches in it. KF3_HANG=seconds without a
@@ -111,6 +112,9 @@ Kf3.AutoReload.Install();
 // compared. See "Comparing gear" in docs/GAME_INTERNALS.md.
 Kf3.GearCompare.Configure(Environment.GetEnvironmentVariable("KF3_GEARCOMPARE"));
 Kf3.GearCompare.Install();
+Kf3.JapaneseButtons.Install(); // Circle confirms and examines, Cross cancels and opens the menu, with the Japanese language
+Kf3.JapaneseTitle.Install(); // KF3_LANGUAGE=ja: the Japanese title screen
+Kf3.JapaneseMenu.Install(); // KF3_LANGUAGE=ja: the menu's labels in Japanese from the Japanese disc, the rest unchanged
 
 // Verdite2's EnemyTurn: creatures turn at the player faster, a multiple of the
 // game's own (speed x k, acceleration x k^2); Gameplay ▸ Enemy turn speed, x1 by

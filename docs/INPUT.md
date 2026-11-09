@@ -70,6 +70,38 @@ The modal menus do their own `PadRead_game` rather than reading `0x801B265C`
 directly), which is why the port injects input through `PadReadEvent` and not
 through the globals: the menus have to see it too.
 
+## Japanese buttons
+
+`patches/JapaneseButtons.cs`. There is no setting of its own: the buttons are on exactly
+when the Japanese layer is (`JapaneseDisc.Active`, `docs/JAPANESE.md`). A Japanese language
+with no Japanese disc plays in English and keeps the English buttons, and a change of
+language reaches them at the next start, as it does the text.
+
+Every US menu takes confirm and cancel from `gp+0x38` and `gp+0x3C`, and draws the
+icons beside `select` and `return` from `gp+0x40` and `gp+0x44`. The menu's entry
+`func_80027198` and the control-config screen `func_8001F4C0` set all four from the
+face preset: presets 0 and 1 are Circle confirm (`0x20`, `0x40`, icons 1, 3), 2 and 3
+are Cross confirm (`0x40`, `0x20`, icons 3, 1). The Japanese program has no such words:
+it tests the buttons directly, and read from its code Circle plays the confirm sound
+`0xD` and Cross the cancel sound `0xE`, and its hints are always icons 1 and 3.
+
+In play the same choice lives in the mask table: `func_8001F4C0` puts examine (entry 7)
+on the confirm button and the in-game menu (entry 5) on the cancel button, Circle and
+Cross for presets 0 and 1, the other way round for 2 and 3. Every test of those two
+actions reads the table; no gameplay routine tests Cross or Circle directly.
+
+In a Japanese run, a post on the entry writes the Circle-confirm words, and a pre on
+the menu's pad read `func_800279A4` and on the player's tick `func_80030FCC` writes the
+words and entries 5 and 7, which also catches `func_8001F4C0`'s rewrite on a New Game,
+a load and the control-config screen. Attack and magic (entries 4 and 6)
+stay the preset's, and the control-config screen still draws the preset it holds. The
+port's menu pointer and settings page read the same words, so they follow.
+
+Only a real pad moves. A key or mouse button bound to Cross or Circle presses the other
+inside `PAD_dr`, so F still examines and confirms and Tab still opens the menu and cancels,
+and Escape presses Cross. The listener re-adds itself when the mouse captures, because the
+mouse attaches its own listener then and this one must run after it.
+
 ## The turn and look routine
 
 `func_8002F5C0` (stage 4) is the game's own turn and look, and everything the

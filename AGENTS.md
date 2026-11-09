@@ -43,6 +43,7 @@ before starting anything, then the one or two documents the task touches:
 | `docs/WATER.md` | murky water, the swell and ripples, planar reflections |
 | `docs/WIDESCREEN.md` | the margin, the tints, the cull cone, the primitive buffer |
 | `docs/SETTINGS.md` | port settings: the shared list, the store, the in-game menu page |
+| `docs/JAPANESE.md` | the Japanese text and videos over the US disc (`KF3_LANGUAGE=ja`): what stays US, the archive and area layout, the conversation opcodes |
 | `docs/MODS.md` | the runtime-loaded mods: the debug tools |
 | `docs/PACKAGING.md` | the shipped launcher, the release, the window icon off the disc |
 | `docs/ENV_VARS.md` | every `KF3_*` switch, in one list |

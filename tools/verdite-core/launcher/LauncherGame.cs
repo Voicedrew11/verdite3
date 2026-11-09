@@ -49,6 +49,12 @@ public sealed record LauncherGame
     /// </summary>
     public required Func<string, bool?> PlayAfter { get; init; }
 
+    /// <summary>
+    /// A port's own first-run step, run on the main thread once the window exists and
+    /// before the disc is asked for. It keeps the window alive itself (Runtime.Pump).
+    /// </summary>
+    public Action? BeforeDisc { get; init; }
+
     /// <summary><c>VERDITE2_</c>: the launcher's own switches, beside the game's <c>KF2_</c>.</summary>
     public string EnvPrefix => Name.ToUpperInvariant() + "_";
 
