@@ -271,6 +271,18 @@ public static class PortSettings
              "2D controls only: in 3D the right stick does not look.",
         usable: () => !Analog.Tank);
 
+    /// <summary>The Japanese text and videos (patches/JapaneseDisc.cs). Stored as the text
+    /// "ja" (or nothing for English, which removes the key), and takes effect at the next
+    /// start: the value is kept and shown, and the layer is not changed in this run.</summary>
+    public static readonly PortSetting Language = new()
+    {
+        Key = JapaneseDisc.LanguageKey, Envs = ["KF3_LANGUAGE"], Label = "Language (next start)",
+        Tip = "The Japanese text and pictures, and the Japanese videos, from your own Japanese disc (SLPS-00377) in the same folder as the US disc or in its \"Japanese discs\" subfolder. Takes effect the next time the game starts.",
+        Page = Gameplay, MenuLabel = "LANGUAGE", Steps = [0, 1], MenuValue = Named([0, 1], "ENGLISH", "JAPANESE, RESTART"),
+        Names = ["English", "Japanese"], Default = 0, Live = () => JapaneseDisc.Choice, Apply = v => JapaneseDisc.Choice = v,
+        Keys = v => [(JapaneseDisc.LanguageKey, v is > 0.5 ? "ja" : null)], Ui = Ui.Combo,
+    };
+
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
         tip: "Puts you back at your last save instead of the menus.");
@@ -479,7 +491,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion, Shading,
         RenderDistanceRow, Fog, Water,
-        AutoReloadOn, GearCompareOn, EnemyTurnSpeed,
+        Language, AutoReloadOn, GearCompareOn, EnemyTurnSpeed,
         ControlsRow, InvertedCamera, StickSens, MouseSens, Gyro, RumbleRow,
     ];
 
@@ -490,7 +502,7 @@ public static class PortSettings
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         Controls, StickAccel, InvertedCamera, StickTurn, StickLook, MouseTurn, MouseLookSens, AutoReloadOn, AutoReloadSlot, GearCompareOn, EnemyTurnSpeed, EnemyTurnTrack, FocusPauseOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
-        ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd,
+        ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd, Language,
     ];
 
     /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>

@@ -154,7 +154,8 @@ grouped by subject, a page short of six rows being fine, on the user's word,
 | WORLD | RENDER DISTANCE | ORIGINAL, ENHANCED | `kf3.renderdistance` and its fade: ENHANCED is 16 tiles faded over 3, the user's |
 | | FOG | CORNERS, DEPTH, DISTANCE | `kf3.fog`: the game's, by pixel depth, or by distance from the eye |
 | | WATER | ORIGINAL, ENHANCED, FULL | `kf3.murk`, `kf3.waves`, `kf3.planar`: ENHANCED the swell, FULL the reflections too; murk off in all three until it is good enough to ship (the user, 2026-10-08) |
-| GAMEPLAY | RELOAD ON DEATH | ON, OFF | |
+| GAMEPLAY | LANGUAGE | ENGLISH, JAPANESE, RESTART | `kf3.language` (`ja`, or no key for English): the Japanese text and videos from the player's own Japanese disc, at the next start (`docs/JAPANESE.md`); locked by `KF3_LANGUAGE` |
+| | RELOAD ON DEATH | ON, OFF | |
 | | COMPARE GEAR | ON, OFF | `kf3.gearcompare.enabled` |
 | | ENEMY TURN | ORIGINAL, X1.25 … X8 | `kf3.enemyturn` (GAME_INTERNALS, "Enemies turn faster"); tracking while standing stays in the Settings window |
 | CONTROLS | CONTROLS | 2D, 2D ACCEL, 3D | `kf3.controls` and `kf3.analog.accel`: setup's turning page as a row; 3D clears the acceleration, as setup's tank option does (`docs/INPUT.md`, "2D and 3D controls") |
@@ -185,6 +186,15 @@ edges (now **on by default**, the user having kept it on), the reload slot (last
 used), the message fade, tracking while standing, and the renderer's own switches (perspective,
 sub-pixel, the Z-buffer, the world behind menus, scrolling textures, the AO normals,
 the enhancement distance). A saved value of any of them still holds.
+
+**LANGUAGE** is a setting that takes effect at the next start. Its `Live` is the
+value the page and the Settings window keep (`JapaneseDisc.Choice`), and `Apply` only
+sets that value, so a change is staged and written on Save like any other, and the
+layer itself is not touched in the run. The stored value is read at
+`RuntimeReadyEvent`, not at `Program.cs`'s step: the settings store is loaded inside
+`Entry.Run`, and Verdite Core's card icon opens the US disc before that. The Settings
+window's row and the page's row both say so ("next start", "RESTART"). The stored
+value is the text `ja`; English removes the key, so no player's file holds `en`.
 
 **A combined row** (`PortSetting.Parts`) keeps nothing of its own. Its value is
 `Join` of its parts' shown values; a step stages each part with what `Split` gives

@@ -120,6 +120,8 @@ camera, not a second walk. Measured in all nine areas with water, on by default
   invincibility, the character, item and spell editors, area warp).
 - [docs/PACKAGING.md](docs/PACKAGING.md) — the shipped launcher, the release, the card icon off the disc.
 - [docs/ENV_VARS.md](docs/ENV_VARS.md) — every `KF3_*` switch.
+- [docs/JAPANESE.md](docs/JAPANESE.md) — the Japanese text and videos from the player's own Japanese disc over the US disc (`KF3_LANGUAGE=ja`): what stays US, the archive and area data, the conversation opcodes.
+- [docs/JAPANESE_HANDOFF.md](docs/JAPANESE_HANDOFF.md) — what is left of the Japanese language option: the user's look at it, a few screens not yet seen in a run, Rev 0's menus.
 - [docs/TODO.md](docs/TODO.md) — next steps: the Phase 2 bring-up.
 
 ## Sharing with Verdite2

@@ -158,6 +158,10 @@ See `docs/PACKAGING.md`. The `VERDITE3_*` switches are the shipped launcher's
 | switch | what | default |
 |---|---|---|
 | `KF3_ICON` | the port's icon: `off` (or `none`) no icon, `0`/`1`/`2` a frame of the fourth save slot's card icon | frame 2 |
+| `KF3_LANGUAGE` | `ja`: the Japanese text pictures and videos over the US disc, from the player's own Japanese disc (SLPS-00377), mixed in memory at boot (`patches/JapaneseDisc.cs`, `patches/JapaneseMix.cs`, `docs/JAPANESE.md`); `en`: nothing installed. Unset: the stored `kf3.language` decides (Settings ▸ Gameplay ▸ Language, "next start"), read at `RuntimeReadyEvent`; no stored value is English | unset (English) |
+| `KF3_JP_DISC` | the Japanese disc's `.cue` or `.chd`, for `KF3_LANGUAGE=ja`; unset, the US disc's folder and its `Japanese discs` subfolder are searched for SLPS-00377 | none |
+| `KF3_JP_PROBE` | `1`: with the Japanese layer on, log each file's plan (the area rule regions before and after, the sectors changed), and every 5 s a `[KF3] japanese: served` line with the override and video sector totals when either has moved (`patches/MixedDiscImage.cs`); the menu's labels log each string with no Japanese version the first time it is drawn, the duplicate US strings in the tables, the atlas cells, and every 5 s the Japanese and English draw counts (`patches/JapaneseMenu.cs`) | off |
+| `KF3_JP_DRYRUN` | `1`: with `KF3_LANGUAGE=ja`, build the Japanese layer, log its plan and exit before the game starts (0 when it mixes, 1 when it does not); a self-check, not for play | off |
 | `KF3_ICON_INSTALL` | `0`: write nothing into `~/.local/share/icons` or `applications` (the copy a Wayland compositor reads), and point no Windows shortcut at `icon.ico` | on |
 | `VERDITE3_DATA` | the launcher's data directory: saves, settings, the built game | `~/.local/share/verdite3`, `%LOCALAPPDATA%\Verdite3` |
 | `VERDITE3_SETUP` | `1`: show the first-run setup even when it is not due (`docs/SETTINGS.md`, "Onboarding") | off |

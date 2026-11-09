@@ -22,6 +22,14 @@ return Launcher.Run(new LauncherGame
             "This is King's Field (SLUS-00158), which is a different game; Verdite2 plays it. " +
             "The series was renumbered for the West: this port is of King's Field II " +
             "(SLUS-00255), the US release of the Japanese King's Field III.",
+
+        // The Japanese King's Field III (SLPS-00377) is the disc the Japanese language
+        // is taken from (patches/JapaneseDisc.cs), not the port's main disc.
+        ["SLPS-00377"] =
+            "This is the Japanese King's Field III (SLPS-00377). The port needs the US disc, " +
+            "SLUS-00255 (King's Field II), as its main disc. The Japanese disc can stay in the " +
+            "same folder as the US disc, or in a subfolder named \"Japanese discs\", to turn on " +
+            "the Japanese language in Settings.",
     },
 
     RecompilerConfig = "kf3.json",
