@@ -145,6 +145,9 @@ public static class MenuWorld
         }
     }
 
+    /// <summary>A menu is open: between its entry and its leave. Game thread.</summary>
+    public static bool MenuOpen => _depth > 0;
+
     public static void Install()
     {
         Event.AddListener<OverlayLoadedEvent>(e =>

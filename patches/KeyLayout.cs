@@ -144,6 +144,7 @@ public static class KeyLayout
     // it inside PAD_dr, as KeyLayoutApply's arrows press Up and Down. Only with
     // this layout in place, and only for a press that began over the game: a popup
     // closes on Escape, and the key still held after it closed is not a menu.
+    // With the Japanese menu buttons a menu cancels on Cross, so Escape presses that there.
 
     static bool _escHeld;
 
@@ -158,7 +159,7 @@ public static class KeyLayout
     {
         if (e.Port != 0 || !_escHeld || !IsApplied()) return;
         // Active low, the two button bytes swapped from Controller's layout.
-        ushort bit = Controller.Circle;
+        ushort bit = JapaneseButtons.Enabled && MenuWorld.MenuOpen ? Controller.Cross : Controller.Circle;
         e.Buttons &= (ushort)~(ushort)((bit >> 8) | (bit << 8));
     };
 

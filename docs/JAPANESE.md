@@ -53,11 +53,31 @@ entry, with the same limits on both discs: 683 for S14 and 963 for S15, read fro
 running game's RAM and from both discs' FDAT. So the Japanese frames 684 and 964 exist
 and the video ends where it should. The sectors past a shorter file read as zeros.
 
-Videos that stay US: OP.D, L0, L1, S11.
+Videos that stay US: L0, L1, S11.
 
-- OP.D: the Japanese file has 8 TIM images, but US OPEN draws 5 from a 0x32000-byte
-  buffer.
 - L0, L1 and S11: US-only; there is no Japanese counterpart to mix.
+
+## The title screen (`patches/JapaneseTitle.cs`)
+
+`OP/OP.D` holds the title's images and sound bank. The Japanese file is longer than
+the US file's sectors (217,712 bytes against 172,384) and than the US buffer, its bank
+is at another offset, and its pieces sit elsewhere, so it is not served through the
+disc layer. In `open`, five routines are replaced while the Japanese file is in use:
+
+| US routine | Japanese routine | what changes |
+|---|---|---|
+| `func_80012494` | `0x80012E84` | the file, read from the Japanese disc into a 0x3C000-byte buffer |
+| `func_800126AC` | `0x800130BC` | the images, then the bank at +0x2A350 |
+| `func_8001279C` | `0x800131AC` | the background, and the logo in four pieces at y 60..180 |
+| `func_80012B0C` | `0x80013704` | one copyright line at y 170 |
+| `func_80012EA0` | `0x800138A4` | NEW and CONTINUE at y 192 and 204 |
+
+Everything else in OPEN.EXE stays US: the movies, the pad, the card check. The text
+is English on the Japanese disc too. `OP.D` is checked by SHA-256 and is the same on
+both revisions; any other file, or no Japanese disc, leaves the US title.
+
+Not used: the FROM SOFTWARE logo (the file's last three images), which the Japanese
+program shows only when the title times out (`0x80012A68`).
 
 ## The two revisions
 
@@ -151,7 +171,8 @@ instruction by instruction on 2026-11-08:
   has one line, two on the format question).
 - Card messages differ most: other line breaks, so other line counts and window sizes.
 - Japan fixes the confirm and cancel buttons where the US reads them from gp+0x38 and
-  gp+0x3C. That is control, not text, and stays US.
+  gp+0x3C. That is control, not text, and stays US unless the player turns on the
+  separate Japanese menu buttons (`docs/INPUT.md`).
 
 **Where the words come from.** Nothing from the discs is in the code.
 `patches/JapaneseProgram.cs` is a small MIPS reader that tracks constants through a

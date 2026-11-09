@@ -283,6 +283,13 @@ public static class PortSettings
         Keys = v => [(JapaneseDisc.LanguageKey, v is > 0.5 ? "ja" : null)], Ui = Ui.Combo,
     };
 
+    /// <summary>The Japanese release's menu buttons (patches/JapaneseButtons.cs). Live, and
+    /// independent of the language.</summary>
+    public static readonly PortSetting JapaneseButtonsOn = Switch(JapaneseButtons.OnKey, "KF3_JP_BUTTONS", "Japanese menu buttons",
+        Gameplay, "JAPANESE BUTTONS", () => JapaneseButtons.Enabled, JapaneseButtons.SetEnabled, false,
+        tip: "Circle confirms and Cross cancels in the menus, as in the Japanese release, and the button hints follow.\n" +
+             "Your buttons while walking around stay as they are.");
+
     public static readonly PortSetting AutoReloadOn = Switch(AutoReload.OnKey, "KF3_AUTORELOAD", "Reload the last save on death",
         Gameplay, "RELOAD ON DEATH", () => AutoReload.Enabled, AutoReload.SetEnabled, true,
         tip: "Puts you back at your last save instead of the menus.");
@@ -491,7 +498,7 @@ public static class PortSettings
         Display, Resolution, Aspect, HudAnchor, FrameRateRow,
         TextureFilter, PerPixel, AmbientOcclusion, Shading,
         RenderDistanceRow, Fog, Water,
-        Language, AutoReloadOn, GearCompareOn, EnemyTurnSpeed,
+        Language, JapaneseButtonsOn, AutoReloadOn, GearCompareOn, EnemyTurnSpeed,
         ControlsRow, InvertedCamera, StickSens, MouseSens, Gyro, RumbleRow,
     ];
 
@@ -502,7 +509,7 @@ public static class PortSettings
         Pacing, FrameRate, SmoothCamera, SmoothModels, TexScroll,
         Fog, RenderDist, RenderFade, Planar, MurkyWater, WaterWaves, AoNormals, AoQuality, EnhanceDistance,
         Controls, StickAccel, InvertedCamera, StickTurn, StickLook, MouseTurn, MouseLookSens, AutoReloadOn, AutoReloadSlot, GearCompareOn, EnemyTurnSpeed, EnemyTurnTrack, FocusPauseOn, MessageFade, MouseLook, InstantMouseLook, MenuPointer,
-        ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd, Language,
+        ItemTurnOn, ItemTurnGyro, GyroAimOn, RumbleOn, RumbleHd, Language, JapaneseButtonsOn,
     ];
 
     /// <summary>Every setting and every combined row, for the shell's <c>settings</c> verb.</summary>

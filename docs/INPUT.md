@@ -70,6 +70,29 @@ The modal menus do their own `PadRead_game` rather than reading `0x801B265C`
 directly), which is why the port injects input through `PadReadEvent` and not
 through the globals: the menus have to see it too.
 
+## Japanese menu buttons
+
+`patches/JapaneseButtons.cs`, off by default, `KF3_JP_BUTTONS` or Settings ▸ Gameplay
+(`kf3.japanesebuttons.on`), with or without the Japanese language.
+
+Every US menu takes confirm and cancel from `gp+0x38` and `gp+0x3C`, and draws the
+icons beside `select` and `return` from `gp+0x40` and `gp+0x44`. The menu's entry
+`func_80027198` and the control-config screen `func_8001F4C0` set all four from the
+face preset: presets 0 and 1 are Circle confirm (`0x20`, `0x40`, icons 1, 3), 2 and 3
+are Cross confirm (`0x40`, `0x20`, icons 3, 1). The Japanese program has no such words:
+it tests the buttons directly, and read from its code Circle plays the confirm sound
+`0xD` and Cross the cancel sound `0xE`, and its hints are always icons 1 and 3.
+
+With the switch on, a post on the entry writes the Circle-confirm words, and a pre on
+the menu's pad read `func_800279A4` writes them again, which also catches a change made
+on the settings page and the control-config screen's rewrite. Turned off, the pad read
+puts the preset's words back. Play's own buttons (the mask table above) are not touched.
+The port's menu pointer and settings page read the same words, so they follow.
+
+Keys are bound to pad buttons, so with the switch on the layout's Tab (Circle) confirms
+and F (Cross) cancels. Escape keeps backing out: inside a menu `KeyLayout` presses
+Cross for it instead of Circle.
+
 ## The turn and look routine
 
 `func_8002F5C0` (stage 4) is the game's own turn and look, and everything the
