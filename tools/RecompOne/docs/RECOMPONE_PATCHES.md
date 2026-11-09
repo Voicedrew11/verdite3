@@ -2048,7 +2048,7 @@ Four files in the directory have no entry below:
   every 2 s from five seconds into the message; after, `wide 125, vram fallback 0`
   for the whole wait. The map item itself not reached by the shell; **not looked
   at.** **No recompile.**
-- `0111-model-depth-pull.patch` — a model placed a little into the floor or a wall
+- `0116-model-depth-pull.patch` — a model placed a little into the floor or a wall
   (a chest's base under a bump in the ground) drew whole under the ordering table,
   whose map faces were linked 0xF0 slots behind their mean; the retained renderer's
   per-pixel test cut it. `RetainedScene.ModelInstance.DepthPull` is a per-instance

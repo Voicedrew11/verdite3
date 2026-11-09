@@ -1,0 +1,252 @@
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
+index 97bb0a7..c44dc14 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
+@@ -32,6 +32,7 @@ public sealed partial class GlCore
+         _uwCueFromZ = _gl.GetUniformLocation(_progWorld, "uCueFromZ");
+         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
+         _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
++        _uwDepthPull = L("uDepthPull");
+         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
+         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
+         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
+@@ -60,7 +61,7 @@ public sealed partial class GlCore
+     bool _wMips;
+     // The view depth the normal pass's last water slice reached.
+     float _wDone;
+-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1;
++    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1;
+     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
+     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
+     // The world normal program is set up for this pass's frame (DrawWorldNormals).
+@@ -119,7 +120,9 @@ public sealed partial class GlCore
+         }
+         if (inst >= 0 && RetainedScene.MainModelsShown)
+         {
++            _pullAllowed = true;
+             DrawInstances(f.Instances, inst);
++            _pullAllowed = false;
+             RetainedScene.InstancesDrawn += f.Instances.Count;
+         }
+         _maskModels = false;
+@@ -380,6 +383,12 @@ public sealed partial class GlCore
+             slack = Count(RetainedScene.MapSlacks[i], GteDepth.DepthSlope);
+             RetainedScene.ModelUnderSlack[i] += slack - tolerant;
+         }
++        if (_pullProbe)
++        {
++            _pullOn = true;
++            RetainedScene.ModelUnderPulled += Count(GteDepth.DepthBias, GteDepth.DepthSlope) - tolerant;
++            _pullOn = false;
++        }
+         _gl.Uniform1(_uwDepthBias, 0f);
+         if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
+         _gl.ColorMask(true, true, true, true);
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
+index b515e7b..a87c7f5 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
+@@ -345,6 +345,7 @@ public sealed partial class GlCore
+             return;
+         }
+         _gl.Uniform1(_uwModelBase, m.VertBase);
++        if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, _pullOn ? m.DepthPull / 65536f : 0f);
+         if (_uwModelSky >= 0) _gl.Uniform1(_uwModelSky, m.Sky ? 1 : 0);
+         if (_uwModelTile >= 0) _gl.Uniform1(_uwModelTile, m.Tile ? 1 : 0);
+         if (_uwModelClip >= 0) _gl.Uniform1(_uwModelClip, RetainedScene.ModelNearClip ? 1 : 0);
+@@ -371,46 +372,31 @@ public sealed partial class GlCore
+     /// A view's instances after the map, as <see cref="DrawWorldModels"/> draws the
+     /// captured models: 0051's true depth first with colour off, then colour against
+     /// it pulled towards the camera. Not culled by GL: the shader keeps the faces the
+-    /// lit assembler keeps.
++    /// lit assembler keeps. With 0116's allowances (<see cref="PullsAgainstMap"/>) both
++    /// passes are pulled by each instance's own, and the true depth is put back after.
+     /// </summary>
+     void DrawInstances(List<RetainedScene.ModelInstance> list, int slot)
+     {
+         _gl.Disable(EnableCap.CullFace);
+         BeginInstances(slot, true);
+         bool bias = GteDepth.ZBuffer && (GteDepth.DepthBias > 0f || GteDepth.DepthSlope > 0f);
+-        ProbeModelsUnderMap(() =>
+-        {
+-            foreach (var m in list)
+-            {
+-                if (m.MeshGen != _meshGen) continue;
+-                SendInstance(m, true);
+-                _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
+-            }
+-        });
++        bool pull = bias && PullsAgainstMap(list);
++        _pullProbe = pull;
++        ProbeModelsUnderMap(() => DrawEach(list));
++        _pullProbe = false;
++        _pullOn = pull;
+         if (bias)
+         {
++            if (pull) MarkPulled();
+             DepthOnly(true);
+-            foreach (var m in list)
+-            {
+-                if (m.MeshGen != _meshGen) continue;
+-                SendInstance(m, true);
+-                _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
+-            }
++            DrawEach(list);
+             DepthOnly(false);
++            if (pull) EndStencil();
+             _gl.DepthMask(false);
+             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
+             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
+         }
+-        if (bias)
+-            ProbeTolerance(2, () =>
+-            {
+-                foreach (var m in list)
+-                {
+-                    if (m.MeshGen != _meshGen) continue;
+-                    SendInstance(m, true);
+-                    _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
+-                }
+-            });
++        if (bias) ProbeTolerance(2, () => DrawEach(list));
+         MarkModels(true);
+         foreach (var m in list)
+         {
+@@ -427,9 +413,87 @@ public sealed partial class GlCore
+             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
+             _gl.DepthMask(true);
+         }
++        _pullOn = false;
++        if (pull) RestoreTrueDepth(list);
++        if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, 0f);
+         EndInstances(true);
+     }
+ 
++    /// <summary>Each current instance through the bound program, its uniforms sent.</summary>
++    void DrawEach(List<RetainedScene.ModelInstance> list)
++    {
++        foreach (var m in list)
++        {
++            if (m.MeshGen != _meshGen) continue;
++            SendInstance(m, true);
++            _gl.DrawArrays(PrimitiveType.Triangles, m.MeshStart, (uint)m.MeshCount);
++        }
++    }
++
++    // 0116. The main view's instances are drawing (the display target, whose stencil
++    // 0086 already uses; the planar mirror's is not relied on), the instance uniforms
++    // carry their allowance, and the mask probe counts what it brings back.
++    bool _pullAllowed, _pullOn, _pullProbe;
++
++    /// <summary>0116. The stencil bit that marks where a pulled instance passed.
++    /// 0086's model mask is bit 0.</summary>
++    const int PulledBit = 2;
++
++    bool PullsAgainstMap(List<RetainedScene.ModelInstance> list)
++    {
++        if (_uwFarPlane < 0) _uwFarPlane = _gl.GetUniformLocation(_progWorld, "uFarPlane");
++        if (!_pullAllowed || _uwDepthPull < 0 || _uwFarPlane < 0) return false;
++        foreach (var m in list)
++            if (m.DepthPull > 0f && m.MeshGen == _meshGen) return true;
++        return false;
++    }
++
++    /// <summary>0116. The pulled bit cleared, then set by the depth pass where an
++    /// instance passes against the map.</summary>
++    void MarkPulled()
++    {
++        bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
++        _gl.Disable(EnableCap.ScissorTest);
++        _gl.StencilMask(PulledBit);
++        _gl.ClearStencil(0);
++        _gl.Clear(ClearBufferMask.StencilBufferBit);
++        if (scissor) _gl.Enable(EnableCap.ScissorTest);
++        _gl.Enable(EnableCap.StencilTest);
++        _gl.StencilFunc(StencilFunction.Always, PulledBit, PulledBit);
++        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
++    }
++
++    void EndStencil()
++    {
++        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
++        _gl.StencilMask(0xFF);
++        _gl.Disable(EnableCap.StencilTest);
++    }
++
++    /// <summary>
++    /// 0116. The pulled depth the instances left, replaced by their true depth, so what
++    /// draws after them (water, blended faces, packets) is tested against where they
++    /// are: under the marked pixels, the depth set to the far plane through the
++    /// instances' own coverage, then their true depth drawn into it. The map's depth
++    /// there is given up, which the instance in front of it already hid.
++    /// </summary>
++    void RestoreTrueDepth(List<RetainedScene.ModelInstance> list)
++    {
++        _gl.Enable(EnableCap.StencilTest);
++        _gl.StencilMask(0);
++        _gl.StencilFunc(StencilFunction.Equal, PulledBit, PulledBit);
++        _gl.DepthMask(true);
++        DepthOnly(true);
++        _gl.DepthFunc(DepthFunction.Always);
++        _gl.Uniform1(_uwFarPlane, 1);
++        DrawEach(list);
++        _gl.Uniform1(_uwFarPlane, 0);
++        _gl.DepthFunc(DepthFunction.Lequal);
++        DrawEach(list);
++        DepthOnly(false);
++        EndStencil();
++    }
++
+     int _uwFarPlane = -1;
+ 
+     // The frame's sky faces in the order the walk sends them, as corners in the store.
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
+index 2b1233e..7ab2160 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
+@@ -2079,6 +2079,9 @@ internal static class GlShaders
+         // RetainedScene.DepthCapPixels over H: the main view's ceiling on the slope term,
+         // per unit of depth. 0 is none.
+         uniform float uDepthCapZ;
++        // 0116. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
++        // added past the caps: it is no slope term.
++        uniform float uDepthPull;
+         uniform int   uScale;
+         uniform vec2  uPosBias;
+         uniform float uAniso;
+@@ -2608,7 +2611,7 @@ internal static class GlShaders
+             // unit or two of world, which at depth z moves the depth by at most a few
+             // game pixels' width there (z / H each), so the term stops at that.
+             if (uDepthCapZ > 0.0) dz = min(dz, uDepthBias + vDepth * uDepthCapZ);
+-            dz = min(dz, uDepthCap);
++            dz = min(dz, uDepthCap) + uDepthPull;
+             gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
+             if (uFarPlane != 0) gl_FragDepth = 1.0;
+             if ((uClipOn != 0 || uRadialFog != 0) && vDepth > 0.0) {
+diff --git a/RecompOne.Runtime/Gpu/RetainedScene.cs b/RecompOne.Runtime/Gpu/RetainedScene.cs
+index 2017f18..b8a9e4f 100644
+--- a/RecompOne.Runtime/Gpu/RetainedScene.cs
++++ b/RecompOne.Runtime/Gpu/RetainedScene.cs
+@@ -901,6 +901,11 @@ public static class RetainedScene
+         /// (gone), through the same ordered dither as <see cref="DistanceFade"/> and on top
+         /// of it, in the colour pass and the normal pass alike.</summary>
+         public float FadeOut;
++        /// <summary>0116. How far, in world units, this model may sink into the map and
++        /// still draw: tested against the map's depth pulled this much towards the
++        /// camera, against other models at its true depth. 0, the default, is none. The
++        /// main view only.</summary>
++        public float DepthPull;
+     }
+ 
+     /// <summary>0085. A mesh corner's <see cref="Vertex.Light"/>: the low 24 bits are its
+@@ -1139,6 +1144,10 @@ public static class RetainedScene
+     /// passes and the tolerance does not (<see cref="ModelUnderMap"/> is the last).</summary>
+     public static readonly float[] MapSlacks = [8, 32, 128, 512, 0xF0 * 4];
+     public static readonly long[] ModelUnderSlack = new long[5];
++    /// <summary>0116. Of the main view's instance samples the tolerance alone fails
++    /// against the map, those each instance's own <see cref="ModelInstance.DepthPull"/>
++    /// passes: what the allowance brings back.</summary>
++    public static long ModelUnderPulled;
+ 
+     /// <summary>The tolerance probe: before each colour pass of the main view's map and
+     /// models, the samples the tolerant test passes, and of those the ones it passes

@@ -372,7 +372,7 @@ public sealed partial class GlCore
     /// A view's instances after the map, as <see cref="DrawWorldModels"/> draws the
     /// captured models: 0051's true depth first with colour off, then colour against
     /// it pulled towards the camera. Not culled by GL: the shader keeps the faces the
-    /// lit assembler keeps. With 0111's allowances (<see cref="PullsAgainstMap"/>) both
+    /// lit assembler keeps. With 0116's allowances (<see cref="PullsAgainstMap"/>) both
     /// passes are pulled by each instance's own, and the true depth is put back after.
     /// </summary>
     void DrawInstances(List<RetainedScene.ModelInstance> list, int slot)
@@ -430,12 +430,12 @@ public sealed partial class GlCore
         }
     }
 
-    // 0111. The main view's instances are drawing (the display target, whose stencil
+    // 0116. The main view's instances are drawing (the display target, whose stencil
     // 0086 already uses; the planar mirror's is not relied on), the instance uniforms
     // carry their allowance, and the mask probe counts what it brings back.
     bool _pullAllowed, _pullOn, _pullProbe;
 
-    /// <summary>0111. The stencil bit that marks where a pulled instance passed.
+    /// <summary>0116. The stencil bit that marks where a pulled instance passed.
     /// 0086's model mask is bit 0.</summary>
     const int PulledBit = 2;
 
@@ -448,7 +448,7 @@ public sealed partial class GlCore
         return false;
     }
 
-    /// <summary>0111. The pulled bit cleared, then set by the depth pass where an
+    /// <summary>0116. The pulled bit cleared, then set by the depth pass where an
     /// instance passes against the map.</summary>
     void MarkPulled()
     {
@@ -471,7 +471,7 @@ public sealed partial class GlCore
     }
 
     /// <summary>
-    /// 0111. The pulled depth the instances left, replaced by their true depth, so what
+    /// 0116. The pulled depth the instances left, replaced by their true depth, so what
     /// draws after them (water, blended faces, packets) is tested against where they
     /// are: under the marked pixels, the depth set to the far plane through the
     /// instances' own coverage, then their true depth drawn into it. The map's depth

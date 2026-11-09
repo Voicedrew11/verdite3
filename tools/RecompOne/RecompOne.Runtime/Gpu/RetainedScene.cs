@@ -901,7 +901,7 @@ public static class RetainedScene
         /// (gone), through the same ordered dither as <see cref="DistanceFade"/> and on top
         /// of it, in the colour pass and the normal pass alike.</summary>
         public float FadeOut;
-        /// <summary>0111. How far, in world units, this model may sink into the map and
+        /// <summary>0116. How far, in world units, this model may sink into the map and
         /// still draw: tested against the map's depth pulled this much towards the
         /// camera, against other models at its true depth. 0, the default, is none. The
         /// main view only.</summary>
@@ -1144,7 +1144,7 @@ public static class RetainedScene
     /// passes and the tolerance does not (<see cref="ModelUnderMap"/> is the last).</summary>
     public static readonly float[] MapSlacks = [8, 32, 128, 512, 0xF0 * 4];
     public static readonly long[] ModelUnderSlack = new long[5];
-    /// <summary>0111. Of the main view's instance samples the tolerance alone fails
+    /// <summary>0116. Of the main view's instance samples the tolerance alone fails
     /// against the map, those each instance's own <see cref="ModelInstance.DepthPull"/>
     /// passes: what the allowance brings back.</summary>
     public static long ModelUnderPulled;

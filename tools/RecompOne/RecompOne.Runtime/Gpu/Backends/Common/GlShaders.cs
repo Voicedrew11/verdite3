@@ -2079,7 +2079,7 @@ internal static class GlShaders
         // RetainedScene.DepthCapPixels over H: the main view's ceiling on the slope term,
         // per unit of depth. 0 is none.
         uniform float uDepthCapZ;
-        // 0111. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
+        // 0116. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
         // added past the caps: it is no slope term.
         uniform float uDepthPull;
         uniform int   uScale;
