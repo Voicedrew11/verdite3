@@ -356,3 +356,90 @@ index a87c7f5..4b4e595 100644
          DepthOnly(false);
          EndStencil();
      }
+
+Amended again (2026-11-20): the pulled depth comes no nearer than the model's own front (DepthPullNear).
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
+index c44dc14..70821f5 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlMainView.cs
+@@ -33,6 +33,7 @@ public sealed partial class GlCore
+         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
+         _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
+         _uwDepthPull = L("uDepthPull");
++        _uwPullNear = L("uPullNear");
+         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
+         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
+         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
+@@ -61,7 +62,7 @@ public sealed partial class GlCore
+     bool _wMips;
+     // The view depth the normal pass's last water slice reached.
+     float _wDone;
+-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1;
++    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1, _uwPullNear = -1;
+     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
+     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
+     // The world normal program is set up for this pass's frame (DrawWorldNormals).
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
+index 4b4e595..f0f4c70 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlModelMeshes.cs
+@@ -346,6 +346,7 @@ public sealed partial class GlCore
+         }
+         _gl.Uniform1(_uwModelBase, m.VertBase);
+         if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, _pullOn ? m.DepthPull / 65536f : 0f);
++        if (_uwPullNear >= 0) _gl.Uniform1(_uwPullNear, m.DepthPullNear);
+         if (_uwModelSky >= 0) _gl.Uniform1(_uwModelSky, m.Sky ? 1 : 0);
+         if (_uwModelTile >= 0) _gl.Uniform1(_uwModelTile, m.Tile ? 1 : 0);
+         if (_uwModelClip >= 0) _gl.Uniform1(_uwModelClip, RetainedScene.ModelNearClip ? 1 : 0);
+diff --git a/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs b/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
+index 7ab2160..dc04f1a 100644
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlShaders.cs
+@@ -2082,6 +2082,15 @@ internal static class GlShaders
+         // 0116. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
+         // added past the caps: it is no slope term.
+         uniform float uDepthPull;
++        // 0116, amended. How far in front of the drawing instance's origin the pulled
++        // depth may come (ModelInstance.DepthPullNear): the model's own front, so a
++        // face wholly in front of the model still hides it. The origin's view depth
++        // is taken through the world program's view, as its vertex stage places it.
++        uniform float uPullNear;
++        uniform mat3  uR;
++        uniform vec3  uCam;
++        uniform vec3  uT;
++        uniform vec3  uModelT;
+         uniform int   uScale;
+         uniform vec2  uPosBias;
+         uniform float uAniso;
+@@ -2611,8 +2620,13 @@ internal static class GlShaders
+             // unit or two of world, which at depth z moves the depth by at most a few
+             // game pixels' width there (z / H each), so the term stops at that.
+             if (uDepthCapZ > 0.0) dz = min(dz, uDepthBias + vDepth * uDepthCapZ);
+-            dz = min(dz, uDepthCap) + uDepthPull;
+-            gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
++            float tz = vDepth - min(dz, uDepthCap);
++            if (uDepthPull > 0.0)
++            {
++                float front = ((uR * (uModelT - uCam) + uT).z - uPullNear) * (1.0 / 65536.0);
++                tz = max(tz - uDepthPull, min(tz, front));
++            }
++            gl_FragDepth = vDepth > 0.0 ? max(tz, 0.0) : 1.0;
+             if (uFarPlane != 0) gl_FragDepth = 1.0;
+             if ((uClipOn != 0 || uRadialFog != 0) && vDepth > 0.0) {
+                 float cz = vDepth * 65536.0;
+diff --git a/RecompOne.Runtime/Gpu/RetainedScene.cs b/RecompOne.Runtime/Gpu/RetainedScene.cs
+index b8a9e4f..fffa94b 100644
+--- a/RecompOne.Runtime/Gpu/RetainedScene.cs
++++ b/RecompOne.Runtime/Gpu/RetainedScene.cs
+@@ -906,6 +906,11 @@ public static class RetainedScene
+         /// camera, against other models at its true depth. 0, the default, is none. The
+         /// main view only.</summary>
+         public float DepthPull;
++        /// <summary>0116, amended. How far in front of its origin's view depth, in units
++        /// of depth, the pulled depth may come: the model's nearest vertex, plus a
++        /// margin. A map face wholly in front of that (a wall end before a door) still
++        /// hides it; only one that cuts into the model is drawn through.</summary>
++        public float DepthPullNear;
+     }
+ 
+     /// <summary>0085. A mesh corner's <see cref="Vertex.Light"/>: the low 24 bits are its

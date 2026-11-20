@@ -2082,6 +2082,15 @@ internal static class GlShaders
         // 0116. The drawing instance's own allowance (ModelInstance.DepthPull / 65536),
         // added past the caps: it is no slope term.
         uniform float uDepthPull;
+        // 0116, amended. How far in front of the drawing instance's origin the pulled
+        // depth may come (ModelInstance.DepthPullNear): the model's own front, so a
+        // face wholly in front of the model still hides it. The origin's view depth
+        // is taken through the world program's view, as its vertex stage places it.
+        uniform float uPullNear;
+        uniform mat3  uR;
+        uniform vec3  uCam;
+        uniform vec3  uT;
+        uniform vec3  uModelT;
         uniform int   uScale;
         uniform vec2  uPosBias;
         uniform float uAniso;
@@ -2611,8 +2620,13 @@ internal static class GlShaders
             // unit or two of world, which at depth z moves the depth by at most a few
             // game pixels' width there (z / H each), so the term stops at that.
             if (uDepthCapZ > 0.0) dz = min(dz, uDepthBias + vDepth * uDepthCapZ);
-            dz = min(dz, uDepthCap) + uDepthPull;
-            gl_FragDepth = vDepth > 0.0 ? max(vDepth - dz, 0.0) : 1.0;
+            float tz = vDepth - min(dz, uDepthCap);
+            if (uDepthPull > 0.0)
+            {
+                float front = ((uR * (uModelT - uCam) + uT).z - uPullNear) * (1.0 / 65536.0);
+                tz = max(tz - uDepthPull, min(tz, front));
+            }
+            gl_FragDepth = vDepth > 0.0 ? max(tz, 0.0) : 1.0;
             if (uFarPlane != 0) gl_FragDepth = 1.0;
             if ((uClipOn != 0 || uRadialFog != 0) && vDepth > 0.0) {
                 float cz = vDepth * 65536.0;

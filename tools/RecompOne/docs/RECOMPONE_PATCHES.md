@@ -2081,6 +2081,16 @@ Four files in the directory have no entry below:
   in a pixel one instance marks, another sunk further into the map than its own
   allowance also shows. Measured in Verdite3 (areas 0, 1, 17): the samples the
   allowance brings back are as before; no exception; the shader lint passes.
+  **Amended again (2026-11-20):** an instance's allowance reached through a map face
+  wholly in front of it (a wall end before a door, a pillar's side before a thing on
+  its top). `ModelInstance.DepthPullNear` is how far in front of its origin's view
+  depth the pulled depth may come (the game sets its nearest vertex plus a margin);
+  the fragment takes the origin's depth through the world program's view
+  (`uR`, `uCam`, `uT`, `uModelT`) and clamps there (`uPullNear`). 0 with no
+  allowance, as before. Measured in Verdite3 at its default margin of 64 (areas 0,
+  1, 17): of the model samples the map hid within 960, the allowance still brings
+  back all of area 0's, 4.56 of area 1's 5.58 million (more than the 3.14 million
+  within 128), and 488 of area 17's 10,592; no exception; the shader lint passes.
 
 ## Package bumps
 

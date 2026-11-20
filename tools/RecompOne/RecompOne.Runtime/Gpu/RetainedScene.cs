@@ -906,6 +906,11 @@ public static class RetainedScene
         /// camera, against other models at its true depth. 0, the default, is none. The
         /// main view only.</summary>
         public float DepthPull;
+        /// <summary>0116, amended. How far in front of its origin's view depth, in units
+        /// of depth, the pulled depth may come: the model's nearest vertex, plus a
+        /// margin. A map face wholly in front of that (a wall end before a door) still
+        /// hides it; only one that cuts into the model is drawn through.</summary>
+        public float DepthPullNear;
     }
 
     /// <summary>0085. A mesh corner's <see cref="Vertex.Light"/>: the low 24 bits are its

@@ -346,6 +346,7 @@ public sealed partial class GlCore
         }
         _gl.Uniform1(_uwModelBase, m.VertBase);
         if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, _pullOn ? m.DepthPull / 65536f : 0f);
+        if (_uwPullNear >= 0) _gl.Uniform1(_uwPullNear, m.DepthPullNear);
         if (_uwModelSky >= 0) _gl.Uniform1(_uwModelSky, m.Sky ? 1 : 0);
         if (_uwModelTile >= 0) _gl.Uniform1(_uwModelTile, m.Tile ? 1 : 0);
         if (_uwModelClip >= 0) _gl.Uniform1(_uwModelClip, RetainedScene.ModelNearClip ? 1 : 0);

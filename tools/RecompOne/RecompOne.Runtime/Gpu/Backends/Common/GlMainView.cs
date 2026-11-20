@@ -33,6 +33,7 @@ public sealed partial class GlCore
         int L(string n) => _gl.GetUniformLocation(_progWorld, n);
         _uwDepthBias = L("uDepthBias"); _uwDepthSlope = L("uDepthSlope"); _uwDepthOnly = L("uDepthOnly"); _uwDepthCap = L("uDepthCap"); _uwDepthCapZ = L("uDepthCapZ");
         _uwDepthPull = L("uDepthPull");
+        _uwPullNear = L("uPullNear");
         _uwOpaqueDepth = L("uOpaqueDepth"); _uwSwellOn = L("uSwellOn"); _uwSwell = L("uSwell");
         _uwWaveOn = L("uWaveOn"); _uwWaveN = L("uWaveN"); _uwWaveRect = L("uWaveRect"); _uwWaveR = L("uWaveR");
         _uwWaveCam = L("uWaveCam"); _uwWaveT = L("uWaveT"); _uwWaveCentre = L("uWaveCentre"); _uwWaveH = L("uWaveH");
@@ -61,7 +62,7 @@ public sealed partial class GlCore
     bool _wMips;
     // The view depth the normal pass's last water slice reached.
     float _wDone;
-    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1;
+    int _uwDepthBias, _uwDepthSlope, _uwDepthOnly, _uwSwellOn, _uwSwell, _uwDepthCap = -1, _uwDepthCapZ = -1, _uwDepthPull = -1, _uwPullNear = -1;
     int _uwWaveOn, _uwWaveN, _uwWaveRect, _uwWaveR, _uwWaveCam, _uwWaveT, _uwWaveCentre, _uwWaveH, _uwWaveTime, _uwWaveParams;
     int _uwnSwellOn, _uwnSwell, _uwnZSlice;
     // The world normal program is set up for this pass's frame (DrawWorldNormals).
