@@ -2048,49 +2048,6 @@ Four files in the directory have no entry below:
   every 2 s from five seconds into the message; after, `wide 125, vram fallback 0`
   for the whole wait. The map item itself not reached by the shell; **not looked
   at.** **No recompile.**
-- `0116-model-depth-pull.patch` — a model placed a little into the floor or a wall
-  (a chest's base under a bump in the ground) drew whole under the ordering table,
-  whose map faces were linked 0xF0 slots behind their mean; the retained renderer's
-  per-pixel test cut it. `RetainedScene.ModelInstance.DepthPull` is a per-instance
-  allowance in view-depth units, 0 by default. In the main view (`_pullAllowed`),
-  when the Z-buffer and `0051`'s tolerance are on and an instance has one,
-  `DrawInstances` pulls both of its passes towards the camera by it (`uDepthPull`,
-  added to the fragment's tolerance after both caps): the depth pass sets stencil
-  bit 2 where an instance passes against the map, and afterwards
-  `RestoreTrueDepth` sets the depth under that bit to the far plane through the
-  instances' own coverage (`uFarPlane`) and draws their true depth into it, so
-  water, blended faces and packets drawn later test against where the models
-  really are. A model is pulled by the same amount over all its faces, so its own
-  faces still sort among themselves; two models within each other's allowances
-  sort by their pulled depths. The mask probe (`0086`) also counts
-  `ModelUnderPulled`, the samples the allowance passes that the tolerance alone
-  fails. The planar mirror, the normal pass and the captured posed models
-  (`DrawWorldModels`) are unchanged. Measured in Verdite3 (`KF3_OBJECT_PULL`, "Objects
-  sunk into the map" in its `docs/PICTURE.md`). **No recompile.** Nothing changes
-  for a game that leaves `DepthPull` at 0.
-  **Since amended (2026-11-20):** the depth pass wrote each instance's *pulled*
-  depth, so instances sorted among themselves by it: a large model (a chest, its
-  allowance capped at 960) covered a small one inside or on it (the item in the
-  chest, a thing under a table), or drew through it in part, and the item looked
-  cut or see-through (Verdite3, reported with the Z-buffer on). Now the pulled pass
-  writes nothing and only marks the stencil bit where an instance passes the map;
-  under the mark the depth is set to the far plane through the instances'
-  coverage (`ClearMapUnderPulled`), and both passes then run at the true depth as
-  without the allowance. Instances test one another where they are, and the true
-  depth is already in place for what draws after (no `RestoreTrueDepth`). The cost:
-  in a pixel one instance marks, another sunk further into the map than its own
-  allowance also shows. Measured in Verdite3 (areas 0, 1, 17): the samples the
-  allowance brings back are as before; no exception; the shader lint passes.
-  **Amended again (2026-11-20):** an instance's allowance reached through a map face
-  wholly in front of it (a wall end before a door, a pillar's side before a thing on
-  its top). `ModelInstance.DepthPullNear` is how far in front of its origin's view
-  depth the pulled depth may come (the game sets its nearest vertex plus a margin);
-  the fragment takes the origin's depth through the world program's view
-  (`uR`, `uCam`, `uT`, `uModelT`) and clamps there (`uPullNear`). 0 with no
-  allowance, as before. Measured in Verdite3 at its default margin of 64 (areas 0,
-  1, 17): of the model samples the map hid within 960, the allowance still brings
-  back all of area 0's, 4.56 of area 1's 5.58 million (more than the 3.14 million
-  within 128), and 488 of area 17's 10,592; no exception; the shader lint passes.
 
 ## Package bumps
 
