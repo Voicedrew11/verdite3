@@ -372,8 +372,9 @@ public sealed partial class GlCore
     /// A view's instances after the map, as <see cref="DrawWorldModels"/> draws the
     /// captured models: 0051's true depth first with colour off, then colour against
     /// it pulled towards the camera. Not culled by GL: the shader keeps the faces the
-    /// lit assembler keeps. With 0116's allowances (<see cref="PullsAgainstMap"/>) both
-    /// passes are pulled by each instance's own, and the true depth is put back after.
+    /// lit assembler keeps. With 0116's allowances (<see cref="PullsAgainstMap"/>) the
+    /// map is first cleared where an instance passes it pulled by its own, and both
+    /// passes then run at the true depth, so the instances sort among themselves there.
     /// </summary>
     void DrawInstances(List<RetainedScene.ModelInstance> list, int slot)
     {
@@ -384,14 +385,12 @@ public sealed partial class GlCore
         _pullProbe = pull;
         ProbeModelsUnderMap(() => DrawEach(list));
         _pullProbe = false;
-        _pullOn = pull;
+        if (pull) ClearMapUnderPulled(list);
         if (bias)
         {
-            if (pull) MarkPulled();
             DepthOnly(true);
             DrawEach(list);
             DepthOnly(false);
-            if (pull) EndStencil();
             _gl.DepthMask(false);
             if (_uwDepthBias >= 0) _gl.Uniform1(_uwDepthBias, GteDepth.DepthBias / 65536f);
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, GteDepth.DepthSlope);
@@ -413,8 +412,6 @@ public sealed partial class GlCore
             if (_uwDepthSlope >= 0) _gl.Uniform1(_uwDepthSlope, 0f);
             _gl.DepthMask(true);
         }
-        _pullOn = false;
-        if (pull) RestoreTrueDepth(list);
         if (_uwDepthPull >= 0) _gl.Uniform1(_uwDepthPull, 0f);
         EndInstances(true);
     }
@@ -448,9 +445,9 @@ public sealed partial class GlCore
         return false;
     }
 
-    /// <summary>0116. The pulled bit cleared, then set by the depth pass where an
-    /// instance passes against the map.</summary>
-    void MarkPulled()
+    /// <summary>0116, amended. The pulled bit cleared, then set where an instance,
+    /// pulled by its own allowance, passes against the map; nothing is written.</summary>
+    void MarkPulled(List<RetainedScene.ModelInstance> list)
     {
         bool scissor = _gl.IsEnabled(EnableCap.ScissorTest);
         _gl.Disable(EnableCap.ScissorTest);
@@ -461,6 +458,11 @@ public sealed partial class GlCore
         _gl.Enable(EnableCap.StencilTest);
         _gl.StencilFunc(StencilFunction.Always, PulledBit, PulledBit);
         _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+        _gl.DepthMask(false);
+        _pullOn = true;
+        DrawEach(list);
+        _pullOn = false;
+        _gl.DepthMask(true);
     }
 
     void EndStencil()
@@ -471,25 +473,27 @@ public sealed partial class GlCore
     }
 
     /// <summary>
-    /// 0116. The pulled depth the instances left, replaced by their true depth, so what
-    /// draws after them (water, blended faces, packets) is tested against where they
-    /// are: under the marked pixels, the depth set to the far plane through the
-    /// instances' own coverage, then their true depth drawn into it. The map's depth
-    /// there is given up, which the instance in front of it already hid.
+    /// 0116, amended. The map's depth given up wherever an instance passes it pulled by
+    /// its own allowance: under the marked pixels, the far plane through the instances'
+    /// coverage. The instances then draw at their true depth as without the allowance,
+    /// so they test one another where they really are (a pulled depth let a large
+    /// model, a chest, cover a small one inside it), and water, blended faces and
+    /// packets after them test against that too. The map there is hidden by the
+    /// instance in front of it; one instance's mark can let another that is further
+    /// into the map than its own allowance show at the same pixel.
     /// </summary>
-    void RestoreTrueDepth(List<RetainedScene.ModelInstance> list)
+    void ClearMapUnderPulled(List<RetainedScene.ModelInstance> list)
     {
-        _gl.Enable(EnableCap.StencilTest);
+        DepthOnly(true);
+        MarkPulled(list);
         _gl.StencilMask(0);
         _gl.StencilFunc(StencilFunction.Equal, PulledBit, PulledBit);
-        _gl.DepthMask(true);
-        DepthOnly(true);
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Keep);
         _gl.DepthFunc(DepthFunction.Always);
         _gl.Uniform1(_uwFarPlane, 1);
         DrawEach(list);
         _gl.Uniform1(_uwFarPlane, 0);
         _gl.DepthFunc(DepthFunction.Lequal);
-        DrawEach(list);
         DepthOnly(false);
         EndStencil();
     }

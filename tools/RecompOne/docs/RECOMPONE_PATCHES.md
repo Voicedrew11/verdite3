@@ -2068,6 +2068,19 @@ Four files in the directory have no entry below:
   (`DrawWorldModels`) are unchanged. Measured in Verdite3 (`KF3_OBJECT_PULL`, "Objects
   sunk into the map" in its `docs/PICTURE.md`). **No recompile.** Nothing changes
   for a game that leaves `DepthPull` at 0.
+  **Since amended (2026-11-20):** the depth pass wrote each instance's *pulled*
+  depth, so instances sorted among themselves by it: a large model (a chest, its
+  allowance capped at 960) covered a small one inside or on it (the item in the
+  chest, a thing under a table), or drew through it in part, and the item looked
+  cut or see-through (Verdite3, reported with the Z-buffer on). Now the pulled pass
+  writes nothing and only marks the stencil bit where an instance passes the map;
+  under the mark the depth is set to the far plane through the instances'
+  coverage (`ClearMapUnderPulled`), and both passes then run at the true depth as
+  without the allowance. Instances test one another where they are, and the true
+  depth is already in place for what draws after (no `RestoreTrueDepth`). The cost:
+  in a pixel one instance marks, another sunk further into the map than its own
+  allowance also shows. Measured in Verdite3 (areas 0, 1, 17): the samples the
+  allowance brings back are as before; no exception; the shader lint passes.
 
 ## Package bumps
 
