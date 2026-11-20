@@ -534,7 +534,13 @@ then every model draws at its true depth, so water and blended faces after it te
 against where it really is. Until 2026-11-20 the models wrote their pulled depths
 and sorted by them, so a chest (allowance 960) covered or cut the item in it, and a
 table what lay against it: the user's report, "objects clip in front of or behind
-others, or become transparent". Not the sky, the arm, the HUD's
+others, or become transparent". Since the same day the pulled depth also comes no
+nearer than the model's own nearest vertex less a margin (`KF3_OBJECT_PULL_MARGIN`,
+64): a map face cutting into the model lets it through, one wholly in front of it
+(a wall end, a pillar's side) hides it. Measured (`model_mask_tour.py`, areas 0, 1,
+17): of the samples the map hid within 960, it still brings back all of area 0's,
+4.56 of area 1's 5.58 million (more than all 3.14 million within 128), and 488 of
+area 17's 10,592. Not the sky, the arm, the HUD's
 models or the packet Z-buffer (`KF3_GPU_WORLD=0`). It has no setting of its own: on
 whenever the Z-buffer is (since 2026-11-09). `KF3_OBJECT_PULL=0` turns it off to
 compare.
@@ -561,8 +567,7 @@ Out of 0.2-3.5e9 model samples an area. 164-165 fps at a 165 cap with it on; no
 exception; the shader lint passes.
 
 **Costs, by construction**: an object just behind a thin wall or a door's edge, within
-its allowance, shows through it (a thing on top of a pillar seen on its side from
-below); in a pixel one model's allowance clears, another sunk further than its own
+its margin, shows through it; in a pixel one model's allowance clears, another sunk further than its own
 also shows; a model's blended faces are tested after the restore and stay
 cut. The planar mirror and the normal pass test as before.
 

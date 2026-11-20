@@ -96,6 +96,7 @@ kept.
 | `KF3_ZBUFFER_PROBE` | `1`: every 2 s, packet depths recorded, polygons that found theirs, triangles tested, unmatched | off |
 | `KF3_OBJECT_PULL` | Under Retained GPU, while the Z-buffer is on, a model the walk submits may sink into the map by up to its own size and still draw (runtime `0116`); `0` turns it off to compare, a number scales the size. No setting of its own: it follows the Z-buffer | follows `KF3_ZBUFFER`, scale 1 |
 | `KF3_OBJECT_PULL_MAX` | the most any model's allowance may be, in units of depth; `0` no ceiling | 960 (the table's 0xF0 slots) |
+| `KF3_OBJECT_PULL_MARGIN` | how far in front of its own nearest vertex a model's pulled depth may come, in units of depth: a face wholly in front of the model hides it | 64 |
 | `KF3_OBJECT_PULL_PROBE` | `1`: every 4 s, models given an allowance and their sizes (p10/p50/p90/max) | off |
 | `KF3_BLENDORDER` | `0`: draw blended surfaces in table order under the Z-buffer, not after the opaque ones behind them (fork `0079`) | on |
 | `KF3_NEARPATH` | the near path (`func_8003AB04`, `func_800366A8`, libgte's division) in C#: `1` (or unset), `0` recompiled, `verify` compares it | on |

@@ -12,6 +12,8 @@ namespace Kf3;
 ///                               unset is 1. Otherwise it follows the Z-buffer.
 ///     KF3_OBJECT_PULL_MAX=N     no model's allowance past N units of depth; 960 by
 ///                               default, the console's own (0: no ceiling)
+///     KF3_OBJECT_PULL_MARGIN=N  how far in front of its own nearest vertex a model's
+///                               pulled depth may come, in units of depth; 64 by default
 ///     KF3_OBJECT_PULL_PROBE=1   a line every 4 s: models given one, and their sizes
 ///
 /// See "Objects sunk into the map" in docs/PICTURE.md.
@@ -31,6 +33,12 @@ public static class ObjectDepthPull
     const float TableAllowance = 0xF0 * 4;
     static float _max = TableAllowance;
 
+    /// <summary>How far in front of the model's nearest vertex the pulled depth may
+    /// come: a face cutting into the model just in front of it (the ground before a
+    /// chest's sunk base) still lets it through, a wall a room's width in front does not.</summary>
+    const float DefaultMargin = 64;
+    static float _margin = DefaultMargin;
+
     public static bool ProbeOn { get; set; }
     static long _models, _pulled;
     static readonly List<float> _sizes = [];
@@ -40,6 +48,7 @@ public static class ObjectDepthPull
     {
         _scale = string.IsNullOrWhiteSpace(on) ? 1f : ParseFloat(on) ?? 0f;
         _max = ParseFloat(max) ?? TableAllowance;
+        _margin = ParseFloat(Environment.GetEnvironmentVariable("KF3_OBJECT_PULL_MARGIN")) ?? DefaultMargin;
         ProbeOn = probe?.Trim() == "1";
     }
 
@@ -51,20 +60,26 @@ public static class ObjectDepthPull
     /// its vertices' furthest reach from the origin, scaled by the matrix's longest
     /// column. <paramref name="pose"/> is one past its first texel in
     /// <see cref="RetainedScene.PoseStore"/>; a morph's texels alternate keyframe and
-    /// delta, and the keyframe is measured.</summary>
-    public static float For(in RetainedScene.ModelInstance m, int pose, int count, bool morph)
+    /// delta, and the keyframe is measured. <paramref name="near"/> is how far in front
+    /// of the origin's view depth its pulled depth may come: its nearest vertex there,
+    /// plus the margin.</summary>
+    public static float For(in RetainedScene.ModelInstance m, int pose, int count, bool morph, out float near)
     {
+        near = 0f;
         if (!Enabled && !ProbeOn) return 0f;
         int stride = morph ? 2 : 1, first = pose - 1;
         var store = RetainedScene.PoseStore;
         if (first < 0 || (first + (long)count * stride) * 4 > store.Length) return 0f;
         long reach2 = 0;
+        float front = 0f;
         for (int i = 0; i < count; i++)
         {
             int at = (first + i * stride) * 4;
             long x = store[at], y = store[at + 1], z = store[at + 2];
             reach2 = Math.Max(reach2, x * x + y * y + z * z);
+            front = MathF.Min(front, (m.V20 * x + m.V21 * y + m.V22 * z) / 4096f);
         }
+        near = -front + _margin;
         float column = MathF.Max(Length(m.R00, m.R10, m.R20), MathF.Max(Length(m.R01, m.R11, m.R21), Length(m.R02, m.R12, m.R22)));
         float size = MathF.Sqrt(reach2) * column;
         float pull = size * _scale;
@@ -88,7 +103,7 @@ public static class ObjectDepthPull
         float At(double q) => _sizes[Math.Min(_sizes.Count - 1, (int)(q * _sizes.Count))];
         Console.WriteLine($"[KF3] object pull: {(Enabled ? "on" : "off")}, {_models} models, {_pulled} with a size; " +
                           $"size p10 {At(0.1):F0}, p50 {At(0.5):F0}, p90 {At(0.9):F0}, max {_sizes[^1]:F0} units" +
-                          $"{(_max > 0f ? $", capped at {_max:F0}" : "")}, scale {_scale:0.##}");
+                          $"{(_max > 0f ? $", capped at {_max:F0}" : "")}, scale {_scale:0.##}, margin {_margin:F0}");
         _sizes.Clear();
         _models = _pulled = 0;
     }
