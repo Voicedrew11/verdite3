@@ -266,7 +266,6 @@ public static class AgentServer
                  ",\"maskAhead\":" + RetainedScene.MaskAhead + ",\"modelSamples\":" + RetainedScene.ModelSamples +
                  ",\"modelUnderMap\":" + RetainedScene.ModelUnderMap +
                  ",\"modelUnderSlack\":[" + string.Join(',', RetainedScene.ModelUnderSlack) + "]" +
-                 ",\"modelUnderPulled\":" + RetainedScene.ModelUnderPulled +
                  ",\"toleranceSamples\":[" + string.Join(',', RetainedScene.ToleranceSamples) + "]" +
                  ",\"toleranceBehind\":[" + string.Join(',', RetainedScene.ToleranceBehind) + "]" +
                  "," + RenderDistance.Counters() + "}",

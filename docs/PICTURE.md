@@ -517,61 +517,24 @@ and the eye's direction to it, and the view's forward:
 (fdat74 has the most), the trees at the edge of the picture while turning, and close
 up while walking past one, where a sprite turned to the eye turns quickly.
 
-## Objects sunk into the map (2026-11-05)
+## Objects sunk into the map: tried and removed (2026-11-05 to 2026-11-20)
 
 **The report** (the user): with the Z-buffer, objects and items placed a little
 inside a bumpy floor or a wall are cut by it, or hidden. Under the ordering table
 the map's faces were linked 0xF0 slots (960 units of depth) behind their mean, so a
-model sunk less than that drew whole and the placement never showed. No single
-rule is right for every case; this is the one that copies the console the closest.
+model sunk less than that drew whole.
 
-**The rule** (`patches/ObjectDepthPull.cs`, runtime `0116`): each model the walk
-submits gets an allowance, its size (the furthest vertex from its origin, times the
-matrix's longest column) capped at the table's 960. The retained renderer tests the
-model against the map pulled that far towards the camera, and against the other
-models at the true depth: the map's depth is cleared where a model passes it pulled,
-then every model draws at its true depth, so water and blended faces after it test
-against where it really is. Until 2026-11-20 the models wrote their pulled depths
-and sorted by them, so a chest (allowance 960) covered or cut the item in it, and a
-table what lay against it: the user's report, "objects clip in front of or behind
-others, or become transparent". Since the same day the pulled depth also comes no
-nearer than the model's own nearest vertex less a margin (`KF3_OBJECT_PULL_MARGIN`,
-64): a map face cutting into the model lets it through, one wholly in front of it
-(a wall end, a pillar's side) hides it. Measured (`model_mask_tour.py`, areas 0, 1,
-17): of the samples the map hid within 960, it still brings back all of area 0's,
-4.56 of area 1's 5.58 million (more than all 3.14 million within 128), and 488 of
-area 17's 10,592. Not the sky, the arm, the HUD's
-models or the packet Z-buffer (`KF3_GPU_WORLD=0`). It has no setting of its own: on
-whenever the Z-buffer is (since 2026-11-09). `KF3_OBJECT_PULL=0` turns it off to
-compare.
+**What was tried**: each model the walk submitted got a depth allowance (its size,
+capped at 960) and was tested against the map pulled that far towards the camera
+(`patches/ObjectDepthPull.cs`, runtime `0116`, `KF3_OBJECT_PULL*`). Successive
+fixes sorted pulled models against each other at their true depth, stopped the pull
+at the model's own front, then at its nearest vertex plus a 64-unit margin. Each fix
+traded one wrong picture for another: objects cut or see-through inside other
+objects (a chest and its item), objects showing through wall ends and pillars, and
+sunk bases cut again once the margin was tight.
 
-**Sizes** (`KF3_OBJECT_PULL_PROBE=1`, areas 0, 1, 5, 7, 9, 10, 17): median 700-2,600
-units, a tenth under 340-1,200, the largest 6,843. A full size uncapped would let
-the large ones through walls a room away, hence the ceiling (`KF3_OBJECT_PULL_MAX`).
-
-**Measured** (`model_mask_tour.py`, three things an area, 24 views each,
-`KF3_GPU_MASK_PROBE=1`): model samples the map hid, and of those the ones the
-allowance brings back (`modelUnderPulled`):
-
-| area | hidden within 960 | brought back |
-|---|---|---|
-| 0 | 1,598,359 | 1,598,359 |
-| 1 | 17,668,329 | 17,672,934 |
-| 5 | 138,382 | 106,354 (things smaller than 960) |
-| 7 | 48,575 | 46,266 |
-| 9 | 1,539 | 1,539 |
-| 10 | 581 | 581 |
-| 17 | 11,408,974 | 11,406,474 |
-
-Out of 0.2-3.5e9 model samples an area. 164-165 fps at a 165 cap with it on; no
-exception; the shader lint passes.
-
-**Costs, by construction**: an object just behind a thin wall or a door's edge, within
-its margin, shows through it; in a pixel one model's allowance clears, another sunk further than its own
-also shows; a model's blended faces are tested after the restore and stay
-cut. The planar mirror and the normal pass test as before.
-
-**Not judged by eye.** For the user, on and off: objects on uneven ground (area 1 and
-17 have the most), items against walls, the item held up at pickup against a wall
-(the TODO entry), creatures in water (the restore), and things behind thin walls
-and doors.
+**Removed 2026-11-20**: it never worked reliably, so the switch, the runtime's
+`ModelInstance.DepthPull` and its pulled pass are gone; the history is in git
+(`9586efb` through `37b1c6a`, fork `15a5742` through `f463489`). Sunk objects are
+cut by the per-pixel test again. A fix would need something other than a per-model
+depth allowance.
