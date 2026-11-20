@@ -529,8 +529,12 @@ rule is right for every case; this is the one that copies the console the closes
 submits gets an allowance, its size (the furthest vertex from its origin, times the
 matrix's longest column) capped at the table's 960. The retained renderer tests the
 model against the map pulled that far towards the camera, and against the other
-models at the true depth, then writes the true depth back so water and blended
-faces after it test against where it really is. Not the sky, the arm, the HUD's
+models at the true depth: the map's depth is cleared where a model passes it pulled,
+then every model draws at its true depth, so water and blended faces after it test
+against where it really is. Until 2026-11-20 the models wrote their pulled depths
+and sorted by them, so a chest (allowance 960) covered or cut the item in it, and a
+table what lay against it: the user's report, "objects clip in front of or behind
+others, or become transparent". Not the sky, the arm, the HUD's
 models or the packet Z-buffer (`KF3_GPU_WORLD=0`). It has no setting of its own: on
 whenever the Z-buffer is (since 2026-11-09). `KF3_OBJECT_PULL=0` turns it off to
 compare.
@@ -557,8 +561,9 @@ Out of 0.2-3.5e9 model samples an area. 164-165 fps at a 165 cap with it on; no
 exception; the shader lint passes.
 
 **Costs, by construction**: an object just behind a thin wall or a door's edge, within
-its allowance, shows through it; two models within each other's allowances sort by
-their pulled depths; a model's blended faces are tested after the restore and stay
+its allowance, shows through it (a thing on top of a pillar seen on its side from
+below); in a pixel one model's allowance clears, another sunk further than its own
+also shows; a model's blended faces are tested after the restore and stay
 cut. The planar mirror and the normal pass test as before.
 
 **Not judged by eye.** For the user, on and off: objects on uneven ground (area 1 and
